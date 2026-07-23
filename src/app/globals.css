@@ -1,53 +1,156 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════ */
 :root {
-  --font-plus-jakarta: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --color-navy:        #1e3a8a;
-  --color-navy-dark:   #172d6e;
-  --color-navy-light:  #eff6ff;
-  --color-gold:        #f59e0b;
-  --color-success:     #15803d;
-  --color-success-bg:  #f0fdf4;
-  --color-success-bd:  #86efac;
-  --color-danger:      #b91c1c;
-  --color-danger-bg:   #fef2f2;
-  --color-danger-bd:   #fca5a5;
-  --color-text:        #0f172a;
-  --color-muted:       #64748b;
-  --color-border:      #e2e8f0;
-  --color-surface:     #ffffff;
-  --color-bg:          #f8fafc;
+  --navy:        #1e3a8a;
+  --navy-hover:  #1d4ed8;
+  --gold:        #d97706;
+  --success:     #166534;
+  --success-bg:  #dcfce7;
+  --success-bd:  #86efac;
+  --danger:      #991b1b;
+  --danger-bg:   #fee2e2;
+  --danger-bd:   #fca5a5;
+  --warn:        #92400e;
+  --warn-bg:     #fef3c7;
+  --warn-bd:     #fcd34d;
+  --text:        #111827;
+  --text-muted:  #6b7280;
+  --border:      #e5e7eb;
+  --surface:     #ffffff;
+  --bg:          #f9fafb;
+  --font:        'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
 }
 
-* { box-sizing: border-box; }
-
-html { scroll-behavior: smooth; }
+/* ═══════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
 body {
-  font-family: var(--font-plus-jakarta);
-  color: var(--color-text);
-  background-color: var(--color-bg);
-  -webkit-tap-highlight-color: transparent;
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Minimum touch targets */
-button, [role="button"], select, input {
-  font-family: inherit;
-}
+button, input, select, textarea { font-family: inherit; }
+button { user-select: none; cursor: pointer; }
 
-/* Focus rings */
+/* ═══════════════════════════════════════════════════
+   FOCUS — clean, not gimmicky
+═══════════════════════════════════════════════════ */
 :focus-visible {
-  outline: 3px solid var(--color-navy);
-  outline-offset: 2px;
-  border-radius: 6px;
+  outline: 2px solid var(--navy);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
 }
 
-/* Prevent text selection on buttons */
-button { user-select: none; }
+/* ═══════════════════════════════════════════════════
+   SCROLLBAR — subtle
+═══════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-/* Smooth scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f5f9; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+/* ═══════════════════════════════════════════════════
+   ANIMATIONS — purposeful, not decorative
+═══════════════════════════════════════════════════ */
+
+/* Fade-in for state transitions */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeUp 0.22s ease-out both; }
+
+/* Gentle pulse for loading states */
+@keyframes gentlePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+.animate-gentle-pulse { animation: gentlePulse 1.4s ease-in-out infinite; }
+
+/* Spin for loading indicator */
+@keyframes spin { to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin 1.2s linear infinite; }
+
+/* Check draw — success feel */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in { animation: scaleIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* Shake for error */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+.animate-shake { animation: shake 0.35s ease-in-out; }
+
+/* ═══════════════════════════════════════════════════
+   UTILITY — button base (touch-friendly)
+═══════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 20px;
+  font-weight: 700;
+  font-size: 15px;
+  border-radius: var(--radius-md);
+  border: 2px solid transparent;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.1s, opacity 0.15s;
+}
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--navy);
+  color: #fff;
+  border-color: var(--navy);
+}
+.btn-primary:not(:disabled):hover { background: var(--navy-hover); border-color: var(--navy-hover); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+.btn-ghost:not(:disabled):hover { background: #f3f4f6; }
+
+/* ═══════════════════════════════════════════════════
+   FORM ELEMENTS
+═══════════════════════════════════════════════════ */
+.input-base {
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+.input-base::placeholder { color: #9ca3af; font-weight: 400; }
+.input-base:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(30,58,138,0.08); }
