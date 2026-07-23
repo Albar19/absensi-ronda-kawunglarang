@@ -14,6 +14,7 @@ import {
 } from '@/lib/data';
 import HeaderBanner from '@/components/citizen/HeaderBanner';
 import StatusCards from '@/components/citizen/StatusCards';
+import JadwalHariIni from '@/components/citizen/JadwalHariIni';
 import RejectedScreen from '@/components/citizen/RejectedScreen';
 import SuccessScreen from '@/components/citizen/SuccessScreen';
 
@@ -194,6 +195,8 @@ export default function AbsenQRPage() {
             <p className="text-2xl font-black text-[#1e3a8a] leading-tight mt-1">{warga.nama}</p>
             <p className="text-lg font-bold text-[#1e3a8a]/70 mt-1">{warga.rt}</p>
           </div>
+
+          <JadwalHariIni />
 
           <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 space-y-2">
             <p className="text-sm font-bold text-slate-700 uppercase tracking-wide">Panduan:</p>

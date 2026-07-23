@@ -12,11 +12,10 @@ interface Warga {
   created_at: string;
 }
 
-const RT_LIST = ['RT 01', 'RT 02', 'RT 03', 'RT 04'];
-
 export default function AdminWargaPage() {
   const router = useRouter();
   const [wargaList, setWargaList] = useState<Warga[]>([]);
+  const [rtList, setRtList] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNama, setEditNama] = useState('');
@@ -24,13 +23,21 @@ export default function AdminWargaPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [addId, setAddId] = useState('');
   const [addNama, setAddNama] = useState('');
-  const [addRt, setAddRt] = useState('RT 01');
+  const [addRt, setAddRt] = useState('');
+  const [newRtName, setNewRtName] = useState('');
   const [submitting, setSubmitting] = useState<'add' | 'edit' | 'delete' | null>(null);
 
   async function fetchWarga() {
-    const res = await fetch('/api/warga');
-    if (res.status === 401) { router.replace('/admin'); return; }
-    setWargaList(await res.json());
+    const [wRes, rtRes] = await Promise.all([
+      fetch('/api/warga'),
+      fetch('/api/rt'),
+    ]);
+    if (wRes.status === 401) { router.replace('/admin'); return; }
+    if (wRes.ok) setWargaList(await wRes.json());
+    if (rtRes.ok) {
+      const data = await rtRes.json();
+      setRtList(data.map((r: { nama: string }) => r.nama));
+    }
     setLoading(false);
   }
 
@@ -41,17 +48,40 @@ export default function AdminWargaPage() {
 
   async function handleAdd() {
     if (!addId || !addNama || submitting) return;
+    if (!addRt) { alert('Pilih RT terlebih dahulu'); return; }
+    if (addRt === '__tambah__' && !newRtName.trim()) { alert('Isi nama RT baru'); return; }
     setSubmitting('add');
+
+    let rtFinal = addRt;
+    if (rtFinal === '__tambah__' && newRtName.trim()) {
+      const rtRes = await fetch('/api/rt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nama: newRtName.trim() }),
+      });
+      if (rtRes.ok) {
+        const data = await rtRes.json();
+        rtFinal = data.nama;
+      } else {
+        const err = await rtRes.json();
+        alert(err.error || 'Gagal menambah RT');
+        setSubmitting(null);
+        return;
+      }
+    }
+
     const res = await fetch('/api/warga', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: addId.trim(), nama: addNama.trim(), rt: addRt }),
+      body: JSON.stringify({ id: addId.trim(), nama: addNama.trim(), rt: rtFinal }),
     });
     setSubmitting(null);
     if (res.ok) {
       setShowAdd(false);
       setAddId('');
       setAddNama('');
+      setAddRt('');
+      setNewRtName('');
       fetchWarga();
     } else {
       const data = await res.json();
@@ -149,7 +179,7 @@ export default function AdminWargaPage() {
                           <select value={editRt} onChange={e => setEditRt(e.target.value)}
                             className="w-full px-3 py-2.5 border-2 border-blue-500 rounded-lg text-sm font-semibold"
                             style={{ minHeight: '44px' }}>
-                            {RT_LIST.map(r => <option key={r} value={r}>{r}</option>)}
+                            {rtList.map(r => <option key={r} value={r}>{r}</option>)}
                           </select>
                         </td>
                         <td className="px-4 py-2">
@@ -219,8 +249,16 @@ export default function AdminWargaPage() {
               <select value={addRt} onChange={e => setAddRt(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
                 style={{ minHeight: '48px' }}>
-                {RT_LIST.map(r => <option key={r} value={r}>{r}</option>)}
+                <option value="">-- Pilih RT --</option>
+                {rtList.map(r => <option key={r} value={r}>{r}</option>)}
+                <option value="__tambah__">+ Tambah RT Baru...</option>
               </select>
+              {addRt === '__tambah__' && (
+                <input value={newRtName} onChange={e => setNewRtName(e.target.value)}
+                  placeholder="Nama RT baru (contoh: RT 05)"
+                  className="w-full px-4 py-3 border-2 border-blue-500 rounded-xl text-base font-semibold mt-2"
+                  style={{ minHeight: '48px' }} />
+              )}
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setShowAdd(false)} disabled={submitting === 'add'}

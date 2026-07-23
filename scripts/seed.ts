@@ -80,6 +80,22 @@ async function main() {
     console.log('  ✓ admin_users');
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS rt_list (
+        id serial PRIMARY KEY,
+        nama text UNIQUE NOT NULL
+      );
+    `);
+
+    const rtEntries = ['RT 01', 'RT 02', 'RT 03', 'RT 04'];
+    for (const rt of rtEntries) {
+      await pool.query(
+        `INSERT INTO rt_list (nama) VALUES ($1) ON CONFLICT (nama) DO NOTHING`,
+        [rt]
+      );
+    }
+    console.log(`  ✓ rt_list (${rtEntries.length} RT)`);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS warga (
         id text PRIMARY KEY,
         nama text NOT NULL,

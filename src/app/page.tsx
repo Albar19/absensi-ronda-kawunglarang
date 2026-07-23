@@ -11,6 +11,7 @@ import {
 } from '@/lib/data';
 import HeaderBanner from '@/components/citizen/HeaderBanner';
 import StatusCards from '@/components/citizen/StatusCards';
+import JadwalHariIni from '@/components/citizen/JadwalHariIni';
 import NameSelector from '@/components/citizen/NameSelector';
 import RejectedScreen from '@/components/citizen/RejectedScreen';
 import SuccessScreen from '@/components/citizen/SuccessScreen';
@@ -175,6 +176,8 @@ export default function HomePage() {
               Tekan tombol di bawah untuk memulai proses absen ronda malam.
             </p>
           </div>
+
+          <JadwalHariIni />
 
           <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 space-y-2">
             <p className="text-sm font-bold text-slate-700 uppercase tracking-wide">Panduan Absen:</p>

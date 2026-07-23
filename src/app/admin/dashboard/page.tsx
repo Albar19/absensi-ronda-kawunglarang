@@ -9,8 +9,6 @@ import AbsenTable from '@/components/admin/AbsenTable';
 import FilterBar from '@/components/admin/FilterBar';
 import ExportButton from '@/components/admin/ExportButton';
 
-const RT_LIST = ['semua', 'RT 01', 'RT 02', 'RT 03', 'RT 04'];
-
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [absenHariIni, setAbsenHariIni] = useState<AbsenRecord[]>([]);
@@ -21,13 +19,15 @@ export default function AdminDashboardPage() {
   const [semuaRiwayat, setSemuaRiwayat] = useState<AbsenRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [rtFilter, setRtFilter] = useState('semua');
+  const [rtList, setRtList] = useState<string[]>([]);
 
   const refreshData = useCallback(async () => {
     try {
-      const [hariIniRes, wargaRes, riwayatRes] = await Promise.all([
+      const [hariIniRes, wargaRes, riwayatRes, rtRes] = await Promise.all([
         fetch('/api/absen/hari-ini'),
         fetch('/api/warga'),
         fetch('/api/absen/semua'),
+        fetch('/api/rt'),
       ]);
       if (hariIniRes.status === 401) {
         router.replace('/admin');
@@ -36,6 +36,10 @@ export default function AdminDashboardPage() {
       if (hariIniRes.ok) setAbsenHariIni(await hariIniRes.json());
       if (wargaRes.ok) setWargaList(await wargaRes.json());
       if (riwayatRes.ok) setSemuaRiwayat(await riwayatRes.json());
+      if (rtRes.ok) {
+        const data = await rtRes.json();
+        setRtList(data.map((r: { nama: string }) => r.nama));
+      }
     } catch {
       // silent
     }
@@ -166,9 +170,8 @@ export default function AdminDashboardPage() {
                 <select value={rtFilter} onChange={e => setRtFilter(e.target.value)}
                   className="px-3 py-2 border-2 border-slate-200 rounded-lg text-sm font-semibold focus:border-[#1e3a8a] focus:outline-none"
                   style={{ minHeight: '40px' }}>
-                  {RT_LIST.map(r => (
-                    <option key={r} value={r}>{r === 'semua' ? 'Semua RT' : r}</option>
-                  ))}
+                  <option value="semua">Semua RT</option>
+                  {rtList.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
             </div>
