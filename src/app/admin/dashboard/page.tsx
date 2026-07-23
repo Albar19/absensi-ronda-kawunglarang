@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Trash2, Users, CheckCircle, XCircle, QrCode } from 'lucide-react';
+import { LogOut, RefreshCw, Trash2, Users, CheckCircle, XCircle, QrCode, UsersIcon, Calendar } from 'lucide-react';
 import { AbsenRecord, FilterType } from '@/lib/types';
 import { DAFTAR_WARGA, formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import AbsenTable from '@/components/admin/AbsenTable';
@@ -15,18 +15,24 @@ export default function AdminDashboardPage() {
   const [filter, setFilter] = useState<FilterType>('semua');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [lastRefresh, setLastRefresh] = useState('');
+  const [wargaList, setWargaList] = useState<{ id: string; nama: string; rt: string }[]>([]);
+  const [semuaRiwayat, setSemuaRiwayat] = useState<AbsenRecord[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   const refreshData = useCallback(async () => {
     try {
-      const res = await fetch('/api/absen/hari-ini');
-      if (res.status === 401) {
+      const [hariIniRes, wargaRes, riwayatRes] = await Promise.all([
+        fetch('/api/absen/hari-ini'),
+        fetch('/api/warga'),
+        fetch('/api/absen/semua'),
+      ]);
+      if (hariIniRes.status === 401) {
         router.replace('/admin');
         return;
       }
-      if (res.ok) {
-        const data = await res.json();
-        setAbsenHariIni(data);
-      }
+      if (hariIniRes.ok) setAbsenHariIni(await hariIniRes.json());
+      if (wargaRes.ok) setWargaList(await wargaRes.json());
+      if (riwayatRes.ok) setSemuaRiwayat(await riwayatRes.json());
     } catch {
       // silent
     }
@@ -54,11 +60,28 @@ export default function AdminDashboardPage() {
     setShowResetConfirm(false);
   }
 
-  const totalWarga = DAFTAR_WARGA.length;
+  const wargaData = wargaList.length > 0 ? wargaList : DAFTAR_WARGA;
+  const totalWarga = wargaData.length;
   const sudahAbsen = absenHariIni.length;
   const belumAbsen = totalWarga - sudahAbsen;
-  const persen = totalWarga > 0 ? Math.round((sudahAbsen / totalWarga) * 100) : 0;
   const tanggalLabel = formatTanggalIndo(getTanggalHariIni());
+
+  const tanggal7Hari = new Date();
+  tanggal7Hari.setDate(tanggal7Hari.getDate() - 7);
+  const cutoff = tanggal7Hari.toISOString().split('T')[0];
+
+  const absenCountMap = new Map<string, number>();
+  semuaRiwayat.forEach(r => {
+    if (r.tanggal >= cutoff) {
+      absenCountMap.set(r.wargaId, (absenCountMap.get(r.wargaId) || 0) + 1);
+    }
+  });
+
+  const attendanceList = wargaData.map(w => ({
+    ...w,
+    hadir: absenCountMap.get(w.id) || 0,
+    hariIni: absenHariIni.some(a => a.wargaId === w.id),
+  })).sort((a, b) => b.hadir - a.hadir);
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -70,15 +93,32 @@ export default function AdminDashboardPage() {
             <h1 className="text-base font-black leading-tight">Absensi Ronda Malam</h1>
             <p className="text-xs text-blue-200">Bale Desa Kawunglarang</p>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm font-bold border border-white/20 transition-colors"
-            style={{ minHeight: '40px' }}
-          >
-            <LogOut size={16} strokeWidth={2.5} />
-            Keluar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => router.push('/admin/warga')}
+              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-xs font-bold border border-white/20 transition-colors"
+            >
+              <UsersIcon size={14} />
+              Warga
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/admin/jadwal')}
+              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-xs font-bold border border-white/20 transition-colors"
+            >
+              <Calendar size={14} />
+              Jadwal
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-xs font-bold border border-white/20 transition-colors"
+            >
+              <LogOut size={14} />
+              Keluar
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -129,21 +169,49 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="bg-white border border-slate-200 rounded-xl px-5 py-4 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold text-slate-700">Kehadiran Malam Ini</span>
-            <span className="text-sm font-black text-slate-900 tabular-nums">{persen}%</span>
-          </div>
-          <div className="w-full bg-slate-100 rounded-full h-4 border border-slate-200">
-            <div
-              className="bg-green-600 h-4 rounded-full transition-all duration-500"
-              style={{ width: `${persen}%` }}
-            />
-          </div>
-          <p className="text-xs text-slate-500 mt-2 font-medium">
-            {sudahAbsen} dari {totalWarga} warga telah absen
-          </p>
+        {/* Per-Person Attendance */}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
+          >
+            <span className="text-sm font-bold text-slate-700">
+              Riwayat Kehadiran 7 Hari ({sudahAbsen}/{totalWarga} hari ini)
+            </span>
+            <span className="text-slate-400 text-sm font-bold">{showHistory ? '▲' : '▼'}</span>
+          </button>
+
+          {showHistory && (
+            <div className="border-t border-slate-200 divide-y divide-slate-100 max-h-80 overflow-y-auto">
+              {attendanceList.map(w => {
+                const pct = Math.round((w.hadir / 7) * 100);
+                return (
+                  <div key={w.id} className="px-5 py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-bold text-slate-900 truncate">{w.nama}</p>
+                        <span className="text-xs font-black text-slate-500 tabular-nums ml-2">{w.hadir}/7</span>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium">{w.rt}</p>
+                    </div>
+                    <div className="w-24 bg-slate-100 rounded-full h-2.5 overflow-hidden flex-shrink-0">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          pct >= 70 ? 'bg-green-600' : pct >= 30 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    {w.hariIni && (
+                      <span className="text-[10px] font-black text-green-700 bg-green-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                        HADIR
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* --- TOOLBAR --- */}
@@ -180,7 +248,7 @@ export default function AdminDashboardPage() {
 
         {/* --- TABLE --- */}
         <AbsenTable
-          wargaList={DAFTAR_WARGA}
+          wargaList={wargaData}
           absenHariIni={absenHariIni}
           filter={filter}
         />

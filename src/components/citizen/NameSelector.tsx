@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Warga } from '@/lib/types';
 import { DAFTAR_WARGA } from '@/lib/data';
@@ -14,16 +14,24 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Warga | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [wargaList, setWargaList] = useState<Warga[]>(DAFTAR_WARGA);
+
+  useEffect(() => {
+    fetch('/api/warga')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setWargaList(data); })
+      .catch(() => {});
+  }, []);
 
   const filteredWarga = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase().trim();
-    return DAFTAR_WARGA.filter(
+    return wargaList.filter(
       (w) =>
         w.nama.toLowerCase().includes(q) ||
         w.rt.toLowerCase().includes(q)
     ).slice(0, 8);
-  }, [query]);
+  }, [query, wargaList]);
 
   function handleSelect(warga: Warga) {
     setSelected(warga);

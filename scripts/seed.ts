@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 
@@ -106,10 +107,25 @@ async function main() {
     console.log('  ✓ absen_records');
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS jadwal_ronda (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        tanggal date NOT NULL,
+        warga_id text NOT NULL REFERENCES warga(id),
+        shift text DEFAULT 'malam',
+        keterangan text,
+        created_at timestamptz DEFAULT now()
+      );
+    `);
+    console.log('  ✓ jadwal_ronda');
+
+    await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_absen_tanggal ON absen_records(tanggal);
     `);
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_absen_warga ON absen_records(warga_id);
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_jadwal_tanggal ON jadwal_ronda(tanggal);
     `);
     console.log('  ✓ indexes');
 
