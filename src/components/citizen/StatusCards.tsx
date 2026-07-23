@@ -18,10 +18,9 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
     CONFIG.menitTutupAbsen.toString().padStart(2, '0');
 
   return (
-    <div className="px-4 py-4 space-y-3">
-      {/* --- STATUS JAM --- */}
+    <div className="px-3 sm:px-4 py-3 sm:py-4 space-y-2.5 sm:space-y-3">
       <div
-        className={`w-full rounded-xl border-2 px-5 py-4 flex items-center gap-4 ${
+        className={`w-full rounded-xl border-2 px-4 sm:px-5 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 ${
           statusJam === null
             ? 'bg-slate-100 border-slate-300'
             : statusJam === 'buka'
@@ -30,7 +29,7 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
         }`}
       >
         <div
-          className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
             statusJam === null
               ? 'bg-slate-300'
               : statusJam === 'buka'
@@ -38,29 +37,29 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
               : 'bg-red-600'
           }`}
         >
-          <Clock size={22} className="text-white" strokeWidth={2.5} />
+          <Clock size={18} className="sm:w-[22px] sm:h-[22px] text-white" strokeWidth={2.5} />
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-bold tracking-widest uppercase text-slate-500">
+          <p className="text-[10px] sm:text-xs font-bold tracking-widest uppercase text-slate-500">
             Status Jam
           </p>
           {statusJam === null ? (
-            <p className="text-lg font-bold text-slate-400">Memeriksa...</p>
+            <p className="text-base sm:text-lg font-bold text-slate-400">Memeriksa...</p>
           ) : statusJam === 'buka' ? (
             <>
-              <p className="text-xl font-black text-green-700 flex items-center gap-2">
+              <p className="text-lg sm:text-xl font-black text-green-700 flex items-center gap-2">
                 <span>🟢</span> BUKA
               </p>
-              <p className="text-sm text-green-700 font-medium">
+              <p className="text-xs sm:text-sm text-green-700 font-medium truncate">
                 Absen tersedia pukul {jamBuka} – {jamTutup} WIB
               </p>
             </>
           ) : (
             <>
-              <p className="text-xl font-black text-red-700 flex items-center gap-2">
+              <p className="text-lg sm:text-xl font-black text-red-700 flex items-center gap-2">
                 <span>🔴</span> DITUTUP
               </p>
-              <p className="text-sm text-red-700 font-medium">
+              <p className="text-xs sm:text-sm text-red-700 font-medium truncate">
                 Absen hanya pukul {jamBuka} – {jamTutup} WIB
               </p>
             </>
@@ -68,9 +67,8 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
         </div>
       </div>
 
-      {/* --- STATUS JARAK --- */}
       <div
-        className={`w-full rounded-xl border-2 px-5 py-4 flex items-center gap-4 ${
+        className={`w-full rounded-xl border-2 px-4 sm:px-5 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 ${
           statusJarak === null || statusJarak === 'loading'
             ? 'bg-slate-100 border-slate-300'
             : statusJarak === 'dekat'
@@ -81,7 +79,7 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
         }`}
       >
         <div
-          className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
             statusJarak === null || statusJarak === 'loading'
               ? 'bg-slate-300'
               : statusJarak === 'dekat'
@@ -91,45 +89,45 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
               : 'bg-red-600'
           }`}
         >
-          <MapPin size={22} className="text-white" strokeWidth={2.5} />
+          <MapPin size={18} className="sm:w-[22px] sm:h-[22px] text-white" strokeWidth={2.5} />
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-bold tracking-widest uppercase text-slate-500">
+          <p className="text-[10px] sm:text-xs font-bold tracking-widest uppercase text-slate-500">
             Status Lokasi
           </p>
           {statusJarak === null || statusJarak === 'loading' ? (
-            <p className="text-lg font-bold text-slate-400">
+            <p className="text-base sm:text-lg font-bold text-slate-400">
               Mendeteksi lokasi...
             </p>
           ) : statusJarak === 'dekat' ? (
             <>
-              <p className="text-xl font-black text-green-700 flex items-center gap-2">
+              <p className="text-lg sm:text-xl font-black text-green-700 flex items-center gap-2">
                 <span>🟢</span> BALE DESA
               </p>
-              <p className="text-sm text-green-700 font-medium">
+              <p className="text-xs sm:text-sm text-green-700 font-medium">
                 Jarak Anda: ± {jarakMeter} meter
               </p>
               {akurasiMeter != null && (
-                <p className="text-xs text-green-600 font-medium">
+                <p className="text-[11px] sm:text-xs text-green-600 font-medium">
                   Akurasi GPS: ±{akurasiMeter}m
                 </p>
               )}
             </>
           ) : statusJarak === 'error' ? (
             <>
-              <p className="text-xl font-black text-yellow-700 flex items-center gap-2">
+              <p className="text-lg sm:text-xl font-black text-yellow-700 flex items-center gap-2">
                 <span>⚠️</span> GPS TIDAK AKTIF
               </p>
-              <p className="text-sm text-yellow-700 font-medium">
+              <p className="text-xs sm:text-sm text-yellow-700 font-medium">
                 Izinkan akses lokasi di browser Anda
               </p>
             </>
           ) : (
             <>
-              <p className="text-xl font-black text-red-700 flex items-center gap-2">
+              <p className="text-lg sm:text-xl font-black text-red-700 flex items-center gap-2">
                 <span>🔴</span> TERLALU JAUH
               </p>
-              <p className="text-sm text-red-700 font-medium">
+              <p className="text-xs sm:text-sm text-red-700 font-medium">
                 Jarak Anda: ± {jarakMeter} meter (maks {CONFIG.radiusMeter}m)
               </p>
             </>

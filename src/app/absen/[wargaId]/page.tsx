@@ -157,7 +157,7 @@ export default function AbsenQRPage() {
 
   if (!warga) {
     return (
-      <main className="max-w-lg mx-auto bg-white min-h-screen shadow-sm">
+      <main className="max-w-lg md:max-w-xl mx-auto bg-white min-h-screen shadow-sm">
         <HeaderBanner />
         <div className="flex flex-col items-center justify-center px-5 py-16 text-center">
           <div className="w-24 h-24 rounded-full bg-red-600 flex items-center justify-center mb-6 shadow-md">
@@ -182,7 +182,7 @@ export default function AbsenQRPage() {
   }
 
   return (
-    <main className="max-w-lg mx-auto bg-white min-h-screen shadow-sm">
+    <main className="max-w-lg md:max-w-xl mx-auto bg-white min-h-screen shadow-sm">
       <HeaderBanner />
 
       {/* ---- WELCOME + Warga Info ---- */}

@@ -36,41 +36,36 @@ export default function HeaderBanner() {
 
   return (
     <header className="bg-[#1e3a8a] text-white w-full">
-      {/* Top stripe */}
       <div className="h-1.5 bg-[#f59e0b] w-full" />
 
-      <div className="px-5 py-5">
-        {/* Logo + Title */}
-        <div className="flex items-center gap-4">
-          {/* Emblem placeholder */}
-          <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center flex-shrink-0 border-2 border-[#f59e0b]">
-            <span className="text-[#1e3a8a] font-black text-lg leading-none">🏛️</span>
+      <div className="px-4 sm:px-6 py-4 sm:py-5">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white flex items-center justify-center flex-shrink-0 border-2 border-[#f59e0b]">
+            <span className="text-[#1e3a8a] font-black text-base sm:text-lg leading-none">🏛️</span>
           </div>
-          <div>
-            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-blue-200 leading-tight">
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-[11px] font-semibold tracking-[0.2em] uppercase text-blue-200 leading-tight">
               Pemerintah Desa
             </p>
-            <h1 className="text-xl font-black tracking-wide leading-tight text-white">
+            <h1 className="text-lg sm:text-xl font-black tracking-wide leading-tight text-white truncate">
               {CONFIG.namaBalai}
             </h1>
-            <p className="text-sm font-semibold text-[#f59e0b] tracking-wide mt-0.5">
+            <p className="text-xs sm:text-sm font-semibold text-[#f59e0b] tracking-wide mt-0.5 truncate">
               {CONFIG.subtitleAbsen}
             </p>
           </div>
         </div>
 
-        {/* Date & Time */}
-        <div className="mt-4 pt-4 border-t border-blue-700">
-          <p className="text-base font-semibold text-blue-100 leading-tight">
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-blue-700">
+          <p className="text-sm sm:text-base font-semibold text-blue-100 leading-tight truncate">
             {tanggalSekarang || 'Memuat tanggal...'}
           </p>
-          <p className="text-3xl font-black text-white tracking-widest mt-1 tabular-nums">
+          <p className="text-2xl sm:text-3xl font-black text-white tracking-widest mt-1 tabular-nums">
             {waktuSekarang || '--:--:-- WIB'}
           </p>
         </div>
       </div>
 
-      {/* Bottom stripe */}
       <div className="h-1 bg-blue-900 w-full" />
     </header>
   );

@@ -161,7 +161,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main className="max-w-lg mx-auto bg-white min-h-screen shadow-sm">
+    <main className="max-w-lg md:max-w-xl mx-auto bg-white min-h-screen shadow-sm">
       {/* Always show header */}
       <HeaderBanner />
 
