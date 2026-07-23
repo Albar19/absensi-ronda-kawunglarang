@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+:root {
+  --font-plus-jakarta: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  /* Color tokens */
+  --color-success: #15803d;
+  --color-success-bg: #f0fdf4;
+  --color-success-border: #bbf7d0;
+  --color-danger: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-primary: #1e3a8a;
+  --color-primary-bg: #eff6ff;
+  --color-text: #0f172a;
+  --color-muted: #64748b;
+  --color-border: #cbd5e1;
+  --color-surface: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-plus-jakarta);
+  color: var(--color-text);
+  background-color: #f1f5f9;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure minimum touch target sizes */
+button, [role="button"], select, input {
+  min-height: 56px;
+  font-family: inherit;
+}
+
+/* Smooth focus rings for accessibility */
+:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default list styles */
+ul, ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Prevent text overflow */
+* {
+  word-break: break-word;
+}
