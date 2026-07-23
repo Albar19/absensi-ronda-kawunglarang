@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Trash2, Users, CheckCircle, XCircle, QrCode, UsersIcon, Calendar } from 'lucide-react';
+import { LogOut, RefreshCw, Trash2, Users, CheckCircle, XCircle, QrCode, UsersIcon, Calendar, Search } from 'lucide-react';
 import { AbsenRecord, FilterType } from '@/lib/types';
 import { DAFTAR_WARGA, formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import AbsenTable from '@/components/admin/AbsenTable';
 import FilterBar from '@/components/admin/FilterBar';
 import ExportButton from '@/components/admin/ExportButton';
+
+const RT_LIST = ['semua', 'RT 01', 'RT 02', 'RT 03', 'RT 04'];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -17,7 +19,8 @@ export default function AdminDashboardPage() {
   const [lastRefresh, setLastRefresh] = useState('');
   const [wargaList, setWargaList] = useState<{ id: string; nama: string; rt: string }[]>([]);
   const [semuaRiwayat, setSemuaRiwayat] = useState<AbsenRecord[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [rtFilter, setRtFilter] = useState('semua');
 
   const refreshData = useCallback(async () => {
     try {
@@ -77,93 +80,82 @@ export default function AdminDashboardPage() {
     }
   });
 
-  const attendanceList = wargaData.map(w => ({
-    ...w,
-    hadir: absenCountMap.get(w.id) || 0,
-    hariIni: absenHariIni.some(a => a.wargaId === w.id),
-  })).sort((a, b) => b.hadir - a.hadir);
+  const attendanceList = useMemo(() => {
+    return wargaData
+      .map(w => ({
+        ...w,
+        hadir: absenCountMap.get(w.id) || 0,
+        hariIni: absenHariIni.some(a => a.wargaId === w.id),
+      }))
+      .filter(w => {
+        const matchSearch = !searchQuery || w.nama.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchRt = rtFilter === 'semua' || w.rt === rtFilter;
+        return matchSearch && matchRt;
+      })
+      .sort((a, b) => b.hadir - a.hadir || a.nama.localeCompare(b.nama));
+  }, [wargaData, absenCountMap, absenHariIni, searchQuery, rtFilter]);
 
   return (
     <main className="min-h-screen bg-slate-50">
-      {/* --- TOP NAVBAR --- */}
       <nav className="bg-[#1e3a8a] text-white sticky top-0 z-50 shadow-md">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div>
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <p className="text-xs font-semibold text-blue-200 uppercase tracking-widest">Dashboard Admin</p>
-            <h1 className="text-base font-black leading-tight">Absensi Ronda Malam</h1>
-            <p className="text-xs text-blue-200">Bale Desa Kawunglarang</p>
+            <h1 className="text-base sm:text-lg font-black leading-tight truncate">Absensi Ronda Malam</h1>
+            <p className="text-xs text-blue-200 hidden sm:block">Bale Desa Kawunglarang</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => router.push('/admin/warga')}
-              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-xs font-bold border border-white/20 transition-colors"
-            >
-              <UsersIcon size={14} />
-              Warga
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button onClick={() => router.push('/admin/warga')}
+              className="flex items-center justify-center gap-1 bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-2 rounded-lg text-xs font-bold border border-white/20 transition-colors"
+              style={{ minWidth: '40px', minHeight: '40px' }}>
+              <UsersIcon size={16} />
+              <span className="hidden sm:inline">Warga</span>
             </button>
-            <button
-              type="button"
-              onClick={() => router.push('/admin/jadwal')}
-              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-xs font-bold border border-white/20 transition-colors"
-            >
-              <Calendar size={14} />
-              Jadwal
+            <button onClick={() => router.push('/admin/jadwal')}
+              className="flex items-center justify-center gap-1 bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-2 rounded-lg text-xs font-bold border border-white/20 transition-colors"
+              style={{ minWidth: '40px', minHeight: '40px' }}>
+              <Calendar size={16} />
+              <span className="hidden sm:inline">Jadwal</span>
             </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-xs font-bold border border-white/20 transition-colors"
-            >
-              <LogOut size={14} />
-              Keluar
+            <button onClick={handleLogout}
+              className="flex items-center justify-center gap-1 bg-white/10 hover:bg-white/20 text-white p-2.5 sm:px-3 sm:py-2 rounded-lg text-xs font-bold border border-white/20 transition-colors"
+              style={{ minWidth: '40px', minHeight: '40px' }}>
+              <LogOut size={16} />
+              <span className="hidden sm:inline">Keluar</span>
             </button>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        {/* --- DATE --- */}
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        {/* Date + Refresh */}
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h2 className="text-lg font-black text-slate-900">{tanggalLabel}</h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Data terakhir diperbarui: {lastRefresh || '—'}
-            </p>
+          <div className="min-w-0">
+            <h2 className="text-lg font-black text-slate-900 truncate">{tanggalLabel}</h2>
+            <p className="text-xs text-slate-500 font-medium">Data: {lastRefresh || '—'}</p>
           </div>
-          <button
-            type="button"
-            onClick={refreshData}
-            className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-bold hover:bg-slate-50 active:scale-[0.97] transition-all"
-            style={{ minHeight: '40px' }}
-          >
-            <RefreshCw size={15} strokeWidth={2.5} />
-            Refresh
+          <button onClick={refreshData}
+            className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.97] transition-all"
+            style={{ minHeight: '44px' }}>
+            <RefreshCw size={16} strokeWidth={2.5} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
 
-        {/* --- STAT CARDS --- */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white border border-slate-200 rounded-xl px-4 py-4 text-center shadow-sm">
-            <div className="flex justify-center mb-2">
-              <Users size={20} className="text-slate-500" strokeWidth={2} />
-            </div>
+        {/* Stat cards — responsive grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-white border border-slate-200 rounded-xl px-5 py-4 text-center shadow-sm">
+            <Users size={22} className="text-slate-500 mx-auto mb-2" strokeWidth={2} />
             <p className="text-3xl font-black text-slate-900 tabular-nums">{totalWarga}</p>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mt-1">Total Warga</p>
           </div>
-
-          <div className="bg-green-50 border border-green-300 rounded-xl px-4 py-4 text-center shadow-sm">
-            <div className="flex justify-center mb-2">
-              <CheckCircle size={20} className="text-green-600" strokeWidth={2} />
-            </div>
+          <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-4 text-center shadow-sm">
+            <CheckCircle size={22} className="text-green-600 mx-auto mb-2" strokeWidth={2} />
             <p className="text-3xl font-black text-green-700 tabular-nums">{sudahAbsen}</p>
             <p className="text-xs font-bold text-green-700 uppercase tracking-wide mt-1">Hadir</p>
           </div>
-
-          <div className="bg-red-50 border border-red-300 rounded-xl px-4 py-4 text-center shadow-sm">
-            <div className="flex justify-center mb-2">
-              <XCircle size={20} className="text-red-600" strokeWidth={2} />
-            </div>
+          <div className="bg-red-50 border border-red-300 rounded-xl px-5 py-4 text-center shadow-sm">
+            <XCircle size={22} className="text-red-600 mx-auto mb-2" strokeWidth={2} />
             <p className="text-3xl font-black text-red-700 tabular-nums">{belumAbsen}</p>
             <p className="text-xs font-bold text-red-700 uppercase tracking-wide mt-1">Belum</p>
           </div>
@@ -171,50 +163,89 @@ export default function AdminDashboardPage() {
 
         {/* Per-Person Attendance */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
-          >
-            <span className="text-sm font-bold text-slate-700">
-              Riwayat Kehadiran 7 Hari ({sudahAbsen}/{totalWarga} hari ini)
-            </span>
-            <span className="text-slate-400 text-sm font-bold">{showHistory ? '▲' : '▼'}</span>
-          </button>
+          <div className="px-5 py-4 border-b border-slate-200">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
+                Kehadiran 7 Hari ({sudahAbsen}/{totalWarga} hari ini)
+              </h3>
+              <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                <div className="relative flex-1 sm:w-48">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari nama..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border-2 border-slate-200 rounded-lg text-sm font-semibold focus:border-[#1e3a8a] focus:outline-none"
+                    style={{ minHeight: '40px' }}
+                  />
+                </div>
+                <select value={rtFilter} onChange={e => setRtFilter(e.target.value)}
+                  className="px-3 py-2 border-2 border-slate-200 rounded-lg text-sm font-semibold focus:border-[#1e3a8a] focus:outline-none"
+                  style={{ minHeight: '40px' }}>
+                  {RT_LIST.map(r => (
+                    <option key={r} value={r}>{r === 'semua' ? 'Semua RT' : r}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
 
-          {showHistory && (
-            <div className="border-t border-slate-200 divide-y divide-slate-100 max-h-80 overflow-y-auto">
-              {attendanceList.map(w => {
+          <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+            {attendanceList.length === 0 ? (
+              <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">
+                Tidak ada data
+              </div>
+            ) : (
+              attendanceList.map(w => {
                 const pct = Math.round((w.hadir / 7) * 100);
                 return (
-                  <div key={w.id} className="px-5 py-3 flex items-center gap-3">
+                  <div key={w.id} className="px-4 sm:px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <p className="text-sm font-bold text-slate-900 truncate">{w.nama}</p>
-                        <span className="text-xs font-black text-slate-500 tabular-nums ml-2">{w.hadir}/7</span>
+                        <span className="text-xs text-slate-500 font-medium flex-shrink-0 hidden sm:inline">{w.rt}</span>
                       </div>
-                      <p className="text-xs text-slate-500 font-medium">{w.rt}</p>
-                    </div>
-                    <div className="w-24 bg-slate-100 rounded-full h-2.5 overflow-hidden flex-shrink-0">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          pct >= 70 ? 'bg-green-600' : pct >= 30 ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden max-w-[200px]">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              pct >= 70 ? 'bg-green-600' : pct >= 30 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-black text-slate-600 tabular-nums flex-shrink-0">{w.hadir}/7</span>
+                        <span className={`text-xs font-black tabular-nums flex-shrink-0 ${
+                          pct >= 70 ? 'text-green-700' : pct >= 30 ? 'text-yellow-700' : 'text-red-700'
+                        }`}>{pct}%</span>
+                      </div>
                     </div>
                     {w.hariIni && (
-                      <span className="text-[10px] font-black text-green-700 bg-green-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                        HADIR
+                      <span className="text-[10px] font-black text-green-700 bg-green-100 px-2.5 py-1 rounded-full flex-shrink-0">
+                        ✅ Hadir
                       </span>
                     )}
                   </div>
                 );
-              })}
-            </div>
-          )}
+              })
+            )}
+          </div>
+
+          <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center gap-4 text-[11px] text-slate-500 font-medium flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-green-600 inline-block" /> &ge;70% (Rajin)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block" /> 30-69% (Cukup)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> &lt;30% (Jarang)
+            </span>
+          </div>
         </div>
 
-        {/* --- TOOLBAR --- */}
+        {/* Toolbar */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <FilterBar
             activeFilter={filter}
@@ -224,66 +255,44 @@ export default function AdminDashboardPage() {
             countBelum={belumAbsen}
           />
           <div className="flex items-center gap-2">
-            <a
-              href="/api/qr/download"
-              download="qr-bale-desa.png"
-              className="inline-flex items-center gap-2 bg-white text-[#1e3a8a] px-4 py-2 rounded-lg font-bold text-sm border-2 border-[#1e3a8a] hover:bg-blue-50 active:scale-[0.97] transition-all"
-              style={{ minHeight: '44px' }}
-            >
+            <a href="/api/qr/download" download="qr-bale-desa.png"
+              className="inline-flex items-center gap-2 bg-white text-[#1e3a8a] px-4 py-2.5 rounded-xl font-bold text-sm border-2 border-[#1e3a8a] hover:bg-blue-50 active:scale-[0.97] transition-all"
+              style={{ minHeight: '44px' }}>
               <QrCode size={16} strokeWidth={2.5} />
-              QR Code
+              <span className="hidden sm:inline">QR Code</span>
             </a>
             <ExportButton />
-            <button
-              type="button"
-              onClick={() => setShowResetConfirm(true)}
-              className="inline-flex items-center gap-2 bg-white text-red-700 px-4 py-2 rounded-lg font-bold text-sm border-2 border-red-300 hover:bg-red-50 active:scale-[0.97] transition-all"
-              style={{ minHeight: '44px' }}
-            >
+            <button onClick={() => setShowResetConfirm(true)}
+              className="inline-flex items-center gap-2 bg-white text-red-700 px-4 py-2.5 rounded-xl font-bold text-sm border-2 border-red-300 hover:bg-red-50 active:scale-[0.97] transition-all"
+              style={{ minHeight: '44px' }}>
               <Trash2 size={16} strokeWidth={2.5} />
-              Reset
+              <span className="hidden sm:inline">Reset</span>
             </button>
           </div>
         </div>
 
-        {/* --- TABLE --- */}
-        <AbsenTable
-          wargaList={wargaData}
-          absenHariIni={absenHariIni}
-          filter={filter}
-        />
+        {/* Table */}
+        <AbsenTable wargaList={wargaData} absenHariIni={absenHariIni} filter={filter} />
 
-        {/* Footer */}
         <p className="text-center text-xs text-slate-400 py-4">
-          Sistem Absensi Ronda Malam — Bale Desa Kawunglarang © 2024
+          Sistem Absensi Ronda Malam — Bale Desa Kawunglarang
         </p>
       </div>
 
-      {/* --- RESET CONFIRM MODAL --- */}
       {showResetConfirm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-            <h3 className="text-xl font-black text-slate-900 mb-3">⚠️ Konfirmasi Reset</h3>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-auto">
+            <h3 className="text-xl font-black text-slate-900 mb-3">Konfirmasi Reset</h3>
             <p className="text-base text-slate-600 font-medium mb-6">
               Apakah Anda yakin ingin menghapus semua data absen hari ini? Tindakan ini tidak bisa dibatalkan.
             </p>
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(false)}
+              <button onClick={() => setShowResetConfirm(false)}
                 className="flex-1 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-bold text-base"
-                style={{ minHeight: '52px' }}
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleReset}
+                style={{ minHeight: '52px' }}>Batal</button>
+              <button onClick={handleReset}
                 className="flex-1 py-3 rounded-xl bg-red-700 text-white font-bold text-base border-2 border-red-700"
-                style={{ minHeight: '52px' }}
-              >
-                Ya, Hapus
-              </button>
+                style={{ minHeight: '52px' }}>Ya, Hapus</button>
             </div>
           </div>
         </div>

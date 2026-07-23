@@ -30,6 +30,7 @@ export default function AdminJadwalPage() {
   const [addWargaId, setAddWargaId] = useState('');
   const [addShift, setAddShift] = useState('malam');
   const [addKet, setAddKet] = useState('');
+  const [submitting, setSubmitting] = useState<'add' | 'delete' | null>(null);
 
   async function fetchData() {
     const [jRes, wRes] = await Promise.all([
@@ -53,12 +54,14 @@ export default function AdminJadwalPage() {
   const wargaMap = new Map(wargaList.map(w => [w.id, w]));
 
   async function handleAdd() {
-    if (!addTanggal || !addWargaId) return;
+    if (!addTanggal || !addWargaId || submitting) return;
+    setSubmitting('add');
     const res = await fetch('/api/jadwal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tanggal: addTanggal, warga_id: addWargaId, shift: addShift, keterangan: addKet }),
     });
+    setSubmitting(null);
     if (res.ok) {
       setShowAdd(false);
       setAddWargaId('');
@@ -71,8 +74,11 @@ export default function AdminJadwalPage() {
   }
 
   async function handleDelete(id: string) {
+    if (submitting) return;
     if (!confirm('Yakin ingin menghapus jadwal ini?')) return;
+    setSubmitting('delete');
     await fetch(`/api/jadwal/${id}`, { method: 'DELETE' });
+    setSubmitting(null);
     fetchData();
   }
 
@@ -92,7 +98,7 @@ export default function AdminJadwalPage() {
       <nav className="bg-[#1e3a8a] text-white sticky top-0 z-50 shadow-md">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/admin/dashboard')} className="text-white/80 hover:text-white">
+            <button onClick={() => router.push('/admin/dashboard')} className="text-white/80 hover:text-white p-1">
               <ArrowLeft size={20} />
             </button>
             <div>
@@ -100,17 +106,21 @@ export default function AdminJadwalPage() {
               <h1 className="text-base font-black leading-tight">Jadwal Ronda</h1>
             </div>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm font-bold">
-            <LogOut size={16} /> Keluar
+          <button onClick={handleLogout} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm font-bold border border-white/20">
+            <LogOut size={16} />
+            <span className="hidden sm:inline">Keluar</span>
           </button>
         </div>
       </nav>
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <p className="text-lg font-black text-slate-900">{formatTanggalIndo(getTanggalHariIni())}</p>
-          <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-2 bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-800">
-            <Plus size={16} /> Tambah Jadwal
+          <button onClick={() => setShowAdd(true)}
+            className="inline-flex items-center gap-2 bg-green-700 text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-green-800 active:scale-[0.97] transition-all"
+            style={{ minHeight: '48px' }}>
+            <Plus size={18} />
+            <span className="hidden sm:inline">Tambah Jadwal</span>
           </button>
         </div>
 
@@ -133,18 +143,19 @@ export default function AdminJadwalPage() {
                 {items.map(j => {
                   const w = wargaMap.get(j.warga_id);
                   return (
-                    <div key={j.id} className="px-5 py-3 flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-slate-900">{w?.nama || j.warga_id}</p>
-                        <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                    <div key={j.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-slate-900 truncate">{w?.nama || j.warga_id}</p>
+                        <div className="flex items-center gap-3 text-xs text-slate-500 font-medium flex-wrap">
                           <span>{w?.rt || '—'}</span>
                           <span>Shift: {j.shift}</span>
-                          {j.keterangan && <span>— {j.keterangan}</span>}
+                          {j.keterangan && <span className="truncate">— {j.keterangan}</span>}
                         </div>
                       </div>
-                      <button onClick={() => handleDelete(j.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
-                        <Trash2 size={16} />
+                      <button onClick={() => handleDelete(j.id)} disabled={submitting !== null}
+                        className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl disabled:opacity-50 transition-all flex-shrink-0"
+                        style={{ minHeight: '44px', minWidth: '44px' }}>
+                        {submitting === 'delete' ? <span className="animate-spin">⏳</span> : <Trash2 size={18} />}
                       </button>
                     </div>
                   );
@@ -155,22 +166,23 @@ export default function AdminJadwalPage() {
         )}
       </div>
 
-      {/* Modal Tambah */}
       {showAdd && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-auto space-y-4">
             <h3 className="text-xl font-black text-slate-900">Tambah Jadwal Ronda</h3>
 
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Tanggal</label>
               <input type="date" value={addTanggal} onChange={e => setAddTanggal(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold" />
+                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
+                style={{ minHeight: '48px' }} />
             </div>
 
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Warga</label>
               <select value={addWargaId} onChange={e => setAddWargaId(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold">
+                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
+                style={{ minHeight: '48px' }}>
                 <option value="">-- Pilih warga --</option>
                 {wargaList.map(w => (
                   <option key={w.id} value={w.id}>{w.nama} ({w.rt})</option>
@@ -181,7 +193,8 @@ export default function AdminJadwalPage() {
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Shift</label>
               <select value={addShift} onChange={e => setAddShift(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold">
+                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
+                style={{ minHeight: '48px' }}>
                 <option value="malam">Malam</option>
                 <option value="pagi">Pagi</option>
                 <option value="siang">Siang</option>
@@ -192,14 +205,19 @@ export default function AdminJadwalPage() {
               <label className="block text-sm font-bold text-slate-700 mb-1">Keterangan (opsional)</label>
               <input value={addKet} onChange={e => setAddKet(e.target.value)}
                 placeholder="misal: pos 1"
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold" />
+                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
+                style={{ minHeight: '48px' }} />
             </div>
 
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowAdd(false)}
-                className="flex-1 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-bold">Batal</button>
-              <button onClick={handleAdd}
-                className="flex-1 py-3 rounded-xl bg-green-700 text-white font-bold">Simpan</button>
+              <button onClick={() => setShowAdd(false)} disabled={submitting === 'add'}
+                className="flex-1 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-bold text-base"
+                style={{ minHeight: '48px' }}>Batal</button>
+              <button onClick={handleAdd} disabled={submitting === 'add'}
+                className="flex-1 py-3 rounded-xl bg-green-700 text-white font-bold text-base disabled:opacity-60 transition-all"
+                style={{ minHeight: '48px' }}>
+                {submitting === 'add' ? '⏳ Menyimpan...' : 'Simpan'}
+              </button>
             </div>
           </div>
         </div>
