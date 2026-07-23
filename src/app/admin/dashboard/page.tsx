@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Trash2, Users, CheckCircle, XCircle, QrCode, UsersIcon, Calendar, Search } from 'lucide-react';
+import { LogOut, RefreshCw, Trash2, QrCode, UsersIcon, Calendar, Search } from 'lucide-react';
 import { AbsenRecord, FilterType } from '@/lib/types';
 import { DAFTAR_WARGA, formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import AbsenTable from '@/components/admin/AbsenTable';
@@ -142,24 +142,7 @@ export default function AdminDashboardPage() {
           </button>
         </div>
 
-        {/* Stat cards — responsive grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-white border border-slate-200 rounded-xl px-5 py-4 text-center shadow-sm">
-            <Users size={22} className="text-slate-500 mx-auto mb-2" strokeWidth={2} />
-            <p className="text-3xl font-black text-slate-900 tabular-nums">{totalWarga}</p>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mt-1">Total Warga</p>
-          </div>
-          <div className="bg-green-50 border border-green-300 rounded-xl px-5 py-4 text-center shadow-sm">
-            <CheckCircle size={22} className="text-green-600 mx-auto mb-2" strokeWidth={2} />
-            <p className="text-3xl font-black text-green-700 tabular-nums">{sudahAbsen}</p>
-            <p className="text-xs font-bold text-green-700 uppercase tracking-wide mt-1">Hadir</p>
-          </div>
-          <div className="bg-red-50 border border-red-300 rounded-xl px-5 py-4 text-center shadow-sm">
-            <XCircle size={22} className="text-red-600 mx-auto mb-2" strokeWidth={2} />
-            <p className="text-3xl font-black text-red-700 tabular-nums">{belumAbsen}</p>
-            <p className="text-xs font-bold text-red-700 uppercase tracking-wide mt-1">Belum</p>
-          </div>
-        </div>
+        
 
         {/* Per-Person Attendance */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">

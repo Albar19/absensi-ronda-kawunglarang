@@ -16,12 +16,17 @@ export default function ExportButton() {
 
     const semuaAbsen = await res.json();
 
-    if (semuaAbsen.length === 0) {
-      alert('Belum ada data absensi yang tersimpan untuk diexport.');
+    const tigaPuluhHari = new Date();
+    tigaPuluhHari.setDate(tigaPuluhHari.getDate() - 30);
+    const cutoff = tigaPuluhHari.toISOString().split('T')[0];
+    const filteredAbsen = semuaAbsen.filter((r: AbsenRecord) => r.tanggal >= cutoff);
+
+    if (filteredAbsen.length === 0) {
+      alert('Belum ada data absensi 30 hari terakhir untuk diexport.');
       return;
     }
 
-    const sortedAbsen = [...semuaAbsen].sort((a: AbsenRecord, b: AbsenRecord) => {
+    const sortedAbsen = [...filteredAbsen].sort((a: AbsenRecord, b: AbsenRecord) => {
       const dateCompare = b.tanggal.localeCompare(a.tanggal);
       if (dateCompare !== 0) return dateCompare;
       return b.jamAbsen.localeCompare(a.jamAbsen);
