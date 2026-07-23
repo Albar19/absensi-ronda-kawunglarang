@@ -67,3 +67,30 @@ export function formatTanggalIndo(tanggalStr: string): string {
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
+
+// ----------------------------------------------------------
+// 1 HP 1 NAMA — localStorage lock
+// ----------------------------------------------------------
+const STORAGE_KEY = 'absensi_hp';
+
+export function simpanLockHP(wargaId: string, nama: string) {
+  if (typeof window === 'undefined') return;
+  const data = { tanggal: getTanggalHariIni(), wargaId, nama };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+export function cekLockHP(wargaId: string): { ok: boolean; pesan?: string } {
+  if (typeof window === 'undefined') return { ok: true };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { ok: true };
+    const data = JSON.parse(raw);
+    if (data.tanggal !== getTanggalHariIni()) return { ok: true };
+    if (data.wargaId !== wargaId) {
+      return { ok: false, pesan: `HP ini sudah dipakai untuk absen atas nama ${data.nama} hari ini. Ganti HP atau hubungi petugas.` };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: true };
+  }
+}

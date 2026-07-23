@@ -10,6 +10,8 @@ import {
   isJamAbsenBuka,
   generateId,
   getTanggalHariIni,
+  cekLockHP,
+  simpanLockHP,
 } from '@/lib/data';
 import HeaderBanner from '@/components/citizen/HeaderBanner';
 import StatusCards from '@/components/citizen/StatusCards';
@@ -44,7 +46,15 @@ export default function AbsenQRPage() {
         setWarga(found);
         setJadwalToday(jadwalIds);
         setWargaLoaded(true);
-        if (!found) setFlowState('rejected');
+        if (!found) {
+          setFlowState('rejected');
+        } else {
+          const lock = cekLockHP(wargaId);
+          if (!lock.ok) {
+            setPesanError(lock.pesan!);
+            setFlowState('rejected');
+          }
+        }
       })
       .catch(() => {
         setWargaLoaded(true);
@@ -146,11 +156,14 @@ export default function AbsenQRPage() {
     };
 
     try {
-      await fetch('/api/absen', {
+      const res = await fetch('/api/absen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(record),
       });
+      if (res.ok) {
+        simpanLockHP(warga.id, warga.nama);
+      }
     } catch {
       // silent
     }

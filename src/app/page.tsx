@@ -8,6 +8,7 @@ import {
   isJamAbsenBuka,
   generateId,
   getTanggalHariIni,
+  simpanLockHP,
 } from '@/lib/data';
 import HeaderBanner  from '@/components/citizen/HeaderBanner';
 import StatusCards   from '@/components/citizen/StatusCards';
@@ -103,7 +104,10 @@ export default function HomePage() {
       status: 'hadir',
     };
     try {
-      await fetch('/api/absen', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(record) });
+      const res = await fetch('/api/absen', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(record) });
+      if (res.ok) {
+        simpanLockHP(warga.id, warga.nama);
+      }
     } catch { /* silent */ }
     setSuccessRecord(record);
     setTimeout(() => { setIsSubmitting(false); setFlowState('success'); }, 300);

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, ChevronDown, AlertCircle } from 'lucide-react';
 import { Warga } from '@/lib/types';
+import { cekLockHP } from '@/lib/data';
 
 interface NameSelectorProps {
   onSubmit: (warga: Warga) => void;
@@ -10,9 +11,10 @@ interface NameSelectorProps {
 }
 
 export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorProps) {
-  const [query, setQuery]           = useState('');
-  const [selected, setSelected]     = useState<Warga | null>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
+const [query, setQuery]           = useState('');
+const [selected, setSelected]     = useState<Warga | null>(null);
+const [showDropdown, setShowDropdown] = useState(false);
+const [lockError, setLockError]   = useState<string | null>(null);
   const [wargaList, setWargaList]   = useState<Warga[]>([]);
   const [jadwalToday, setJadwalToday] = useState<string[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -56,9 +58,15 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
   }, [query, wargaRonda]);
 
   function handleSelect(w: Warga) {
+    const lock = cekLockHP(w.id);
+    if (!lock.ok) {
+      setLockError(lock.pesan!);
+      return;
+    }
     setSelected(w);
     setQuery(w.nama);
     setShowDropdown(false);
+    setLockError(null);
     inputRef.current?.blur();
   }
 
@@ -107,7 +115,7 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
               autoComplete="off"
               placeholder="Ketik nama atau RT…"
               value={query}
-              onChange={e => { setQuery(e.target.value); setSelected(null); setShowDropdown(true); }}
+              onChange={e => { setQuery(e.target.value); setSelected(null); setLockError(null); setShowDropdown(true); }}
               onFocus={() => query && setShowDropdown(true)}
               className="w-full pl-11 pr-10 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
               style={{ minHeight: '56px' }}
@@ -150,8 +158,16 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
         )}
       </div>
 
+      {/* Lock error */}
+      {lockError && (
+        <div className="flex items-start gap-3 bg-red-50 border border-red-300 rounded-xl px-4 py-3">
+          <AlertCircle size={20} className="flex-shrink-0 mt-0.5 text-red-600" />
+          <p className="text-sm font-bold text-red-800 leading-snug">{lockError}</p>
+        </div>
+      )}
+
       {/* Selected confirmation chip */}
-      {selected && (
+      {selected && !lockError && (
         <div className="flex items-center gap-3 bg-green-50 border border-green-300 rounded-xl px-4 py-3">
           <span className="text-xl">✅</span>
           <div className="min-w-0">

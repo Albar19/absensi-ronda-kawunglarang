@@ -74,7 +74,6 @@ async function main() {
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         username text UNIQUE NOT NULL,
         password_hash text NOT NULL,
-        active_session text,
         created_at timestamptz DEFAULT now()
       );
     `);
