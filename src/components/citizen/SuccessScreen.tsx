@@ -10,57 +10,44 @@ interface SuccessScreenProps {
 
 export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 sm:px-5 py-8 sm:py-12 text-center">
-      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-green-600 flex items-center justify-center mb-5 sm:mb-6 shadow-md">
-        <CheckCircle size={52} className="sm:w-[64px] sm:h-[64px] text-white" strokeWidth={1.8} />
+    <div className="flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14 text-center">
+      {/* Check icon */}
+      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-green-600 flex items-center justify-center mb-6 shadow-lg ring-4 ring-green-200">
+        <CheckCircle size={52} className="text-white" strokeWidth={1.8} />
       </div>
 
-      <h2 className="text-2xl sm:text-3xl font-black text-green-700 mb-1 sm:mb-2 leading-tight">
-        BERHASIL ABSEN!
-      </h2>
-      <p className="text-sm sm:text-base text-green-700 font-semibold mb-5 sm:mb-6">
-        Kehadiran Anda telah tercatat
+      <h2 className="text-3xl sm:text-4xl font-black text-green-700 leading-tight">BERHASIL ABSEN!</h2>
+      <p className="text-sm sm:text-base text-green-600 font-semibold mt-1 mb-7">
+        Kehadiran Anda telah tercatat malam ini
       </p>
 
-      <div className="w-full bg-green-50 border-2 border-green-500 rounded-xl px-4 sm:px-5 py-5 sm:py-6 mb-6 sm:mb-8 space-y-3 sm:space-y-4 text-left">
-        <div className="flex items-start gap-3">
-          <span className="text-xl sm:text-2xl">👤</span>
-          <div className="min-w-0">
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-green-600">Nama</p>
-            <p className="text-lg sm:text-xl font-black text-green-900 leading-tight truncate">{record.nama}</p>
+      {/* Detail card */}
+      <div className="w-full max-w-sm bg-white border-2 border-green-400 rounded-2xl overflow-hidden shadow-sm mb-6">
+        {[
+          { icon: '👤', label: 'Nama',     value: record.nama },
+          { icon: '🏘️', label: 'Wilayah',  value: record.rt },
+          { icon: '🕐', label: 'Jam Absen', value: `${record.jamAbsen} WIB` },
+          { icon: '📍', label: 'Jarak',     value: `± ${record.jarakMeter} meter` },
+        ].map((row, i, arr) => (
+          <div key={row.label}>
+            <div className="flex items-center gap-4 px-5 py-3.5">
+              <span className="text-2xl w-8 text-center flex-shrink-0" role="img" aria-hidden>{row.icon}</span>
+              <div className="min-w-0 text-left">
+                <p className="text-[10px] font-black uppercase tracking-widest text-green-500">{row.label}</p>
+                <p className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">{row.value}</p>
+              </div>
+            </div>
+            {i < arr.length - 1 && <div className="h-px bg-green-100 mx-5" />}
           </div>
-        </div>
-        <div className="border-t border-green-200" />
-        <div className="flex items-start gap-3">
-          <span className="text-xl sm:text-2xl">🏘️</span>
-          <div>
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-green-600">Wilayah</p>
-            <p className="text-lg sm:text-xl font-black text-green-900">{record.rt}</p>
-          </div>
-        </div>
-        <div className="border-t border-green-200" />
-        <div className="flex items-start gap-3">
-          <span className="text-xl sm:text-2xl">🕐</span>
-          <div>
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-green-600">Jam Absen</p>
-            <p className="text-lg sm:text-xl font-black text-green-900 tabular-nums">{record.jamAbsen} WIB</p>
-          </div>
-        </div>
-        <div className="border-t border-green-200" />
-        <div className="flex items-start gap-3">
-          <span className="text-xl sm:text-2xl">📍</span>
-          <div>
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-green-600">Jarak</p>
-            <p className="text-lg sm:text-xl font-black text-green-900">± {record.jarakMeter} meter</p>
-          </div>
-        </div>
+        ))}
       </div>
 
+      {/* Back button */}
       <button
         type="button"
         onClick={onBack}
-        className="w-full bg-slate-100 text-slate-800 border-2 border-slate-300 rounded-xl py-4 sm:py-5 text-base sm:text-lg font-black active:scale-[0.98] transition-transform"
-        style={{ minHeight: '52px' }}
+        className="w-full max-w-sm bg-slate-100 hover:bg-slate-200 text-slate-700 border-2 border-slate-200 rounded-xl font-black text-base active:scale-[0.98] transition-all"
+        style={{ minHeight: '54px' }}
       >
         ← Kembali ke Halaman Utama
       </button>
