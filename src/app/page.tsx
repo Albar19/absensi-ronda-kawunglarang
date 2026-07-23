@@ -128,7 +128,7 @@ export default function HomePage() {
   return (
     /* Center card on large screens, full-width on mobile */
     <main className="min-h-screen bg-slate-100 sm:flex sm:items-start sm:justify-center sm:py-8 lg:py-12">
-      <div className="w-full sm:max-w-md bg-white sm:rounded-2xl sm:shadow-lg overflow-clip">
+      <div className="w-full sm:max-w-md bg-white sm:rounded-2xl sm:shadow-lg">
 
         <HeaderBanner />
 

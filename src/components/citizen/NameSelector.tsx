@@ -125,7 +125,7 @@ const [lockError, setLockError]   = useState<string | null>(null);
 
           {/* Dropdown */}
           {showDropdown && filtered.length > 0 && (
-            <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border-2 border-[#1e3a8a] rounded-xl shadow-xl z-50 overflow-hidden">
+            <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border-2 border-[#1e3a8a] rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto">
               {filtered.map((w, i) => (
                 <button
                   key={w.id}
