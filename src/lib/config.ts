@@ -3,8 +3,8 @@ export const CONFIG = {
   namaBalai: 'BALE DESA KAWUNGLARANG',
   subtitleAbsen: 'Absensi Ronda Malam',
 
-  baleDesaLat: -7.318243,
-  baleDesaLng: 108.484392,
+  baleDesaLat: -7.166841,
+  baleDesaLng: 108.481306,
 
   radiusMeter: 150,
 

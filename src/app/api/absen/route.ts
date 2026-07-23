@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { CONFIG } from '@/lib/config';
+import { hitungJarak } from '@/lib/data';
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +13,20 @@ export async function POST(request: Request) {
         { error: 'Data absen tidak lengkap' },
         { status: 400 }
       );
+    }
+
+    // Validasi jarak server-side
+    if (koordinatLat != null && koordinatLng != null) {
+      const jarakServer = hitungJarak(
+        koordinatLat, koordinatLng,
+        CONFIG.baleDesaLat, CONFIG.baleDesaLng
+      );
+      if (jarakServer > CONFIG.radiusMeter) {
+        return NextResponse.json(
+          { error: `Lokasi Anda terlalu jauh dari Bale Desa (${jarakServer}m, maks ${CONFIG.radiusMeter}m)` },
+          { status: 403 }
+        );
+      }
     }
 
     const { error } = await supabase.from('absen_records').insert({

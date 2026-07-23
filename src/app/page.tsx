@@ -21,6 +21,7 @@ export default function HomePage() {
   const [statusJam, setStatusJam] = useState<'buka' | 'tutup' | null>(null);
   const [statusJarak, setStatusJarak] = useState<'dekat' | 'jauh' | 'loading' | 'error' | null>(null);
   const [jarakMeter, setJarakMeter] = useState<number | null>(null);
+  const [akurasiMeter, setAkurasiMeter] = useState<number | null>(null);
   const [koordinat, setKoordinat] = useState<{ lat: number; lng: number } | null>(null);
   const [pesanError, setPesanError] = useState<string>('');
   const [successRecord, setSuccessRecord] = useState<AbsenRecord | null>(null);
@@ -65,7 +66,8 @@ export default function HomePage() {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, accuracy } = pos.coords;
+        setAkurasiMeter(Math.round(accuracy));
         const jarak = hitungJarak(
           latitude, longitude,
           CONFIG.baleDesaLat, CONFIG.baleDesaLng
@@ -152,6 +154,7 @@ export default function HomePage() {
     setStatusJam(null);
     setStatusJarak(null);
     setJarakMeter(null);
+    setAkurasiMeter(null);
     setKoordinat(null);
     setPesanError('');
     setSuccessRecord(null);
@@ -211,6 +214,7 @@ export default function HomePage() {
             statusJam={statusJam}
             statusJarak={statusJarak}
             jarakMeter={jarakMeter}
+            akurasiMeter={akurasiMeter}
           />
           <div className="px-4 pb-6 text-center">
             <div className="inline-flex items-center gap-2 text-slate-500 text-sm font-semibold">
@@ -233,6 +237,7 @@ export default function HomePage() {
             statusJam={statusJam}
             statusJarak={statusJarak}
             jarakMeter={jarakMeter}
+            akurasiMeter={akurasiMeter}
           />
           <div className="border-t-2 border-slate-100 mt-2" />
           <NameSelector

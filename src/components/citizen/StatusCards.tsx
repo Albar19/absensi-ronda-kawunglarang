@@ -8,9 +8,10 @@ interface StatusCardsProps {
   statusJam: StatusJam | null;
   statusJarak: StatusJarak | null;
   jarakMeter: number | null;
+  akurasiMeter?: number | null;
 }
 
-export default function StatusCards({ statusJam, statusJarak, jarakMeter }: StatusCardsProps) {
+export default function StatusCards({ statusJam, statusJarak, jarakMeter, akurasiMeter }: StatusCardsProps) {
   const jamBuka = CONFIG.jamBukaAbsen.toString().padStart(2, '0') + ':' +
     CONFIG.menitBukaAbsen.toString().padStart(2, '0');
   const jamTutup = CONFIG.jamTutupAbsen.toString().padStart(2, '0') + ':' +
@@ -108,6 +109,11 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter }: Stat
               <p className="text-sm text-green-700 font-medium">
                 Jarak Anda: ± {jarakMeter} meter
               </p>
+              {akurasiMeter != null && (
+                <p className="text-xs text-green-600 font-medium">
+                  Akurasi GPS: ±{akurasiMeter}m
+                </p>
+              )}
             </>
           ) : statusJarak === 'error' ? (
             <>

@@ -28,6 +28,7 @@ export default function AbsenQRPage() {
   const [statusJam, setStatusJam] = useState<'buka' | 'tutup' | null>(null);
   const [statusJarak, setStatusJarak] = useState<'dekat' | 'jauh' | 'loading' | 'error' | null>(null);
   const [jarakMeter, setJarakMeter] = useState<number | null>(null);
+  const [akurasiMeter, setAkurasiMeter] = useState<number | null>(null);
   const [koordinat, setKoordinat] = useState<{ lat: number; lng: number } | null>(null);
   const [pesanError, setPesanError] = useState<string>('');
   const [successRecord, setSuccessRecord] = useState<AbsenRecord | null>(null);
@@ -70,7 +71,8 @@ export default function AbsenQRPage() {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, accuracy } = pos.coords;
+        setAkurasiMeter(Math.round(accuracy));
         const jarak = hitungJarak(latitude, longitude, CONFIG.baleDesaLat, CONFIG.baleDesaLng);
         setJarakMeter(jarak);
         setKoordinat({ lat: latitude, lng: longitude });
@@ -147,6 +149,7 @@ export default function AbsenQRPage() {
     setStatusJam(null);
     setStatusJarak(null);
     setJarakMeter(null);
+    setAkurasiMeter(null);
     setKoordinat(null);
     setPesanError('');
     setSuccessRecord(null);
@@ -216,7 +219,7 @@ export default function AbsenQRPage() {
       {/* ---- CHECKING ---- */}
       {flowState === 'checking' && (
         <div className="space-y-2">
-          <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} />
+          <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} akurasiMeter={akurasiMeter} />
           <div className="px-4 pb-6 text-center">
             <div className="inline-flex items-center gap-2 text-slate-500 text-sm font-semibold">
               <span className="animate-spin text-lg">⏳</span>
@@ -234,7 +237,7 @@ export default function AbsenQRPage() {
       {/* ---- FORM (confirmation + submit) ---- */}
       {flowState === 'form' && (
         <div>
-          <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} />
+          <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} akurasiMeter={akurasiMeter} />
           <div className="border-t-2 border-slate-100 mt-2" />
 
           <div className="px-4 pb-8 space-y-5">
