@@ -15,6 +15,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // Cek absen duplikat (1x per hari per warga)
+    const { data: existing } = await supabase
+      .from('absen_records')
+      .select('id')
+      .eq('warga_id', wargaId)
+      .eq('tanggal', tanggal)
+      .maybeSingle();
+
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Anda sudah absen hari ini. Absen hanya 1 kali per hari.' },
+        { status: 409 }
+      );
+    }
+
     // Validasi jarak server-side
     if (koordinatLat != null && koordinatLng != null) {
       const jarakServer = hitungJarak(

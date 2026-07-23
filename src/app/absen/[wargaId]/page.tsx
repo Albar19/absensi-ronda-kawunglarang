@@ -22,6 +22,7 @@ export default function AbsenQRPage() {
   const wargaId = params.wargaId as string;
 
   const [warga, setWarga] = useState<Warga | null>(null);
+  const [jadwalToday, setJadwalToday] = useState<string[]>([]);
   const [wargaLoaded, setWargaLoaded] = useState(false);
   const [flowState, setFlowState] = useState<FlowState>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,11 +35,14 @@ export default function AbsenQRPage() {
   const [successRecord, setSuccessRecord] = useState<AbsenRecord | null>(null);
 
   useEffect(() => {
-    fetch('/api/warga')
-      .then(r => r.ok ? r.json() : [])
-      .then((data: Warga[]) => {
-        const found = data.find(w => w.id === wargaId) ?? null;
+    Promise.all([
+      fetch('/api/warga').then(r => r.ok ? r.json() : []),
+      fetch('/api/jadwal/hari-ini').then(r => r.ok ? r.json() : []),
+    ])
+      .then(([wargaData, jadwalIds]: [Warga[], string[]]) => {
+        const found = wargaData.find(w => w.id === wargaId) ?? null;
         setWarga(found);
+        setJadwalToday(jadwalIds);
         setWargaLoaded(true);
         if (!found) setFlowState('rejected');
       })
@@ -193,6 +197,32 @@ export default function AbsenQRPage() {
           <div className="w-full bg-red-50 border-2 border-red-500 rounded-xl px-5 py-5 mb-8">
             <p className="text-lg font-bold text-red-800 leading-snug">
               Kode QR yang Anda scan tidak dikenali. Silakan hubungi petugas ronda.
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="w-full bg-slate-800 text-white rounded-xl py-5 text-xl font-black text-center active:scale-[0.98] transition-transform border-2 border-slate-800"
+            style={{ minHeight: '64px' }}
+          >
+            ← Kembali ke Halaman Utama
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (warga && !jadwalToday.includes(warga.id)) {
+    return (
+      <main className="max-w-lg md:max-w-xl mx-auto bg-white min-h-screen shadow-sm">
+        <HeaderBanner />
+        <div className="flex flex-col items-center justify-center px-5 py-16 text-center">
+          <div className="w-24 h-24 rounded-full bg-amber-500 flex items-center justify-center mb-6 shadow-md">
+            <span className="text-4xl text-white">📅</span>
+          </div>
+          <h2 className="text-2xl font-black text-amber-700 mb-4">TIDAK TERJADWAL</h2>
+          <div className="w-full bg-amber-50 border-2 border-amber-500 rounded-xl px-5 py-5 mb-8">
+            <p className="text-lg font-bold text-amber-800 leading-snug">
+              <strong>{warga.nama}</strong> tidak terjadwal ronda malam ini. Hanya warga yang terjadwal yang dapat melakukan absen.
             </p>
           </div>
           <Link

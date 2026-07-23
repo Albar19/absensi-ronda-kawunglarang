@@ -74,6 +74,7 @@ async function main() {
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         username text UNIQUE NOT NULL,
         password_hash text NOT NULL,
+        active_session text,
         created_at timestamptz DEFAULT now()
       );
     `);
@@ -135,10 +136,7 @@ async function main() {
     console.log('  ✓ jadwal_ronda');
 
     await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_absen_tanggal ON absen_records(tanggal);
-    `);
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_absen_warga ON absen_records(warga_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_absen_warga_tanggal ON absen_records(warga_id, tanggal);
     `);
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_jadwal_tanggal ON jadwal_ronda(tanggal);

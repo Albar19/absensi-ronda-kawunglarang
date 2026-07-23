@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown, AlertCircle } from 'lucide-react';
 import { Warga } from '@/lib/types';
 
 interface NameSelectorProps {
@@ -14,14 +14,22 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
   const [selected, setSelected]     = useState<Warga | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [wargaList, setWargaList]   = useState<Warga[]>([]);
+  const [jadwalToday, setJadwalToday] = useState<string[]>([]);
+  const [loading, setLoading]       = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropRef  = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch('/api/warga')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setWargaList(d); })
-      .catch(() => {});
+    Promise.all([
+      fetch('/api/warga').then(r => r.ok ? r.json() : []),
+      fetch('/api/jadwal/hari-ini').then(r => r.ok ? r.json() : []),
+    ])
+      .then(([warga, jadwalIds]: [Warga[], string[]]) => {
+        setWargaList(warga);
+        setJadwalToday(jadwalIds);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   // Close dropdown on outside click
@@ -35,13 +43,17 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const wargaRonda = useMemo(() => {
+    return wargaList.filter(w => jadwalToday.includes(w.id));
+  }, [wargaList, jadwalToday]);
+
   const filtered = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return wargaList.filter(w =>
+    return wargaRonda.filter(w =>
       w.nama.toLowerCase().includes(q) || w.rt.toLowerCase().includes(q)
     ).slice(0, 8);
-  }, [query, wargaList]);
+  }, [query, wargaRonda]);
 
   function handleSelect(w: Warga) {
     setSelected(w);
@@ -52,13 +64,30 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
 
   return (
     <div className="px-4 sm:px-5 pb-8 space-y-4">
-      {/* Info box */}
+      {/* Loading */}
+      {loading && (
+        <div className="flex items-center justify-center py-6">
+          <p className="text-slate-400 text-base font-semibold">Memuat data...</p>
+        </div>
+      )}
+
+      {!loading && wargaRonda.length === 0 && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5">
+          <AlertCircle size={22} className="flex-shrink-0 mt-0.5 text-amber-600" />
+          <p className="text-sm sm:text-base font-semibold text-amber-800 leading-snug">
+            Belum ada jadwal ronda untuk hari ini. Silakan hubungi ketua RT.
+          </p>
+        </div>
+      )}
+
+      {!loading && wargaRonda.length > 0 && (
       <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3.5">
         <span className="text-xl flex-shrink-0 mt-0.5">📋</span>
         <p className="text-sm sm:text-base font-semibold text-blue-800 leading-snug">
           Cari dan pilih nama Anda di bawah ini, lalu tekan <strong>KIRIM ABSEN</strong>.
         </p>
       </div>
+      )}
 
       {/* Search input */}
       <div>
@@ -116,7 +145,7 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
         </div>
 
         {/* Hint */}
-        {!query && (
+        {!query && wargaRonda.length > 0 && (
           <p className="text-xs text-slate-400 mt-2 px-1">Contoh: ketik &quot;Ahmad&quot; atau &quot;RT 02&quot;</p>
         )}
       </div>
@@ -134,6 +163,7 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
       )}
 
       {/* Submit button */}
+      {wargaRonda.length > 0 && (
       <button
         type="button"
         onClick={() => selected && onSubmit(selected)}
@@ -149,6 +179,7 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
       >
         {isSubmitting ? '⏳ Menyimpan…' : '✅ KIRIM ABSEN'}
       </button>
+      )}
     </div>
   );
 }

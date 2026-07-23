@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { createHash } from 'crypto';
 import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 import { signToken } from '@/lib/auth';
@@ -37,6 +38,12 @@ export async function POST(request: Request) {
     }
 
     const token = await signToken({ role: 'admin', username: user.username });
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+
+    await supabase
+      .from('admin_users')
+      .update({ active_session: tokenHash })
+      .eq('username', user.username);
 
     const cookieStore = await cookies();
     cookieStore.set('admin_token', token, {

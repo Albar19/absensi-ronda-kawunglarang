@@ -10,6 +10,6 @@ export const CONFIG = {
 
   jamBukaAbsen: 20,
   menitBukaAbsen: 0,
-  jamTutupAbsen: 23,
-  menitTutupAbsen: 59,
+  jamTutupAbsen: 0,
+  menitTutupAbsen: 0,
 } as const;

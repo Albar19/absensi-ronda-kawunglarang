@@ -34,6 +34,9 @@ export function isJamAbsenBuka(): boolean {
   const totalMenit = jam * 60 + menit;
   const buka = CONFIG.jamBukaAbsen * 60 + CONFIG.menitBukaAbsen;
   const tutup = CONFIG.jamTutupAbsen * 60 + CONFIG.menitTutupAbsen;
+  if (tutup <= buka) {
+    return totalMenit >= buka || totalMenit < tutup;
+  }
   return totalMenit >= buka && totalMenit <= tutup;
 }
 
