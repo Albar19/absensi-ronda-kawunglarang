@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Trash2, Users, CheckCircle, XCircle } from 'lucide-react';
+import { LogOut, RefreshCw, Trash2, Users, CheckCircle, XCircle, QrCode } from 'lucide-react';
 import { AbsenRecord, FilterType } from '@/lib/types';
 import { DAFTAR_WARGA, formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import AbsenTable from '@/components/admin/AbsenTable';
@@ -156,6 +156,15 @@ export default function AdminDashboardPage() {
             countBelum={belumAbsen}
           />
           <div className="flex items-center gap-2">
+            <a
+              href="/api/qr/download"
+              download="qr-bale-desa.png"
+              className="inline-flex items-center gap-2 bg-white text-[#1e3a8a] px-4 py-2 rounded-lg font-bold text-sm border-2 border-[#1e3a8a] hover:bg-blue-50 active:scale-[0.97] transition-all"
+              style={{ minHeight: '44px' }}
+            >
+              <QrCode size={16} strokeWidth={2.5} />
+              QR Code
+            </a>
             <ExportButton />
             <button
               type="button"
