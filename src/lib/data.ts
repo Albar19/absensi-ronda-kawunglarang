@@ -6,14 +6,6 @@ import { Warga } from './types';
 import { CONFIG } from './config';
 
 // ----------------------------------------------------------
-// DAFTAR NAMA WARGA (edit sesuai data nyata)
-// ----------------------------------------------------------
-export const DAFTAR_WARGA: Warga[] = [
-  // Masukkan daftar nama warga Desa Kawunglarang di sini
-  // Format: { id: 'rt01-001', nama: 'Nama Warga', rt: 'RT 01' },
-];
-
-// ----------------------------------------------------------
 // HAVERSINE FORMULA — hitung jarak 2 titik GPS dalam meter
 // ----------------------------------------------------------
 export function hitungJarak(

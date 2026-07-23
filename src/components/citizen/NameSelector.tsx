@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Warga } from '@/lib/types';
-import { DAFTAR_WARGA } from '@/lib/data';
 
 interface NameSelectorProps {
   onSubmit: (warga: Warga) => void;
@@ -14,7 +13,7 @@ export default function NameSelector({ onSubmit, isSubmitting }: NameSelectorPro
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Warga | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [wargaList, setWargaList] = useState<Warga[]>(DAFTAR_WARGA);
+  const [wargaList, setWargaList] = useState<Warga[]>([]);
 
   useEffect(() => {
     fetch('/api/warga')

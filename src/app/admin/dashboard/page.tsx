@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut, RefreshCw, Trash2, QrCode, UsersIcon, Calendar, Search } from 'lucide-react';
 import { AbsenRecord, FilterType } from '@/lib/types';
-import { DAFTAR_WARGA, formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
+import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import AbsenTable from '@/components/admin/AbsenTable';
 import FilterBar from '@/components/admin/FilterBar';
 import ExportButton from '@/components/admin/ExportButton';
@@ -67,7 +67,7 @@ export default function AdminDashboardPage() {
     setShowResetConfirm(false);
   }
 
-  const wargaData = wargaList.length > 0 ? wargaList : DAFTAR_WARGA;
+  const wargaData = wargaList;
   const totalWarga = wargaData.length;
   const sudahAbsen = absenHariIni.length;
   const belumAbsen = totalWarga - sudahAbsen;

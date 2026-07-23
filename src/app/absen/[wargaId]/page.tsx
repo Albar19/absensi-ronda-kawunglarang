@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { FlowState, AbsenRecord } from '@/lib/types';
+import { FlowState, AbsenRecord, Warga } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import {
-  DAFTAR_WARGA,
   hitungJarak,
   isJamAbsenBuka,
   generateId,
@@ -22,9 +21,9 @@ export default function AbsenQRPage() {
   const params = useParams();
   const wargaId = params.wargaId as string;
 
-  const warga = DAFTAR_WARGA.find((w) => w.id === wargaId) ?? null;
-
-  const [flowState, setFlowState] = useState<FlowState>(warga ? 'idle' : 'rejected');
+  const [warga, setWarga] = useState<Warga | null>(null);
+  const [wargaLoaded, setWargaLoaded] = useState(false);
+  const [flowState, setFlowState] = useState<FlowState>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusJam, setStatusJam] = useState<'buka' | 'tutup' | null>(null);
   const [statusJarak, setStatusJarak] = useState<'dekat' | 'jauh' | 'loading' | 'error' | null>(null);
@@ -33,6 +32,21 @@ export default function AbsenQRPage() {
   const [koordinat, setKoordinat] = useState<{ lat: number; lng: number } | null>(null);
   const [pesanError, setPesanError] = useState<string>('');
   const [successRecord, setSuccessRecord] = useState<AbsenRecord | null>(null);
+
+  useEffect(() => {
+    fetch('/api/warga')
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Warga[]) => {
+        const found = data.find(w => w.id === wargaId) ?? null;
+        setWarga(found);
+        setWargaLoaded(true);
+        if (!found) setFlowState('rejected');
+      })
+      .catch(() => {
+        setWargaLoaded(true);
+        setFlowState('rejected');
+      });
+  }, [wargaId]);
 
   const mulaiCek = useCallback(() => {
     setFlowState('checking');
@@ -155,6 +169,17 @@ export default function AbsenQRPage() {
     setPesanError('');
     setSuccessRecord(null);
   }, []);
+
+  if (!wargaLoaded) {
+    return (
+      <main className="max-w-lg md:max-w-xl mx-auto bg-white min-h-screen shadow-sm">
+        <HeaderBanner />
+        <div className="flex items-center justify-center py-20">
+          <p className="text-slate-400 text-lg font-semibold">Memuat data...</p>
+        </div>
+      </main>
+    );
+  }
 
   if (!warga) {
     return (
