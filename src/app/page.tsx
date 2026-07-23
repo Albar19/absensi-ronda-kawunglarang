@@ -6,6 +6,7 @@ import { CONFIG } from '@/lib/config';
 import {
   hitungJarak,
   isJamAbsenBuka,
+  cekJamStatus,
   generateId,
   getTanggalHariIni,
   simpanLockHP,
@@ -34,15 +35,19 @@ export default function HomePage() {
     setJarakMeter(null);
     setPesanError('');
 
-    const jamOk = isJamAbsenBuka();
-    setStatusJam(jamOk ? 'buka' : 'tutup');
+    const jamStatus = cekJamStatus();
+    setStatusJam(jamStatus === 'buka' ? 'buka' : 'tutup');
 
-    if (!jamOk) {
+    if (jamStatus !== 'buka') {
       const jb = `${String(CONFIG.jamBukaAbsen).padStart(2,'0')}:${String(CONFIG.menitBukaAbsen).padStart(2,'0')}`;
       const jt = `${String(CONFIG.jamTutupAbsen).padStart(2,'0')}:${String(CONFIG.menitTutupAbsen).padStart(2,'0')}`;
       setStatusJarak(null);
       setTimeout(() => {
-        setPesanError(`Waktu absen sudah ditutup. Absen hanya tersedia pukul ${jb} – ${jt} WIB.`);
+        setPesanError(
+          jamStatus === 'belum-buka'
+            ? `Absen belum dibuka. Absen dibuka pukul ${jb} WIB.`
+            : `Waktu absen sudah ditutup. Absen hanya tersedia pukul ${jb} – ${jt} WIB.`
+        );
         setFlowState('rejected');
       }, 700);
       return;

@@ -8,6 +8,7 @@ import { CONFIG } from '@/lib/config';
 import {
   hitungJarak,
   isJamAbsenBuka,
+  cekJamStatus,
   generateId,
   getTanggalHariIni,
   cekLockHP,
@@ -69,10 +70,10 @@ export default function AbsenQRPage() {
     setJarakMeter(null);
     setPesanError('');
 
-    const jamOk = isJamAbsenBuka();
-    setStatusJam(jamOk ? 'buka' : 'tutup');
+    const jamStatus = cekJamStatus();
+    setStatusJam(jamStatus === 'buka' ? 'buka' : 'tutup');
 
-    if (!jamOk) {
+    if (jamStatus !== 'buka') {
       const jamBuka = CONFIG.jamBukaAbsen.toString().padStart(2, '0') + ':' +
         CONFIG.menitBukaAbsen.toString().padStart(2, '0');
       const jamTutup = CONFIG.jamTutupAbsen.toString().padStart(2, '0') + ':' +
@@ -80,7 +81,9 @@ export default function AbsenQRPage() {
       setStatusJarak(null);
       setTimeout(() => {
         setPesanError(
-          `❌ ABSEN DITOLAK: Waktu absen sudah ditutup. Absen hanya tersedia pukul ${jamBuka} – ${jamTutup} WIB.`
+          jamStatus === 'belum-buka'
+            ? `❌ ABSEN DITOLAK: Absen belum dibuka. Absen dibuka pukul ${jamBuka} WIB.`
+            : `❌ ABSEN DITOLAK: Waktu absen sudah ditutup. Absen hanya tersedia pukul ${jamBuka} – ${jamTutup} WIB.`
         );
         setFlowState('rejected');
       }, 800);

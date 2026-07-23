@@ -27,6 +27,8 @@ export function hitungJarak(
 // ----------------------------------------------------------
 // VALIDASI JAM ABSEN
 // ----------------------------------------------------------
+export type JamStatus = 'buka' | 'belum-buka' | 'ditutup';
+
 export function isJamAbsenBuka(): boolean {
   const now = new Date();
   const jam = now.getHours();
@@ -38,6 +40,23 @@ export function isJamAbsenBuka(): boolean {
     return totalMenit >= buka || totalMenit < tutup;
   }
   return totalMenit >= buka && totalMenit <= tutup;
+}
+
+export function cekJamStatus(): JamStatus {
+  const now = new Date();
+  const totalMenit = now.getHours() * 60 + now.getMinutes();
+  const buka = CONFIG.jamBukaAbsen * 60 + CONFIG.menitBukaAbsen;
+  const tutup = CONFIG.jamTutupAbsen * 60 + CONFIG.menitTutupAbsen;
+
+  if (tutup <= buka) {
+    if (totalMenit >= buka) return 'buka';
+    if (totalMenit < tutup) return 'buka';
+    return 'belum-buka';
+  }
+
+  if (totalMenit < buka) return 'belum-buka';
+  if (totalMenit > tutup) return 'ditutup';
+  return 'buka';
 }
 
 // ----------------------------------------------------------
