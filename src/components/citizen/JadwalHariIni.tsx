@@ -96,9 +96,6 @@ export default function JadwalHariIni() {
                   <p className="text-sm font-bold text-slate-900 truncate">{w?.nama || j.warga_id}</p>
                   <p className="text-xs text-slate-500 font-medium">{w?.rt || '—'} {j.keterangan ? `• ${j.keterangan}` : ''}</p>
                 </div>
-                <span className="text-[11px] font-black text-[#1e3a8a] bg-blue-100 px-2.5 py-1 rounded-full flex-shrink-0 uppercase tracking-wider">
-                  {j.shift}
-                </span>
               </div>
             );
           })}

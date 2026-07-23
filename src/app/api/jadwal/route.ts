@@ -24,14 +24,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { tanggal, warga_id, shift, keterangan } = await request.json();
+    const { tanggal, warga_id, keterangan } = await request.json();
     if (!tanggal || !warga_id) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
     const { error } = await supabase
       .from('jadwal_ronda')
-      .insert({ tanggal, warga_id, shift: shift || 'malam', keterangan });
+      .insert({ tanggal, warga_id, shift: 'malam', keterangan });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });

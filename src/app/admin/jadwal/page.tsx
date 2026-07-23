@@ -28,7 +28,6 @@ export default function AdminJadwalPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [addTanggal, setAddTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [addWargaId, setAddWargaId] = useState('');
-  const [addShift, setAddShift] = useState('malam');
   const [addKet, setAddKet] = useState('');
   const [submitting, setSubmitting] = useState<'add' | 'delete' | null>(null);
 
@@ -59,7 +58,7 @@ export default function AdminJadwalPage() {
     const res = await fetch('/api/jadwal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tanggal: addTanggal, warga_id: addWargaId, shift: addShift, keterangan: addKet }),
+      body: JSON.stringify({ tanggal: addTanggal, warga_id: addWargaId, keterangan: addKet }),
     });
     setSubmitting(null);
     if (res.ok) {
@@ -148,7 +147,6 @@ export default function AdminJadwalPage() {
                         <p className="font-bold text-slate-900 truncate">{w?.nama || j.warga_id}</p>
                         <div className="flex items-center gap-3 text-xs text-slate-500 font-medium flex-wrap">
                           <span>{w?.rt || '—'}</span>
-                          <span>Shift: {j.shift}</span>
                           {j.keterangan && <span className="truncate">— {j.keterangan}</span>}
                         </div>
                       </div>
@@ -190,16 +188,7 @@ export default function AdminJadwalPage() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Shift</label>
-              <select value={addShift} onChange={e => setAddShift(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
-                style={{ minHeight: '48px' }}>
-                <option value="malam">Malam</option>
-                <option value="pagi">Pagi</option>
-                <option value="siang">Siang</option>
-              </select>
-            </div>
+            
 
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Keterangan (opsional)</label>
