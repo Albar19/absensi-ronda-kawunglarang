@@ -34,6 +34,17 @@ const [lockError, setLockError]   = useState<string | null>(null);
       .catch(() => setLoading(false));
   }, []);
 
+  const wargaRonda = useMemo(() => {
+    return wargaList.filter(w => jadwalToday.includes(w.id));
+  }, [wargaList, jadwalToday]);
+
+  // Auto-show dropdown when data loads
+  useEffect(() => {
+    if (!loading && wargaRonda.length > 0) {
+      setShowDropdown(true);
+    }
+  }, [loading, wargaRonda]);
+
   // Close dropdown on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -45,12 +56,8 @@ const [lockError, setLockError]   = useState<string | null>(null);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const wargaRonda = useMemo(() => {
-    return wargaList.filter(w => jadwalToday.includes(w.id));
-  }, [wargaList, jadwalToday]);
-
   const filtered = useMemo(() => {
-    if (!query.trim()) return [];
+    if (!query.trim()) return wargaRonda.slice(0, 8);
     const q = query.toLowerCase();
     return wargaRonda.filter(w =>
       w.nama.toLowerCase().includes(q) || w.rt.toLowerCase().includes(q)
@@ -116,7 +123,7 @@ const [lockError, setLockError]   = useState<string | null>(null);
               placeholder="Ketik nama atau RT…"
               value={query}
               onChange={e => { setQuery(e.target.value); setSelected(null); setLockError(null); setShowDropdown(true); }}
-              onFocus={() => query && setShowDropdown(true)}
+              onFocus={() => setShowDropdown(true)}
               className="w-full pl-11 pr-10 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
               style={{ minHeight: '56px' }}
             />
@@ -154,7 +161,7 @@ const [lockError, setLockError]   = useState<string | null>(null);
 
         {/* Hint */}
         {!query && wargaRonda.length > 0 && (
-          <p className="text-xs text-slate-400 mt-2 px-1">Contoh: ketik &quot;Ahmad&quot; atau &quot;RT 02&quot;</p>
+          <p className="text-xs text-slate-400 mt-2 px-1">Klik kolom untuk lihat daftar, atau ketik nama/RT untuk mencari</p>
         )}
       </div>
 

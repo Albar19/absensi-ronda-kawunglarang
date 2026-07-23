@@ -42,29 +42,47 @@ export default function ExportButton() {
     setLoading(true);
     const { utils, writeFile } = await import('xlsx');
 
-    const res = await fetch('/api/absen/semua');
-    if (!res.ok) {
-      alert('Gagal mengambil data.');
+    const [absenRes, jadwalRes] = await Promise.all([
+      fetch('/api/absen/semua'),
+      fetch('/api/jadwal'),
+    ]);
+
+    if (!absenRes.ok) {
+      alert('Gagal mengambil data absensi.');
+      setLoading(false);
+      return;
+    }
+    if (!jadwalRes.ok) {
+      alert('Gagal mengambil data jadwal.');
       setLoading(false);
       return;
     }
 
-    const semuaAbsen: AbsenRecord[] = await res.json();
+    const semuaAbsen: AbsenRecord[] = await absenRes.json();
+    const semuaJadwal: { id: string; tanggal: string; warga_id: string }[] = await jadwalRes.json();
 
     let filteredAbsen = semuaAbsen;
+    let filteredJadwal = semuaJadwal;
     let labelFile = 'Semua_Bulan';
+    let labelPeriode = 'Semua Periode';
 
     if (selectedMonth) {
       filteredAbsen = semuaAbsen.filter(r => r.tanggal.startsWith(selectedMonth));
+      filteredJadwal = semuaJadwal.filter(j => j.tanggal.startsWith(selectedMonth));
       const [tahun, bulan] = selectedMonth.split('-');
       labelFile = `${BULAN_INDONESIA[parseInt(bulan) - 1]}_${tahun}`;
+      labelPeriode = `${BULAN_INDONESIA[parseInt(bulan) - 1]} ${tahun}`;
     }
 
-    if (filteredAbsen.length === 0) {
+    if (filteredAbsen.length === 0 && filteredJadwal.length === 0) {
       alert('Tidak ada data untuk periode ini.');
       setLoading(false);
       return;
     }
+
+    const totalHadir = filteredAbsen.length;
+    const totalScheduled = filteredJadwal.length;
+    const persentase = totalScheduled > 0 ? Math.round((totalHadir / totalScheduled) * 100) : 0;
 
     const sortedAbsen = [...filteredAbsen].sort((a: AbsenRecord, b: AbsenRecord) => {
       const dateCompare = b.tanggal.localeCompare(a.tanggal);
@@ -72,27 +90,44 @@ export default function ExportButton() {
       return b.jamAbsen.localeCompare(a.jamAbsen);
     });
 
-    const rows = sortedAbsen.map((record: AbsenRecord, index: number) => ({
-      No: index + 1,
-      Nama: record.nama,
-      RT: record.rt,
-      Tanggal: formatTanggalIndo(record.tanggal),
-      'Jam Absen': record.jamAbsen,
-      'Jarak (m)': record.jarakMeter,
-      Status: 'HADIR',
-    }));
+    // Build sheet data as array-of-arrays (summary + header + rows)
+    const sheetData: any[][] = [
+      ['REKAPITULASI ABSENSI RONDA', '', '', '', '', '', ''],
+      [`Periode: ${labelPeriode}`, '', '', '', '', '', ''],
+      [],
+      ['Total Jadwal', '', '', '', totalScheduled, '', ''],
+      ['Total Hadir', '', '', '', totalHadir, '', ''],
+      ['Persentase Kehadiran', '', '', '', `${persentase}%`, '', ''],
+      [],
+    ];
 
-    const ws = utils.json_to_sheet(rows);
+    // Column headers
+    sheetData.push(['No', 'Nama', 'RT', 'Tanggal', 'Jam Absen', 'Jarak (m)', 'Status']);
+
+    // Data rows
+    sortedAbsen.forEach((record, index) => {
+      sheetData.push([
+        index + 1,
+        record.nama,
+        record.rt,
+        formatTanggalIndo(record.tanggal),
+        record.jamAbsen,
+        record.jarakMeter,
+        'HADIR',
+      ]);
+    });
+
+    const ws = utils.aoa_to_sheet(sheetData);
     const wb = utils.book_new();
 
     ws['!cols'] = [
-      { wch: 5 },
       { wch: 25 },
-      { wch: 8 },
       { wch: 30 },
+      { wch: 10 },
+      { wch: 35 },
+      { wch: 14 },
+      { wch: 14 },
       { wch: 12 },
-      { wch: 12 },
-      { wch: 15 },
     ];
 
     utils.book_append_sheet(wb, ws, 'Laporan Absensi Ronda');

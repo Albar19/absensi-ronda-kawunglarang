@@ -73,9 +73,9 @@ export default function AdminDashboardPage() {
   const belumAbsen = totalWarga - sudahAbsen;
   const tanggalLabel = formatTanggalIndo(getTanggalHariIni());
 
-  const tanggal7Hari = new Date();
-  tanggal7Hari.setDate(tanggal7Hari.getDate() - 7);
-  const cutoff = tanggal7Hari.toISOString().split('T')[0];
+  const tanggal30Hari = new Date();
+  tanggal30Hari.setDate(tanggal30Hari.getDate() - 30);
+  const cutoff = tanggal30Hari.toISOString().split('T')[0];
 
   const absenCountMap = new Map<string, number>();
   semuaRiwayat.forEach(r => {
@@ -153,7 +153,7 @@ export default function AdminDashboardPage() {
           <div className="px-5 py-4 border-b border-slate-200">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                Kehadiran 7 Hari ({sudahAbsen}/{totalWarga} hari ini)
+                Kehadiran 30 Hari ({sudahAbsen}/{totalWarga} hari ini)
               </h3>
               <div className="flex items-center gap-2 flex-1 sm:flex-none">
                 <div className="relative flex-1 sm:w-48">
@@ -184,7 +184,7 @@ export default function AdminDashboardPage() {
               </div>
             ) : (
               attendanceList.map(w => {
-                const pct = Math.round((w.hadir / 7) * 100);
+                const pct = Math.round((w.hadir / 30) * 100);
                 return (
                   <div key={w.id} className="px-4 sm:px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors">
                     <div className="flex-1 min-w-0">
@@ -201,7 +201,7 @@ export default function AdminDashboardPage() {
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <span className="text-xs font-black text-slate-600 tabular-nums flex-shrink-0">{w.hadir}/7</span>
+                        <span className="text-xs font-black text-slate-600 tabular-nums flex-shrink-0">{w.hadir}/30</span>
                         <span className={`text-xs font-black tabular-nums flex-shrink-0 ${
                           pct >= 70 ? 'text-green-700' : pct >= 30 ? 'text-yellow-700' : 'text-red-700'
                         }`}>{pct}%</span>
