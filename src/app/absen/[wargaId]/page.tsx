@@ -163,16 +163,20 @@ export default function AbsenQRPage() {
       });
       if (res.ok) {
         simpanLockHP(warga.id, warga.nama);
+        setSuccessRecord(record);
+        setTimeout(() => {
+          setIsSubmitting(false);
+          setFlowState('success');
+        }, 300);
+        return;
       }
+      const err = await res.json();
+      setPesanError(err.error || 'Gagal menyimpan absen');
     } catch {
-      // silent
+      setPesanError('Gagal terhubung ke server');
     }
-
-    setSuccessRecord(record);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setFlowState('success');
-    }, 300);
+    setIsSubmitting(false);
+    setFlowState('rejected');
   }, [warga, jarakMeter, koordinat]);
 
   const handleReset = useCallback(() => {

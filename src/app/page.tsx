@@ -107,10 +107,17 @@ export default function HomePage() {
       const res = await fetch('/api/absen', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(record) });
       if (res.ok) {
         simpanLockHP(warga.id, warga.nama);
+        setSuccessRecord(record);
+        setTimeout(() => { setIsSubmitting(false); setFlowState('success'); }, 300);
+        return;
       }
-    } catch { /* silent */ }
-    setSuccessRecord(record);
-    setTimeout(() => { setIsSubmitting(false); setFlowState('success'); }, 300);
+      const err = await res.json();
+      setPesanError(err.error || 'Gagal menyimpan absen');
+    } catch {
+      setPesanError('Gagal terhubung ke server');
+    }
+    setIsSubmitting(false);
+    setFlowState('rejected');
   }, [jarakMeter, koordinat]);
 
   const handleReset = useCallback(() => {
