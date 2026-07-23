@@ -128,7 +128,7 @@ export default function HomePage() {
   return (
     /* Center card on large screens, full-width on mobile */
     <main className="min-h-screen bg-slate-100 sm:flex sm:items-start sm:justify-center sm:py-8 lg:py-12">
-      <div className="w-full sm:max-w-md bg-white sm:rounded-2xl sm:shadow-lg overflow-hidden">
+      <div className="w-full sm:max-w-md bg-white sm:rounded-2xl sm:shadow-lg overflow-clip">
 
         <HeaderBanner />
 
@@ -201,6 +201,15 @@ export default function HomePage() {
         {/* ─── FORM ─── */}
         {flowState === 'form' && (
           <div>
+            <div className="px-4 sm:px-5 pt-3">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1"
+              >
+                ← Kembali
+              </button>
+            </div>
             <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} akurasiMeter={akurasi} />
             <div className="mx-4 my-3 h-px bg-slate-100" />
             <NameSelector onSubmit={handleSubmitAbsen} isSubmitting={isSubmitting} />

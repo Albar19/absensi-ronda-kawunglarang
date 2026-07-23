@@ -105,7 +105,7 @@ export default function AdminDashboardPage() {
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-blue-200 uppercase tracking-widest">Dashboard Admin</p>
-            <h1 className="text-base sm:text-lg font-black leading-tight truncate">Absensi Ronda Malam</h1>
+            <h1 className="text-base sm:text-lg font-black leading-tight truncate">Absensi Ronda</h1>
             <p className="text-xs text-blue-200 hidden sm:block">Bale Desa Kawunglarang</p>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -261,7 +261,7 @@ export default function AdminDashboardPage() {
         <AbsenTable wargaList={wargaData} absenHariIni={absenHariIni} filter={filter} />
 
         <p className="text-center text-xs text-slate-400 py-4">
-          Sistem Absensi Ronda Malam — Bale Desa Kawunglarang
+          Sistem Absensi Ronda — Bale Desa Kawunglarang
         </p>
       </div>
 

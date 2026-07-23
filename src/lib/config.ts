@@ -1,7 +1,7 @@
 export const CONFIG = {
   namaDesa: 'Desa Kawunglarang',
   namaBalai: 'BALE DESA KAWUNGLARANG',
-  subtitleAbsen: 'Absensi Ronda Malam',
+  subtitleAbsen: 'Absensi Ronda',
 
   baleDesaLat: -7.166841,
   baleDesaLng: 108.481306,

@@ -75,7 +75,7 @@ export default function JadwalHariIni() {
             <Calendar size={16} className="sm:w-[18px] sm:h-[18px] text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm sm:text-base font-black text-[#1e3a8a]">Jadwal Ronda Malam Ini</p>
+            <p className="text-sm sm:text-base font-black text-[#1e3a8a]">Jadwal Ronda Hari Ini</p>
             <p className="text-xs sm:text-sm text-blue-700 font-medium">{jadwalList.length} orang bertugas</p>
           </div>
         </div>
