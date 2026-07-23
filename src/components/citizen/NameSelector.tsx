@@ -83,7 +83,7 @@ const [lockError, setLockError]   = useState<string | null>(null);
         <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5">
           <AlertCircle size={22} className="flex-shrink-0 mt-0.5 text-amber-600" />
           <p className="text-sm sm:text-base font-semibold text-amber-800 leading-snug">
-            Belum ada jadwal ronda untuk hari ini. Silakan hubungi ketua RT.
+            Belum ada jadwal ronda untuk hari ini. Silakan hubungi petugas.
           </p>
         </div>
       )}
