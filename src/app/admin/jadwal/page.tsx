@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, ArrowLeft, LogOut, AlertTriangle, CheckCircle, Loader, Database } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, LogOut } from 'lucide-react';
 import { getHariIniIndonesia } from '@/lib/data';
 
 const DAFTAR_HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -55,44 +55,6 @@ export default function AdminJadwalPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, []);
-
-  // Migration status
-  const [migrasiStatus, setMigrasiStatus] = useState<'loading' | 'ok' | 'perlu' | 'error'>('loading');
-  const [migrasiPesan, setMigrasiPesan] = useState('');
-  const [migrasiRunning, setMigrasiRunning] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/migrasi-jadwal')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.done) {
-          setMigrasiStatus('ok');
-        } else {
-          setMigrasiStatus('perlu');
-          setMigrasiPesan(data?.pesan || 'Perlu migrasi jadwal');
-        }
-      })
-      .catch(() => setMigrasiStatus('error'));
-  }, []);
-
-  async function handleMigrasi() {
-    setMigrasiRunning(true);
-    setMigrasiPesan('Menjalankan migrasi...');
-    try {
-      const res = await fetch('/api/migrasi-jadwal', { method: 'POST' });
-      const data = await res.json();
-      if (res.ok) {
-        setMigrasiStatus('ok');
-        setMigrasiPesan(data.pesan || 'Migrasi berhasil!');
-        fetchData();
-      } else {
-        setMigrasiPesan(data.error || 'Gagal');
-      }
-    } catch {
-      setMigrasiPesan('Gagal terhubung ke server');
-    }
-    setMigrasiRunning(false);
-  }
 
   const wargaMap = new Map(wargaList.map(w => [w.id, w]));
 
@@ -158,62 +120,6 @@ export default function AdminJadwalPage() {
           </button>
         </div>
       </nav>
-
-      {/* ─── MIGRASI BANNER ─── */}
-      {migrasiStatus === 'loading' && (
-        <div className="max-w-6xl mx-auto px-4 pt-4">
-          <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-5 py-3">
-            <Loader size={20} className="animate-spin text-blue-600" />
-            <p className="text-sm font-semibold text-blue-800">Memeriksa status database...</p>
-          </div>
-        </div>
-      )}
-      {migrasiStatus === 'perlu' && (
-        <div className="max-w-6xl mx-auto px-4 pt-4">
-          <div className="flex items-start gap-4 bg-amber-50 border-2 border-amber-400 rounded-xl px-5 py-4">
-            <div className="flex-shrink-0 mt-0.5">
-              <Database size={24} className="text-amber-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-black text-amber-900 uppercase tracking-wide">Migrasi Jadwal Diperlukan</p>
-              <p className="text-sm text-amber-800 font-medium mt-1">
-                Sistem ini masih menggunakan struktur database lama (kolom "tanggal"). Klik tombol di samping untuk mengubah ke struktur baru (kolom "hari").
-              </p>
-              {migrasiPesan && migrasiPesan !== 'Menjalankan migrasi...' && (
-                <p className="text-xs text-amber-700 mt-1 font-mono">{migrasiPesan}</p>
-              )}
-            </div>
-            <button
-              onClick={handleMigrasi}
-              disabled={migrasiRunning}
-              className="flex-shrink-0 flex items-center gap-2 bg-amber-600 text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-amber-700 disabled:opacity-60 transition-all active:scale-[0.97]"
-              style={{ minHeight: '48px' }}
-            >
-              {migrasiRunning ? (
-                <><Loader size={18} className="animate-spin" /> Memproses...</>
-              ) : (
-                <><Database size={18} /> Jalankan Migrasi</>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-      {migrasiStatus === 'ok' && migrasiPesan && (
-        <div className="max-w-6xl mx-auto px-4 pt-4">
-          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-5 py-3">
-            <CheckCircle size={20} className="text-green-600" />
-            <p className="text-sm font-semibold text-green-800">{migrasiPesan}</p>
-          </div>
-        </div>
-      )}
-      {migrasiStatus === 'error' && (
-        <div className="max-w-6xl mx-auto px-4 pt-4">
-          <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-5 py-3">
-            <AlertTriangle size={20} className="text-red-600" />
-            <p className="text-sm font-semibold text-red-800">Gagal memeriksa status database.</p>
-          </div>
-        </div>
-      )}
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-center justify-between gap-3">
