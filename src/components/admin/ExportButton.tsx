@@ -42,24 +42,19 @@ export default function ExportButton() {
     setLoading(true);
     const { utils, writeFile } = await import('xlsx');
 
-    const [absenRes, jadwalRes] = await Promise.all([
+    const [absenRes, jadwalRes, wargaRes] = await Promise.all([
       fetch('/api/absen/semua'),
       fetch('/api/jadwal'),
+      fetch('/api/warga'),
     ]);
 
-    if (!absenRes.ok) {
-      alert('Gagal mengambil data absensi.');
-      setLoading(false);
-      return;
-    }
-    if (!jadwalRes.ok) {
-      alert('Gagal mengambil data jadwal.');
-      setLoading(false);
-      return;
-    }
+    if (!absenRes.ok) { alert('Gagal mengambil data absensi.'); setLoading(false); return; }
+    if (!jadwalRes.ok) { alert('Gagal mengambil data jadwal.'); setLoading(false); return; }
+    if (!wargaRes.ok)  { alert('Gagal mengambil data warga.');  setLoading(false); return; }
 
     const semuaAbsen: AbsenRecord[] = await absenRes.json();
     const semuaJadwal: { id: string; tanggal: string; warga_id: string }[] = await jadwalRes.json();
+    const semuaWarga: { id: string; nama: string; dusun: string }[] = await wargaRes.json();
 
     let filteredAbsen = semuaAbsen;
     let filteredJadwal = semuaJadwal;
@@ -84,53 +79,75 @@ export default function ExportButton() {
     const totalScheduled = filteredJadwal.length;
     const persentase = totalScheduled > 0 ? Math.round((totalHadir / totalScheduled) * 100) : 0;
 
-    const sortedAbsen = [...filteredAbsen].sort((a: AbsenRecord, b: AbsenRecord) => {
-      const dateCompare = b.tanggal.localeCompare(a.tanggal);
-      if (dateCompare !== 0) return dateCompare;
+    // ── Hitung rekap per dusun ──
+    const dusunHadirMap = new Map<string, number>();
+    const dusunWargaSet = new Map<string, Set<string>>();
+    const absenTanggal = new Set(filteredAbsen.map(r => r.tanggal));
+
+    semuaWarga.forEach(w => {
+      if (!dusunWargaSet.has(w.dusun)) dusunWargaSet.set(w.dusun, new Set());
+      dusunWargaSet.get(w.dusun)!.add(w.id);
+    });
+    filteredAbsen.forEach(r => {
+      dusunHadirMap.set(r.dusun, (dusunHadirMap.get(r.dusun) || 0) + 1);
+    });
+
+    const jumlahHari = absenTanggal.size || 1;
+    const dusunSummary = Array.from(dusunWargaSet.entries())
+      .map(([dusun, wargaIds]) => {
+        const totalWarga = wargaIds.size;
+        const totalKehadiran = dusunHadirMap.get(dusun) || 0;
+        const maksKehadiran = totalWarga * jumlahHari;
+        const pct = maksKehadiran > 0 ? Math.round((totalKehadiran / maksKehadiran) * 100) : 0;
+        const status = pct >= 70 ? 'Aktif' : pct >= 30 ? 'Cukup' : 'Jarang';
+        return { dusun, totalWarga, totalKehadiran, maksKehadiran, pct, status };
+      })
+      .sort((a, b) => b.pct - a.pct);
+
+    // ── Sheet 1: Rekap per Dusun ──
+    const rekapData: any[][] = [
+      ['REKAPITULASI ABSENSI RONDA PER DUSUN'],
+      [`Periode: ${labelPeriode}`],
+      [],
+      ['Dusun', 'Jumlah Warga', 'Total Kehadiran', 'Maks Kehadiran', 'Rata-rata', 'Status'],
+    ];
+    dusunSummary.forEach(d => {
+      rekapData.push([d.dusun, d.totalWarga, d.totalKehadiran, d.maksKehadiran, `${d.pct}%`, d.status]);
+    });
+    rekapData.push([]);
+    rekapData.push(['TOTAL', semuaWarga.length, totalHadir, totalScheduled, `${persentase}%`, '']);
+
+    const wsRekap = utils.aoa_to_sheet(rekapData);
+    wsRekap['!cols'] = [
+      { wch: 16 }, { wch: 16 }, { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 12 },
+    ];
+
+    // ── Sheet 2: Detail Absensi ──
+    const sortedAbsen = [...filteredAbsen].sort((a, b) => {
+      const dc = b.tanggal.localeCompare(a.tanggal);
+      if (dc !== 0) return dc;
       return b.jamAbsen.localeCompare(a.jamAbsen);
     });
 
-    // Build sheet data as array-of-arrays (summary + header + rows)
-    const sheetData: any[][] = [
-      ['REKAPITULASI ABSENSI RONDA', '', '', '', '', '', ''],
-      [`Periode: ${labelPeriode}`, '', '', '', '', '', ''],
+    const detailData: any[][] = [
+      ['DETAIL ABSENSI RONDA'],
+      [`Periode: ${labelPeriode}`],
       [],
-      ['Total Jadwal', '', '', '', totalScheduled, '', ''],
-      ['Total Hadir', '', '', '', totalHadir, '', ''],
-      ['Persentase Kehadiran', '', '', '', `${persentase}%`, '', ''],
-      [],
+      ['No', 'Nama', 'Dusun', 'Tanggal', 'Jam Absen', 'Jarak (m)', 'Status'],
     ];
-
-    // Column headers
-    sheetData.push(['No', 'Nama', 'Dusun', 'Tanggal', 'Jam Absen', 'Jarak (m)', 'Status']);
-
-    // Data rows
-    sortedAbsen.forEach((record, index) => {
-      sheetData.push([
-        index + 1,
-        record.nama,
-        record.dusun,
-        formatTanggalIndo(record.tanggal),
-        record.jamAbsen,
-        record.jarakMeter,
-        'HADIR',
-      ]);
+    sortedAbsen.forEach((r, i) => {
+      detailData.push([i + 1, r.nama, r.dusun, formatTanggalIndo(r.tanggal), r.jamAbsen, r.jarakMeter, 'HADIR']);
     });
 
-    const ws = utils.aoa_to_sheet(sheetData);
-    const wb = utils.book_new();
-
-    ws['!cols'] = [
-      { wch: 25 },
-      { wch: 30 },
-      { wch: 10 },
-      { wch: 35 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 12 },
+    const wsDetail = utils.aoa_to_sheet(detailData);
+    wsDetail['!cols'] = [
+      { wch: 6 }, { wch: 28 }, { wch: 14 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
     ];
 
-    utils.book_append_sheet(wb, ws, 'Laporan Absensi Ronda');
+    // ── Gabung workbook ──
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, wsRekap, 'Rekap per Dusun');
+    utils.book_append_sheet(wb, wsDetail, 'Detail Absensi');
     writeFile(wb, `Laporan_Absen_Ronda_Kawunglarang_${labelFile}.xlsx`);
     setLoading(false);
     setShowModal(false);
