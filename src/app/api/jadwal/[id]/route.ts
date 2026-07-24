@@ -15,10 +15,10 @@ export async function PUT(
 
   const { id } = await params;
   try {
-    const { tanggal, warga_id, shift, keterangan } = await request.json();
+    const { hari, warga_id, shift, keterangan } = await request.json();
     const { error } = await supabase
       .from('jadwal_ronda')
-      .update({ tanggal, warga_id, shift, keterangan })
+      .update({ hari, warga_id, shift, keterangan })
       .eq('id', id);
 
     if (error) {

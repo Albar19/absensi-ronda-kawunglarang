@@ -7,7 +7,6 @@ export async function GET() {
   const { data, error } = await supabase
     .from('jadwal_ronda')
     .select('*')
-    .order('tanggal', { ascending: false })
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -24,14 +23,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { tanggal, warga_id, keterangan } = await request.json();
-    if (!tanggal || !warga_id) {
+    const { hari, warga_id, keterangan } = await request.json();
+    if (!hari || !warga_id) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
     const { error } = await supabase
       .from('jadwal_ronda')
-      .insert({ tanggal, warga_id, shift: 'malam', keterangan });
+      .insert({ hari, warga_id, shift: 'malam', keterangan });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });

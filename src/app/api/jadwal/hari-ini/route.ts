@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { getHariIniIndonesia } from '@/lib/data';
 
 export async function GET() {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const hariIni = getHariIniIndonesia();
 
     const { data, error } = await supabase
       .from('jadwal_ronda')
       .select('warga_id')
-      .eq('tanggal', today);
+      .eq('hari', hariIni);
 
     if (error) {
       return NextResponse.json(

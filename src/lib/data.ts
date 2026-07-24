@@ -81,6 +81,14 @@ export function formatTanggalIndo(tanggalStr: string): string {
 }
 
 // ----------------------------------------------------------
+// Dapatkan nama hari dalam bahasa Indonesia
+// ----------------------------------------------------------
+export function getHariIniIndonesia(): string {
+  const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  return hari[new Date().getDay()];
+}
+
+// ----------------------------------------------------------
 // GENERATE UNIQUE ID
 // ----------------------------------------------------------
 export function generateId(): string {
