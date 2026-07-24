@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Trash2, QrCode, UsersIcon, Calendar, Search, Database, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
+import { LogOut, RefreshCw, QrCode, UsersIcon, Calendar, Search, Database, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { AbsenRecord } from '@/lib/types';
 import { formatTanggalIndo, getTanggalHariIni, getHariIniIndonesia, countHariDalamRentang } from '@/lib/data';
 import AbsenTable from '@/components/admin/AbsenTable';
@@ -11,7 +11,6 @@ import ExportButton from '@/components/admin/ExportButton';
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [absenHariIni, setAbsenHariIni] = useState<AbsenRecord[]>([]);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [lastRefresh, setLastRefresh] = useState('');
   const [wargaList, setWargaList] = useState<{ id: string; nama: string; dusun: string }[]>([]);
   const [semuaRiwayat, setSemuaRiwayat] = useState<AbsenRecord[]>([]);
@@ -97,12 +96,6 @@ export default function AdminDashboardPage() {
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/admin');
-  }
-
-  async function handleReset() {
-    await fetch('/api/absen/reset', { method: 'DELETE' });
-    refreshData();
-    setShowResetConfirm(false);
   }
 
   const wargaData = wargaList;
@@ -402,12 +395,6 @@ export default function AdminDashboardPage() {
               <span className="hidden sm:inline">QR Code</span>
             </a>
             <ExportButton />
-            <button onClick={() => setShowResetConfirm(true)}
-              className="inline-flex items-center gap-2 bg-white text-red-700 px-4 py-2.5 rounded-xl font-bold text-sm border-2 border-red-300 hover:bg-red-50 active:scale-[0.97] transition-all"
-              style={{ minHeight: '44px' }}>
-              <Trash2 size={16} strokeWidth={2.5} />
-              <span className="hidden sm:inline">Reset</span>
-            </button>
           </div>
         </div>
 
@@ -418,25 +405,6 @@ export default function AdminDashboardPage() {
           Sistem Absensi Ronda — Bale Desa Kawunglarang
         </p>
       </div>
-
-      {showResetConfirm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-auto">
-            <h3 className="text-xl font-black text-slate-900 mb-3">Konfirmasi Reset</h3>
-            <p className="text-base text-slate-600 font-medium mb-6">
-              Apakah Anda yakin ingin menghapus semua data absen hari ini? Tindakan ini tidak bisa dibatalkan.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowResetConfirm(false)}
-                className="flex-1 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-bold text-base"
-                style={{ minHeight: '52px' }}>Batal</button>
-              <button onClick={handleReset}
-                className="flex-1 py-3 rounded-xl bg-red-700 text-white font-bold text-base border-2 border-red-700"
-                style={{ minHeight: '52px' }}>Ya, Hapus</button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
