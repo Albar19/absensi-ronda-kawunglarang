@@ -136,6 +136,25 @@ export default function AdminDashboardPage() {
       .sort((a, b) => b.hadir - a.hadir || a.nama.localeCompare(b.nama));
   }, [wargaData, absenCountMap, absenHariIni, searchQuery, dusunFilter]);
 
+  // Per-dusun summary (30-day)
+  const dusunSummary = useMemo(() => {
+    const map = new Map<string, { total: number; hadir: number }>();
+    wargaData.forEach(w => {
+      const prev = map.get(w.dusun) || { total: 0, hadir: 0 };
+      prev.total += 30;
+      prev.hadir += absenCountMap.get(w.id) || 0;
+      map.set(w.dusun, prev);
+    });
+    return Array.from(map.entries())
+      .map(([nama, data]) => ({
+        nama,
+        total: data.total,
+        hadir: data.hadir,
+        pct: Math.round((data.hadir / data.total) * 100),
+      }))
+      .sort((a, b) => b.pct - a.pct || a.nama.localeCompare(b.nama));
+  }, [wargaData, absenCountMap]);
+
   return (
     <main className="min-h-screen bg-slate-50">
       <nav className="bg-[#1e3a8a] text-white sticky top-0 z-50 shadow-md">
@@ -241,6 +260,59 @@ export default function AdminDashboardPage() {
 
         
 
+        {/* ─── Ringkasan per Dusun ─── */}
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-200">
+            <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
+              Ringkasan per Dusun (30 Hari)
+            </h3>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {dusunSummary.length === 0 ? (
+              <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">
+                Belum ada data
+              </div>
+            ) : (
+              dusunSummary.map(d => {
+                const label = d.pct >= 70 ? 'Aktif' : d.pct >= 30 ? 'Cukup' : 'Jarang';
+                const color = d.pct >= 70 ? 'bg-green-600' : d.pct >= 30 ? 'bg-yellow-500' : 'bg-red-500';
+                const textColor = d.pct >= 70 ? 'text-green-700' : d.pct >= 30 ? 'text-yellow-700' : 'text-red-700';
+                const badgeBg = d.pct >= 70 ? 'bg-green-100 text-green-800' : d.pct >= 30 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+                return (
+                  <div key={d.nama} className="px-4 sm:px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-slate-900 truncate">{d.nama}</p>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${badgeBg} flex-shrink-0`}>
+                          {label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden max-w-[200px]">
+                          <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${d.pct}%` }} />
+                        </div>
+                        <span className="text-xs font-black text-slate-600 tabular-nums flex-shrink-0">{d.hadir}/{d.total}</span>
+                        <span className={`text-xs font-black tabular-nums flex-shrink-0 ${textColor}`}>{d.pct}%</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center gap-4 text-[11px] text-slate-500 font-medium flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-green-600 inline-block" /> &ge;70% (Aktif)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block" /> 30-69% (Cukup)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> &lt;30% (Jarang)
+            </span>
+          </div>
+        </div>
+
         {/* Per-Person Attendance */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-200">
@@ -313,7 +385,7 @@ export default function AdminDashboardPage() {
 
           <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center gap-4 text-[11px] text-slate-500 font-medium flex-wrap">
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-green-600 inline-block" /> &ge;70% (Rajin)
+              <span className="w-3 h-3 rounded-full bg-green-600 inline-block" /> &ge;70% (Aktif)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block" /> 30-69% (Cukup)
