@@ -21,7 +21,7 @@ export default function AdminWargaPage() {
   const [editNama, setEditNama] = useState('');
   const [editDusun, setEditDusun] = useState('');
   const [showAdd, setShowAdd] = useState(false);
-  const [addId, setAddId] = useState('');
+  const [generatedId, setGeneratedId] = useState('');
   const [addNama, setAddNama] = useState('');
   const [addDusun, setAddDusun] = useState('');
   const [newDusunName, setNewDusunName] = useState('');
@@ -46,8 +46,18 @@ export default function AdminWargaPage() {
     fetchWarga();
   }, []);
 
+  // Fetch auto-generated ID when dusun changes
+  useEffect(() => {
+    const dusunFinal = addDusun === '__tambah__' ? newDusunName.trim() : addDusun;
+    if (!dusunFinal) { setGeneratedId(''); return; }
+    fetch(`/api/warga/next-id?dusun=${encodeURIComponent(dusunFinal)}`)
+      .then(r => r.ok ? r.json() : { id: '' })
+      .then(data => setGeneratedId(data.id || ''))
+      .catch(() => setGeneratedId(''));
+  }, [addDusun, newDusunName]);
+
   async function handleAdd() {
-    if (!addId || !addNama || submitting) return;
+    if (!generatedId || !addNama || submitting) return;
     if (!addDusun) { alert('Pilih Dusun terlebih dahulu'); return; }
     if (addDusun === '__tambah__' && !newDusunName.trim()) { alert('Isi nama Dusun baru'); return; }
     setSubmitting('add');
@@ -73,12 +83,12 @@ export default function AdminWargaPage() {
     const res = await fetch('/api/warga', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: addId.trim(), nama: addNama.trim(), dusun: dusunFinal }),
+      body: JSON.stringify({ id: generatedId, nama: addNama.trim(), dusun: dusunFinal }),
     });
     setSubmitting(null);
     if (res.ok) {
       setShowAdd(false);
-      setAddId('');
+      setGeneratedId('');
       setAddNama('');
       setAddDusun('');
       setNewDusunName('');
@@ -231,10 +241,10 @@ export default function AdminWargaPage() {
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-auto space-y-4">
             <h3 className="text-xl font-black text-slate-900">Tambah Warga Baru</h3>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">ID</label>
-              <input value={addId} onChange={e => setAddId(e.target.value)}
-                placeholder="contoh: dsn01-011"
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
+              <label className="block text-sm font-bold text-slate-700 mb-1">ID (otomatis)</label>
+              <input value={generatedId} readOnly
+                placeholder={addDusun ? 'Menggenerate...' : 'Pilih dusun terlebih dahulu'}
+                className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-base font-semibold bg-slate-50 text-slate-600 cursor-not-allowed"
                 style={{ minHeight: '48px' }} />
             </div>
             <div>
