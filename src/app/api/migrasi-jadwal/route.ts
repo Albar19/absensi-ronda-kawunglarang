@@ -26,22 +26,21 @@ UPDATE jadwal_ronda SET hari = (
 type CekResult = { done: boolean; pesan: string };
 
 async function cekStatusMigrasi(): Promise<CekResult> {
-  try {
-    const { data } = await supabase.from('jadwal_ronda').select('hari').limit(1);
-    // Kolom 'hari' ada dan query berhasil -> sudah termigrasi
+  // Coba query kolom 'hari' — kalau error, berarti masih pakai skema lama
+  const { error: errHari } = await supabase.from('jadwal_ronda').select('hari').limit(1);
+  if (!errHari) {
+    // Kolom 'hari' ada, query sukses
     return { done: true, pesan: 'Migrasi jadwal sudah dilakukan.' };
-  } catch {
-    // Coba cek dengan kolom lama 'tanggal'
-    try {
-      const { data } = await supabase.from('jadwal_ronda').select('tanggal').limit(1);
-      if (data !== null) {
-        return { done: false, pesan: 'Tabel jadwal_ronda masih menggunakan kolom "tanggal". Jalankan migrasi untuk mengubah ke "hari".' };
-      }
-      return { done: true, pesan: 'Tabel jadwal_ronda belum ada data.' };
-    } catch {
-      return { done: true, pesan: 'Tabel jadwal_ronda belum ada.' };
-    }
   }
+
+  // Kolom 'hari' belum ada — cek apakah masih pakai 'tanggal'
+  const { data: dataLama } = await supabase.from('jadwal_ronda').select('tanggal').limit(1).maybeSingle();
+  if (dataLama !== null) {
+    return { done: false, pesan: 'Tabel jadwal_ronda masih menggunakan kolom "tanggal". Jalankan migrasi untuk mengubah ke "hari".' };
+  }
+
+  // Tabel belum ada sama sekali
+  return { done: true, pesan: 'Tabel jadwal_ronda belum ada.' };
 }
 
 async function jalankanMigrasi(): Promise<{ ok: boolean; pesan: string }> {

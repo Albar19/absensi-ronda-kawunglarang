@@ -34,16 +34,20 @@ export default function AdminJadwalPage() {
   const [submitting, setSubmitting] = useState<'add' | 'delete' | null>(null);
 
   async function fetchData() {
-    const [jRes, wRes] = await Promise.all([
-      fetch('/api/jadwal'),
-      fetch('/api/warga'),
-    ]);
-    if (jRes.status === 401 || wRes.status === 401) {
-      router.replace('/admin');
-      return;
+    try {
+      const [jRes, wRes] = await Promise.all([
+        fetch('/api/jadwal'),
+        fetch('/api/warga'),
+      ]);
+      if (jRes.status === 401 || wRes.status === 401) {
+        router.replace('/admin');
+        return;
+      }
+      if (jRes.ok) setJadwalList(await jRes.json());
+      if (wRes.ok) setWargaList(await wRes.json());
+    } catch {
+      console.error('Gagal fetch data jadwal');
     }
-    setJadwalList(await jRes.json());
-    setWargaList(await wRes.json());
     setLoading(false);
   }
 
