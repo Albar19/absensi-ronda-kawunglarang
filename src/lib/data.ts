@@ -81,6 +81,26 @@ export function formatTanggalIndo(tanggalStr: string): string {
 }
 
 // ----------------------------------------------------------
+// Hitung berapa kali hari tertentu muncul dalam rentang tanggal
+// ----------------------------------------------------------
+const DAY_INDEX: Record<string, number> = {
+  'Minggu': 0, 'Senin': 1, 'Selasa': 2, 'Rabu': 3,
+  'Kamis': 4, 'Jumat': 5, 'Sabtu': 6,
+};
+
+export function countHariDalamRentang(hari: string, start: Date, end: Date): number {
+  const target = DAY_INDEX[hari];
+  if (target === undefined) return 0;
+  let count = 0;
+  const d = new Date(start);
+  while (d <= end) {
+    if (d.getDay() === target) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
+// ----------------------------------------------------------
 // Dapatkan nama hari dalam bahasa Indonesia
 // ----------------------------------------------------------
 export function getHariIniIndonesia(): string {
