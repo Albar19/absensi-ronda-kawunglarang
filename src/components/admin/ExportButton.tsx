@@ -180,11 +180,11 @@ export default function ExportButton() {
               <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
                 style={{ minHeight: '48px' }}>
-                <option value="">Semua Bulan</option>
                 {months.map(m => {
                   const [tahun, bulan] = m.split('-');
                   return <option key={m} value={m}>{BULAN_INDONESIA[parseInt(bulan) - 1]} {tahun}</option>;
                 })}
+                <option value="">Semua Bulan</option>
               </select>
             </div>
 
