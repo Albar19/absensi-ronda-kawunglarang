@@ -6,7 +6,7 @@ import { hitungJarak } from '@/lib/data';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, wargaId, nama, rt, tanggal, jamAbsen, jarakMeter, koordinatLat, koordinatLng } = body;
+    const { id, wargaId, nama, dusun, tanggal, jamAbsen, jarakMeter, koordinatLat, koordinatLng } = body;
 
     if (!wargaId || !nama || !tanggal || !jamAbsen) {
       return NextResponse.json(
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       id,
       warga_id: wargaId,
       nama,
-      rt,
+      dusun,
       tanggal,
       jam_absen: jamAbsen,
       jarak_meter: jarakMeter,

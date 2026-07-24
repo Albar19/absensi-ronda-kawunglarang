@@ -5,14 +5,14 @@
 export interface Warga {
   id: string;
   nama: string;
-  rt: string;
+  dusun: string;
 }
 
 export interface AbsenRecord {
   id: string;
   wargaId: string;
   nama: string;
-  rt: string;
+  dusun: string;
   tanggal: string;       // format: "YYYY-MM-DD"
   jamAbsen: string;      // format: "HH:MM:SS"
   jarakMeter: number;

@@ -50,7 +50,7 @@ export default function AbsenTable({ wargaList, absenHariIni, filter }: AbsenTab
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-black text-slate-900 truncate">{w.nama}</p>
                 <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                  {w.rt}
+                  {w.dusun}
                   {record && (
                     <span className="ml-2 text-slate-400">· {record.jamAbsen} WIB · ±{record.jarakMeter}m</span>
                   )}
@@ -76,7 +76,7 @@ export default function AbsenTable({ wargaList, absenHariIni, filter }: AbsenTab
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              {['No','Nama','RT','Jam Absen','Jarak (m)','Status'].map(h => (
+              {['No','Nama','Dusun','Jam Absen','Jarak (m)','Status'].map(h => (
                 <th key={h} className="text-left px-4 py-3 font-black text-slate-500 text-xs uppercase tracking-wider whitespace-nowrap first:rounded-tl-xl last:rounded-tr-xl">
                   {h}
                 </th>
@@ -91,7 +91,7 @@ export default function AbsenTable({ wargaList, absenHariIni, filter }: AbsenTab
                 <tr key={w.id} className={`transition-colors ${hadir ? 'bg-green-50 hover:bg-green-100' : 'bg-white hover:bg-slate-50'}`}>
                   <td className="px-4 py-3 text-slate-400 font-semibold tabular-nums">{i + 1}</td>
                   <td className="px-4 py-3 font-bold text-slate-900">{w.nama}</td>
-                  <td className="px-4 py-3 text-slate-600 font-semibold whitespace-nowrap">{w.rt}</td>
+                  <td className="px-4 py-3 text-slate-600 font-semibold whitespace-nowrap">{w.dusun}</td>
                   <td className="px-4 py-3 tabular-nums font-semibold text-slate-700 whitespace-nowrap">{record ? record.jamAbsen : '—'}</td>
                   <td className="px-4 py-3 tabular-nums font-semibold text-slate-700 whitespace-nowrap">{record ? `±${record.jarakMeter}` : '—'}</td>
                   <td className="px-4 py-3">

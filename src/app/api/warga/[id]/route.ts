@@ -15,10 +15,10 @@ export async function PUT(
 
   const { id } = await params;
   try {
-    const { nama, rt } = await request.json();
+    const { nama, dusun } = await request.json();
     const { error } = await supabase
       .from('warga')
-      .update({ nama, rt })
+      .update({ nama, dusun })
       .eq('id', id);
 
     if (error) {

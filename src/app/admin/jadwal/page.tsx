@@ -17,7 +17,7 @@ interface Jadwal {
 interface Warga {
   id: string;
   nama: string;
-  rt: string;
+  dusun: string;
 }
 
 export default function AdminJadwalPage() {
@@ -146,7 +146,7 @@ export default function AdminJadwalPage() {
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-slate-900 truncate">{w?.nama || j.warga_id}</p>
                         <div className="flex items-center gap-3 text-xs text-slate-500 font-medium flex-wrap">
-                          <span>{w?.rt || '—'}</span>
+                          <span>{w?.dusun || '—'}</span>
                           {j.keterangan && <span className="truncate">— {j.keterangan}</span>}
                         </div>
                       </div>
@@ -183,7 +183,7 @@ export default function AdminJadwalPage() {
                 style={{ minHeight: '48px' }}>
                 <option value="">-- Pilih warga --</option>
                 {wargaList.map(w => (
-                  <option key={w.id} value={w.id}>{w.nama} ({w.rt})</option>
+                  <option key={w.id} value={w.id}>{w.nama} ({w.dusun})</option>
                 ))}
               </select>
             </div>

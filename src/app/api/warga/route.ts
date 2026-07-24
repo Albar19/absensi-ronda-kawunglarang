@@ -7,7 +7,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('warga')
     .select('*')
-    .order('rt')
+    .order('dusun')
     .order('nama');
 
   if (error) {
@@ -24,12 +24,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { id, nama, rt } = await request.json();
-    if (!id || !nama || !rt) {
+    const { id, nama, dusun } = await request.json();
+    if (!id || !nama || !dusun) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const { error } = await supabase.from('warga').insert({ id, nama, rt });
+    const { error } = await supabase.from('warga').insert({ id, nama, dusun });
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

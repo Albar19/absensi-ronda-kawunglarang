@@ -15,7 +15,7 @@ interface JadwalItem {
 interface WargaItem {
   id: string;
   nama: string;
-  rt: string;
+  dusun: string;
 }
 
 export default function JadwalHariIni() {
@@ -94,7 +94,7 @@ export default function JadwalHariIni() {
               <div key={j.id} className="flex items-center justify-between gap-3 bg-white rounded-lg px-3 sm:px-4 py-2.5 border border-blue-100">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-slate-900 truncate">{w?.nama || j.warga_id}</p>
-                  <p className="text-xs text-slate-500 font-medium">{w?.rt || '—'} {j.keterangan ? `• ${j.keterangan}` : ''}</p>
+                  <p className="text-xs text-slate-500 font-medium">{w?.dusun || '—'} {j.keterangan ? `• ${j.keterangan}` : ''}</p>
                 </div>
               </div>
             );

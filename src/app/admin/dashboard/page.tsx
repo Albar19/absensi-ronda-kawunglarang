@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Trash2, QrCode, UsersIcon, Calendar, Search } from 'lucide-react';
+import { LogOut, RefreshCw, Trash2, QrCode, UsersIcon, Calendar, Search, Database, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { AbsenRecord, FilterType } from '@/lib/types';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import AbsenTable from '@/components/admin/AbsenTable';
@@ -15,19 +15,22 @@ export default function AdminDashboardPage() {
   const [filter, setFilter] = useState<FilterType>('semua');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [lastRefresh, setLastRefresh] = useState('');
-  const [wargaList, setWargaList] = useState<{ id: string; nama: string; rt: string }[]>([]);
+  const [wargaList, setWargaList] = useState<{ id: string; nama: string; dusun: string }[]>([]);
   const [semuaRiwayat, setSemuaRiwayat] = useState<AbsenRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [rtFilter, setRtFilter] = useState('semua');
-  const [rtList, setRtList] = useState<string[]>([]);
+  const [dusunFilter, setDusunFilter] = useState('semua');
+  const [dusunList, setDusunList] = useState<string[]>([]);
+  const [migrasiStatus, setMigrasiStatus] = useState<'loading' | 'ok' | 'perlu' | 'error'>('loading');
+  const [migrasiPesan, setMigrasiPesan] = useState('');
+  const [migrasiRunning, setMigrasiRunning] = useState(false);
 
   const refreshData = useCallback(async () => {
     try {
-      const [hariIniRes, wargaRes, riwayatRes, rtRes] = await Promise.all([
+      const [hariIniRes, wargaRes, riwayatRes, dRes] = await Promise.all([
         fetch('/api/absen/hari-ini'),
         fetch('/api/warga'),
         fetch('/api/absen/semua'),
-        fetch('/api/rt'),
+        fetch('/api/dusun'),
       ]);
       if (hariIniRes.status === 401) {
         router.replace('/admin');
@@ -36,9 +39,9 @@ export default function AdminDashboardPage() {
       if (hariIniRes.ok) setAbsenHariIni(await hariIniRes.json());
       if (wargaRes.ok) setWargaList(await wargaRes.json());
       if (riwayatRes.ok) setSemuaRiwayat(await riwayatRes.json());
-      if (rtRes.ok) {
-        const data = await rtRes.json();
-        setRtList(data.map((r: { nama: string }) => r.nama));
+      if (dRes.ok) {
+        const data = await dRes.json();
+        setDusunList(data.map((r: { nama: string }) => r.nama));
       }
     } catch {
       // silent
@@ -55,6 +58,40 @@ export default function AdminDashboardPage() {
     const interval = setInterval(refreshData, 30000);
     return () => clearInterval(interval);
   }, [refreshData]);
+
+  // Cek status migrasi
+  useEffect(() => {
+    fetch('/api/migrasi')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.done) {
+          setMigrasiStatus('ok');
+        } else {
+          setMigrasiStatus('perlu');
+          setMigrasiPesan(data?.pesan || 'Perlu migrasi database');
+        }
+      })
+      .catch(() => setMigrasiStatus('error'));
+  }, []);
+
+  async function handleMigrasi() {
+    setMigrasiRunning(true);
+    setMigrasiPesan('Menjalankan migrasi...');
+    try {
+      const res = await fetch('/api/migrasi', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setMigrasiStatus('ok');
+        setMigrasiPesan(data.pesan || 'Migrasi berhasil!');
+        refreshData();
+      } else {
+        setMigrasiPesan(data.error || 'Gagal');
+      }
+    } catch {
+      setMigrasiPesan('Gagal terhubung ke server');
+    }
+    setMigrasiRunning(false);
+  }
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -93,11 +130,11 @@ export default function AdminDashboardPage() {
       }))
       .filter(w => {
         const matchSearch = !searchQuery || w.nama.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchRt = rtFilter === 'semua' || w.rt === rtFilter;
-        return matchSearch && matchRt;
+        const matchDusun = dusunFilter === 'semua' || w.dusun === dusunFilter;
+        return matchSearch && matchDusun;
       })
       .sort((a, b) => b.hadir - a.hadir || a.nama.localeCompare(b.nama));
-  }, [wargaData, absenCountMap, absenHariIni, searchQuery, rtFilter]);
+  }, [wargaData, absenCountMap, absenHariIni, searchQuery, dusunFilter]);
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -130,6 +167,62 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </nav>
+
+      {/* ─── MIGRASI BANNER ─── */}
+      {migrasiStatus === 'loading' && (
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-5 py-3">
+            <Loader size={20} className="animate-spin text-blue-600" />
+            <p className="text-sm font-semibold text-blue-800">Memeriksa status database...</p>
+          </div>
+        </div>
+      )}
+      {migrasiStatus === 'perlu' && (
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <div className="flex items-start gap-4 bg-amber-50 border-2 border-amber-400 rounded-xl px-5 py-4">
+            <div className="flex-shrink-0 mt-0.5">
+              <Database size={24} className="text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-black text-amber-900 uppercase tracking-wide">Migrasi Database Diperlukan</p>
+              <p className="text-sm text-amber-800 font-medium mt-1">
+                Sistem ini masih menggunakan struktur database lama (RT). Klik tombol di samping untuk mengubah ke struktur baru (Dusun).
+              </p>
+              {migrasiPesan && migrasiPesan !== 'Menjalankan migrasi...' && (
+                <p className="text-xs text-amber-700 mt-1 font-mono">{migrasiPesan}</p>
+              )}
+            </div>
+            <button
+              onClick={handleMigrasi}
+              disabled={migrasiRunning}
+              className="flex-shrink-0 flex items-center gap-2 bg-amber-600 text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-amber-700 disabled:opacity-60 transition-all active:scale-[0.97]"
+              style={{ minHeight: '48px' }}
+            >
+              {migrasiRunning ? (
+                <><Loader size={18} className="animate-spin" /> Memproses...</>
+              ) : (
+                <><Database size={18} /> Jalankan Migrasi</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+      {migrasiStatus === 'ok' && migrasiPesan && (
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-5 py-3">
+            <CheckCircle size={20} className="text-green-600" />
+            <p className="text-sm font-semibold text-green-800">{migrasiPesan}</p>
+          </div>
+        </div>
+      )}
+      {migrasiStatus === 'error' && (
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-5 py-3">
+            <AlertTriangle size={20} className="text-red-600" />
+            <p className="text-sm font-semibold text-red-800">Gagal memeriksa status database.</p>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
         {/* Date + Refresh */}
@@ -167,11 +260,11 @@ export default function AdminDashboardPage() {
                     style={{ minHeight: '40px' }}
                   />
                 </div>
-                <select value={rtFilter} onChange={e => setRtFilter(e.target.value)}
+                <select value={dusunFilter} onChange={e => setDusunFilter(e.target.value)}
                   className="px-3 py-2 border-2 border-slate-200 rounded-lg text-sm font-semibold focus:border-[#1e3a8a] focus:outline-none"
                   style={{ minHeight: '40px' }}>
-                  <option value="semua">Semua RT</option>
-                  {rtList.map(r => <option key={r} value={r}>{r}</option>)}
+                  <option value="semua">Semua Dusun</option>
+                  {dusunList.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
             </div>
@@ -190,7 +283,7 @@ export default function AdminDashboardPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-bold text-slate-900 truncate">{w.nama}</p>
-                        <span className="text-xs text-slate-500 font-medium flex-shrink-0 hidden sm:inline">{w.rt}</span>
+                        <span className="text-xs text-slate-500 font-medium flex-shrink-0 hidden sm:inline">{w.dusun}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden max-w-[200px]">

@@ -102,14 +102,14 @@ export default function ExportButton() {
     ];
 
     // Column headers
-    sheetData.push(['No', 'Nama', 'RT', 'Tanggal', 'Jam Absen', 'Jarak (m)', 'Status']);
+    sheetData.push(['No', 'Nama', 'Dusun', 'Tanggal', 'Jam Absen', 'Jarak (m)', 'Status']);
 
     // Data rows
     sortedAbsen.forEach((record, index) => {
       sheetData.push([
         index + 1,
         record.nama,
-        record.rt,
+        record.dusun,
         formatTanggalIndo(record.tanggal),
         record.jamAbsen,
         record.jarakMeter,

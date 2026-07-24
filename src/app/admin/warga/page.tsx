@@ -8,35 +8,35 @@ import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 interface Warga {
   id: string;
   nama: string;
-  rt: string;
+  dusun: string;
   created_at: string;
 }
 
 export default function AdminWargaPage() {
   const router = useRouter();
   const [wargaList, setWargaList] = useState<Warga[]>([]);
-  const [rtList, setRtList] = useState<string[]>([]);
+  const [dusunList, setDusunList] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNama, setEditNama] = useState('');
-  const [editRt, setEditRt] = useState('');
+  const [editDusun, setEditDusun] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [addId, setAddId] = useState('');
   const [addNama, setAddNama] = useState('');
-  const [addRt, setAddRt] = useState('');
-  const [newRtName, setNewRtName] = useState('');
+  const [addDusun, setAddDusun] = useState('');
+  const [newDusunName, setNewDusunName] = useState('');
   const [submitting, setSubmitting] = useState<'add' | 'edit' | 'delete' | null>(null);
 
   async function fetchWarga() {
-    const [wRes, rtRes] = await Promise.all([
+    const [wRes, dRes] = await Promise.all([
       fetch('/api/warga'),
-      fetch('/api/rt'),
+      fetch('/api/dusun'),
     ]);
     if (wRes.status === 401) { router.replace('/admin'); return; }
     if (wRes.ok) setWargaList(await wRes.json());
-    if (rtRes.ok) {
-      const data = await rtRes.json();
-      setRtList(data.map((r: { nama: string }) => r.nama));
+    if (dRes.ok) {
+      const data = await dRes.json();
+      setDusunList(data.map((r: { nama: string }) => r.nama));
     }
     setLoading(false);
   }
@@ -48,23 +48,23 @@ export default function AdminWargaPage() {
 
   async function handleAdd() {
     if (!addId || !addNama || submitting) return;
-    if (!addRt) { alert('Pilih RT terlebih dahulu'); return; }
-    if (addRt === '__tambah__' && !newRtName.trim()) { alert('Isi nama RT baru'); return; }
+    if (!addDusun) { alert('Pilih Dusun terlebih dahulu'); return; }
+    if (addDusun === '__tambah__' && !newDusunName.trim()) { alert('Isi nama Dusun baru'); return; }
     setSubmitting('add');
 
-    let rtFinal = addRt;
-    if (rtFinal === '__tambah__' && newRtName.trim()) {
-      const rtRes = await fetch('/api/rt', {
+    let dusunFinal = addDusun;
+    if (dusunFinal === '__tambah__' && newDusunName.trim()) {
+      const dRes = await fetch('/api/dusun', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nama: newRtName.trim() }),
+        body: JSON.stringify({ nama: newDusunName.trim() }),
       });
-      if (rtRes.ok) {
-        const data = await rtRes.json();
-        rtFinal = data.nama;
+      if (dRes.ok) {
+        const data = await dRes.json();
+        dusunFinal = data.nama;
       } else {
-        const err = await rtRes.json();
-        alert(err.error || 'Gagal menambah RT');
+        const err = await dRes.json();
+        alert(err.error || 'Gagal menambah Dusun');
         setSubmitting(null);
         return;
       }
@@ -73,15 +73,15 @@ export default function AdminWargaPage() {
     const res = await fetch('/api/warga', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: addId.trim(), nama: addNama.trim(), rt: rtFinal }),
+      body: JSON.stringify({ id: addId.trim(), nama: addNama.trim(), dusun: dusunFinal }),
     });
     setSubmitting(null);
     if (res.ok) {
       setShowAdd(false);
       setAddId('');
       setAddNama('');
-      setAddRt('');
-      setNewRtName('');
+      setAddDusun('');
+      setNewDusunName('');
       fetchWarga();
     } else {
       const data = await res.json();
@@ -95,7 +95,7 @@ export default function AdminWargaPage() {
     const res = await fetch(`/api/warga/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nama: editNama.trim(), rt: editRt }),
+      body: JSON.stringify({ nama: editNama.trim(), dusun: editDusun }),
     });
     setSubmitting(null);
     if (res.ok) {
@@ -159,7 +159,7 @@ export default function AdminWargaPage() {
                   <th className="text-left px-4 py-3 font-black text-slate-700 text-xs uppercase w-12">No</th>
                   <th className="text-left px-4 py-3 font-black text-slate-700 text-xs uppercase">ID</th>
                   <th className="text-left px-4 py-3 font-black text-slate-700 text-xs uppercase">Nama</th>
-                  <th className="text-left px-4 py-3 font-black text-slate-700 text-xs uppercase w-20">RT</th>
+                  <th className="text-left px-4 py-3 font-black text-slate-700 text-xs uppercase w-20">Dusun</th>
                   <th className="text-center px-4 py-3 font-black text-slate-700 text-xs uppercase w-28">Aksi</th>
                 </tr>
               </thead>
@@ -176,10 +176,10 @@ export default function AdminWargaPage() {
                             style={{ minHeight: '44px' }} />
                         </td>
                         <td className="px-4 py-2">
-                          <select value={editRt} onChange={e => setEditRt(e.target.value)}
+                          <select value={editDusun} onChange={e => setEditDusun(e.target.value)}
                             className="w-full px-3 py-2.5 border-2 border-blue-500 rounded-lg text-sm font-semibold"
                             style={{ minHeight: '44px' }}>
-                            {rtList.map(r => <option key={r} value={r}>{r}</option>)}
+                            {dusunList.map(r => <option key={r} value={r}>{r}</option>)}
                           </select>
                         </td>
                         <td className="px-4 py-2">
@@ -200,10 +200,10 @@ export default function AdminWargaPage() {
                     ) : (
                       <>
                         <td className="px-4 py-3 font-bold text-slate-900 break-words">{w.nama}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-700">{w.rt}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-700">{w.dusun}</td>
                         <td className="px-4 py-2">
                           <div className="flex justify-center gap-2">
-                            <button onClick={() => { setEditingId(w.id); setEditNama(w.nama); setEditRt(w.rt); }}
+                            <button onClick={() => { setEditingId(w.id); setEditNama(w.nama); setEditDusun(w.dusun); }}
                               disabled={submitting !== null}
                               className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all"
                               style={{ minHeight: '44px', minWidth: '44px' }}>
@@ -233,7 +233,7 @@ export default function AdminWargaPage() {
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">ID</label>
               <input value={addId} onChange={e => setAddId(e.target.value)}
-                placeholder="contoh: rt01-011"
+                placeholder="contoh: dsn01-011"
                 className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
                 style={{ minHeight: '48px' }} />
             </div>
@@ -245,17 +245,17 @@ export default function AdminWargaPage() {
                 style={{ minHeight: '48px' }} />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">RT</label>
-              <select value={addRt} onChange={e => setAddRt(e.target.value)}
+              <label className="block text-sm font-bold text-slate-700 mb-1">Dusun</label>
+              <select value={addDusun} onChange={e => setAddDusun(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
                 style={{ minHeight: '48px' }}>
-                <option value="">-- Pilih RT --</option>
-                {rtList.map(r => <option key={r} value={r}>{r}</option>)}
-                <option value="__tambah__">+ Tambah RT Baru...</option>
+                <option value="">-- Pilih Dusun --</option>
+                {dusunList.map(r => <option key={r} value={r}>{r}</option>)}
+                <option value="__tambah__">+ Tambah Dusun Baru...</option>
               </select>
-              {addRt === '__tambah__' && (
-                <input value={newRtName} onChange={e => setNewRtName(e.target.value)}
-                  placeholder="Nama RT baru (contoh: RT 05)"
+              {addDusun === '__tambah__' && (
+                <input value={newDusunName} onChange={e => setNewDusunName(e.target.value)}
+                  placeholder="Nama Dusun baru (contoh: Dusun 1)"
                   className="w-full px-4 py-3 border-2 border-blue-500 rounded-xl text-base font-semibold mt-2"
                   style={{ minHeight: '48px' }} />
               )}

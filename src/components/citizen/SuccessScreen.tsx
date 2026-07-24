@@ -25,7 +25,7 @@ export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
       <div className="w-full max-w-sm bg-white border-2 border-green-400 rounded-2xl overflow-hidden shadow-sm mb-6">
         {[
           { icon: '👤', label: 'Nama',     value: record.nama },
-          { icon: '🏘️', label: 'Wilayah',  value: record.rt },
+          { icon: '🏘️', label: 'Wilayah',  value: record.dusun },
           { icon: '🕐', label: 'Jam Absen', value: `${record.jamAbsen} WIB` },
           { icon: '📍', label: 'Jarak',     value: `± ${record.jarakMeter} meter` },
         ].map((row, i, arr) => (

@@ -100,7 +100,7 @@ export default function HomePage() {
       id: generateId(),
       wargaId: warga.id,
       nama: warga.nama,
-      rt: warga.rt,
+      dusun: warga.dusun,
       tanggal: getTanggalHariIni(),
       jamAbsen: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`,
       jarakMeter: jarakMeter ?? 0,

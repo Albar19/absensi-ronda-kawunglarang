@@ -33,7 +33,7 @@ export async function GET() {
     id: r.id,
     wargaId: r.warga_id,
     nama: r.nama,
-    rt: r.rt,
+    dusun: r.dusun,
     tanggal: r.tanggal,
     jamAbsen: r.jam_absen,
     jarakMeter: r.jarak_meter,

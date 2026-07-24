@@ -60,7 +60,7 @@ const [lockError, setLockError]   = useState<string | null>(null);
     if (!query.trim()) return wargaRonda.slice(0, 8);
     const q = query.toLowerCase();
     return wargaRonda.filter(w =>
-      w.nama.toLowerCase().includes(q) || w.rt.toLowerCase().includes(q)
+      w.nama.toLowerCase().includes(q) || w.dusun.toLowerCase().includes(q)
     ).slice(0, 8);
   }, [query, wargaRonda]);
 
@@ -120,7 +120,7 @@ const [lockError, setLockError]   = useState<string | null>(null);
               type="text"
               inputMode="text"
               autoComplete="off"
-              placeholder="Ketik nama atau RT…"
+              placeholder="Ketik nama atau dusun…"
               value={query}
               onChange={e => { setQuery(e.target.value); setSelected(null); setLockError(null); setShowDropdown(true); }}
               onFocus={() => setShowDropdown(true)}
@@ -143,9 +143,9 @@ const [lockError, setLockError]   = useState<string | null>(null);
                 >
                   <div className="min-w-0">
                     <p className="text-base font-bold text-slate-900 truncate leading-tight">{w.nama}</p>
-                    <p className="text-xs font-semibold text-slate-500 mt-0.5">{w.rt}</p>
+                    <p className="text-xs font-semibold text-slate-500 mt-0.5">{w.dusun}</p>
                   </div>
-                  <span className="text-xs font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md flex-shrink-0">{w.rt}</span>
+                  <span className="text-xs font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md flex-shrink-0">{w.dusun}</span>
                 </button>
               ))}
             </div>
@@ -161,7 +161,7 @@ const [lockError, setLockError]   = useState<string | null>(null);
 
         {/* Hint */}
         {!query && wargaRonda.length > 0 && (
-          <p className="text-xs text-slate-400 mt-2 px-1">Klik kolom untuk lihat daftar, atau ketik nama/RT untuk mencari</p>
+          <p className="text-xs text-slate-400 mt-2 px-1">Klik kolom untuk lihat daftar, atau ketik nama/dusun untuk mencari</p>
         )}
       </div>
 
@@ -180,7 +180,7 @@ const [lockError, setLockError]   = useState<string | null>(null);
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-wider text-green-600">Dipilih</p>
             <p className="text-base font-black text-green-900 leading-tight truncate">{selected.nama}</p>
-            <p className="text-xs font-semibold text-green-700">{selected.rt}</p>
+            <p className="text-xs font-semibold text-green-700">{selected.dusun}</p>
           </div>
         </div>
       )}

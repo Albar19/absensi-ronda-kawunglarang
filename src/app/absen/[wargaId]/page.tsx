@@ -149,7 +149,7 @@ export default function AbsenQRPage() {
       id: generateId(),
       wargaId: warga.id,
       nama: warga.nama,
-      rt: warga.rt,
+      dusun: warga.dusun,
       tanggal: getTanggalHariIni(),
       jamAbsen: `${jam}:${menit}:${detik}`,
       jarakMeter: jarakMeter ?? 0,
@@ -268,7 +268,7 @@ export default function AbsenQRPage() {
             <p className="text-3xl mb-2">👤</p>
             <p className="text-xs font-bold uppercase tracking-widest text-[#1e3a8a]">Absen Atas Nama</p>
             <p className="text-2xl font-black text-[#1e3a8a] leading-tight mt-1">{warga.nama}</p>
-            <p className="text-lg font-bold text-[#1e3a8a]/70 mt-1">{warga.rt}</p>
+            <p className="text-lg font-bold text-[#1e3a8a]/70 mt-1">{warga.dusun}</p>
           </div>
 
           <JadwalHariIni />
@@ -322,7 +322,7 @@ export default function AbsenQRPage() {
             <div className="bg-green-50 border-2 border-green-500 rounded-xl px-5 py-5 text-center mt-5">
               <p className="text-xs font-bold uppercase tracking-widest text-green-700">Konfirmasi Absen</p>
               <p className="text-2xl font-black text-green-900 mt-1">{warga.nama}</p>
-              <p className="text-lg font-bold text-green-700/70">{warga.rt}</p>
+              <p className="text-lg font-bold text-green-700/70">{warga.dusun}</p>
             </div>
 
             <button
