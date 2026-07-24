@@ -273,4 +273,4 @@ Jika ada pertanyaan atau perlu bantuan, hubungi:
 
 ---
 
-*Dibuat dengan ❤️ oleh KKN 46 Universitas Kuningan untuk Desa Kawunglarang*
+*Dibuat oleh KKN 46 Universitas Kuningan untuk Desa Kawunglarang*
