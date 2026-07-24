@@ -3,16 +3,14 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut, RefreshCw, Trash2, QrCode, UsersIcon, Calendar, Search, Database, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
-import { AbsenRecord, FilterType } from '@/lib/types';
+import { AbsenRecord } from '@/lib/types';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import AbsenTable from '@/components/admin/AbsenTable';
-import FilterBar from '@/components/admin/FilterBar';
 import ExportButton from '@/components/admin/ExportButton';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [absenHariIni, setAbsenHariIni] = useState<AbsenRecord[]>([]);
-  const [filter, setFilter] = useState<FilterType>('semua');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [lastRefresh, setLastRefresh] = useState('');
   const [wargaList, setWargaList] = useState<{ id: string; nama: string; dusun: string }[]>([]);
@@ -398,13 +396,6 @@ export default function AdminDashboardPage() {
 
         {/* Toolbar */}
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <FilterBar
-            activeFilter={filter}
-            onChange={setFilter}
-            countSemua={totalWarga}
-            countSudah={sudahAbsen}
-            countBelum={belumAbsen}
-          />
           <div className="flex items-center gap-2">
             <a href="/api/qr/download" download="qr-bale-desa.png"
               className="inline-flex items-center gap-2 bg-white text-[#1e3a8a] px-4 py-2.5 rounded-xl font-bold text-sm border-2 border-[#1e3a8a] hover:bg-blue-50 active:scale-[0.97] transition-all"
@@ -423,7 +414,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Table */}
-        <AbsenTable wargaList={wargaData} absenHariIni={absenHariIni} filter={filter} />
+        <AbsenTable wargaList={wargaData} absenHariIni={absenHariIni} filter="semua" />
 
         <p className="text-center text-xs text-slate-400 py-4">
           Sistem Absensi Ronda — Bale Desa Kawunglarang
