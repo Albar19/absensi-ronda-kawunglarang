@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, ChevronDown, ChevronUp } from 'lucide-react';
-import { getTanggalHariIni } from '@/lib/data';
+import { getHariIniIndonesia } from '@/lib/data';
 
 interface JadwalItem {
   id: string;
-  tanggal: string;
+  hari: string;
   warga_id: string;
   shift: string;
   keterangan: string | null;
@@ -32,8 +32,8 @@ export default function JadwalHariIni() {
       ]);
       if (jRes.ok) {
         const semuaJadwal: JadwalItem[] = await jRes.json();
-        const hariIni = getTanggalHariIni();
-        setJadwalList(semuaJadwal.filter(j => j.tanggal === hariIni));
+        const hariIni = getHariIniIndonesia();
+        setJadwalList(semuaJadwal.filter(j => j.hari === hariIni));
       }
       if (wRes.ok) {
         const warga: WargaItem[] = await wRes.json();

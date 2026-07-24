@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, ArrowLeft, LogOut } from 'lucide-react';
-import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
+import { getHariIniIndonesia } from '@/lib/data';
+
+const DAFTAR_HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
 interface Jadwal {
   id: string;
-  tanggal: string;
+  hari: string;
   warga_id: string;
   shift: string;
   keterangan: string | null;
@@ -26,7 +28,7 @@ export default function AdminJadwalPage() {
   const [wargaList, setWargaList] = useState<Warga[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [addTanggal, setAddTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [addHari, setAddHari] = useState(getHariIniIndonesia());
   const [addWargaId, setAddWargaId] = useState('');
   const [addKet, setAddKet] = useState('');
   const [submitting, setSubmitting] = useState<'add' | 'delete' | null>(null);
@@ -53,12 +55,12 @@ export default function AdminJadwalPage() {
   const wargaMap = new Map(wargaList.map(w => [w.id, w]));
 
   async function handleAdd() {
-    if (!addTanggal || !addWargaId || submitting) return;
+    if (!addHari || !addWargaId || submitting) return;
     setSubmitting('add');
     const res = await fetch('/api/jadwal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tanggal: addTanggal, warga_id: addWargaId, keterangan: addKet }),
+      body: JSON.stringify({ hari: addHari, warga_id: addWargaId, keterangan: addKet }),
     });
     setSubmitting(null);
     if (res.ok) {
@@ -86,11 +88,14 @@ export default function AdminJadwalPage() {
     router.push('/admin');
   }
 
+  // Group by hari with custom sort order (Senin first)
   const groupedJadwal: Record<string, Jadwal[]> = {};
   jadwalList.forEach(j => {
-    if (!groupedJadwal[j.tanggal]) groupedJadwal[j.tanggal] = [];
-    groupedJadwal[j.tanggal].push(j);
+    if (!groupedJadwal[j.hari]) groupedJadwal[j.hari] = [];
+    groupedJadwal[j.hari].push(j);
   });
+  const sortedHari = DAFTAR_HARI.filter(h => groupedJadwal[h]);
+  const hasData = sortedHari.length > 0;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -114,7 +119,7 @@ export default function AdminJadwalPage() {
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-lg font-black text-slate-900">{formatTanggalIndo(getTanggalHariIni())}</p>
+          <p className="text-lg font-black text-slate-900">Jadwal Harian Tetap</p>
           <button onClick={() => setShowAdd(true)}
             className="inline-flex items-center gap-2 bg-green-700 text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-green-800 active:scale-[0.97] transition-all"
             style={{ minHeight: '48px' }}>
@@ -125,42 +130,45 @@ export default function AdminJadwalPage() {
 
         {loading ? (
           <p className="text-center text-slate-400 py-12">Memuat data...</p>
-        ) : Object.keys(groupedJadwal).length === 0 ? (
+        ) : !hasData ? (
           <div className="text-center py-16 text-slate-400">
             <p className="text-5xl mb-4">📅</p>
             <p className="text-lg font-semibold">Belum ada jadwal ronda.</p>
             <p className="text-sm">Klik &quot;Tambah Jadwal&quot; untuk membuat jadwal baru.</p>
           </div>
         ) : (
-          Object.entries(groupedJadwal).sort((a, b) => b[0].localeCompare(a[0])).map(([tanggal, items]) => (
-            <div key={tanggal} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="bg-slate-100 px-5 py-3 border-b border-slate-200">
-                <p className="font-black text-slate-800">{formatTanggalIndo(tanggal)}</p>
-                <p className="text-xs text-slate-500 font-medium">{items.length} orang</p>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {items.map(j => {
-                  const w = wargaMap.get(j.warga_id);
-                  return (
-                    <div key={j.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-slate-900 truncate">{w?.nama || j.warga_id}</p>
-                        <div className="flex items-center gap-3 text-xs text-slate-500 font-medium flex-wrap">
-                          <span>{w?.dusun || '—'}</span>
-                          {j.keterangan && <span className="truncate">— {j.keterangan}</span>}
+          sortedHari.map(hari => {
+            const items = groupedJadwal[hari];
+            return (
+              <div key={hari} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-slate-100 px-5 py-3 border-b border-slate-200 flex items-center gap-3">
+                  <p className="font-black text-slate-800">{hari}</p>
+                  <span className="text-xs text-slate-500 font-medium">({items.length} orang)</span>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {items.map(j => {
+                    const w = wargaMap.get(j.warga_id);
+                    return (
+                      <div key={j.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-slate-900 truncate">{w?.nama || j.warga_id}</p>
+                          <div className="flex items-center gap-3 text-xs text-slate-500 font-medium flex-wrap">
+                            <span>{w?.dusun || '—'}</span>
+                            {j.keterangan && <span className="truncate">— {j.keterangan}</span>}
+                          </div>
                         </div>
+                        <button onClick={() => handleDelete(j.id)} disabled={submitting !== null}
+                          className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl disabled:opacity-50 transition-all flex-shrink-0"
+                          style={{ minHeight: '44px', minWidth: '44px' }}>
+                          {submitting === 'delete' ? <span className="animate-spin">⏳</span> : <Trash2 size={18} />}
+                        </button>
                       </div>
-                      <button onClick={() => handleDelete(j.id)} disabled={submitting !== null}
-                        className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl disabled:opacity-50 transition-all flex-shrink-0"
-                        style={{ minHeight: '44px', minWidth: '44px' }}>
-                        {submitting === 'delete' ? <span className="animate-spin">⏳</span> : <Trash2 size={18} />}
-                      </button>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -170,10 +178,12 @@ export default function AdminJadwalPage() {
             <h3 className="text-xl font-black text-slate-900">Tambah Jadwal Ronda</h3>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Tanggal</label>
-              <input type="date" value={addTanggal} onChange={e => setAddTanggal(e.target.value)}
+              <label className="block text-sm font-bold text-slate-700 mb-1">Hari</label>
+              <select value={addHari} onChange={e => setAddHari(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
-                style={{ minHeight: '48px' }} />
+                style={{ minHeight: '48px' }}>
+                {DAFTAR_HARI.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
             </div>
 
             <div>
