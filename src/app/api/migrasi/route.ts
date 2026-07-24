@@ -3,23 +3,6 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const PROJECT_REF = SUPABASE_URL.match(/https:\/\/(.+)\.supabase\.co/)?.[1];
-
-const SQL_MIGRASI = `
-ALTER TABLE IF EXISTS rt_list RENAME TO dusun_list;
-ALTER TABLE IF EXISTS warga RENAME COLUMN rt TO dusun;
-ALTER TABLE IF EXISTS absen_records RENAME COLUMN rt TO dusun;
-
-INSERT INTO dusun_list (nama) SELECT 'Dusun 1' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 1');
-INSERT INTO dusun_list (nama) SELECT 'Dusun 2' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 2');
-INSERT INTO dusun_list (nama) SELECT 'Dusun 3' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 3');
-INSERT INTO dusun_list (nama) SELECT 'Dusun 4' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 4');
-INSERT INTO dusun_list (nama) SELECT 'Dusun 5' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 5');
-INSERT INTO dusun_list (nama) SELECT 'Dusun 6' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 6');
-`;
-
 async function cekStatusMigrasi(): Promise<{ done: boolean; pesan: string }> {
   try {
     const { data } = await supabase.from('dusun_list').select('id').limit(1);
@@ -39,29 +22,31 @@ async function cekStatusMigrasi(): Promise<{ done: boolean; pesan: string }> {
 }
 
 async function jalankanMigrasi(): Promise<{ ok: boolean; pesan: string }> {
-  if (!PROJECT_REF) {
-    return { ok: false, pesan: 'Gagal membaca SUPABASE_URL. Pastikan formatnya https://xxxxx.supabase.co' };
+  const databaseUrl = process.env.SUPABASE_DATABASE_URL;
+  if (!databaseUrl) {
+    return { ok: false, pesan: 'SUPABASE_DATABASE_URL tidak tersedia di environment.' };
   }
 
   try {
-    const res = await fetch(`https://${PROJECT_REF}.supabase.co/pg/query`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query: SQL_MIGRASI }),
-    });
+    const { Pool } = await import('pg');
+    const pool = new Pool({ connectionString: databaseUrl });
 
-    if (!res.ok) {
-      const errBody = await res.text();
-      return { ok: false, pesan: `Gagal: ${res.status} — ${errBody}` };
-    }
+    await pool.query(`ALTER TABLE IF EXISTS rt_list RENAME TO dusun_list`);
+    await pool.query(`ALTER TABLE IF EXISTS warga RENAME COLUMN rt TO dusun`);
+    await pool.query(`ALTER TABLE IF EXISTS absen_records RENAME COLUMN rt TO dusun`);
 
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 1' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 1')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 2' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 2')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 3' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 3')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 4' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 4')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 5' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 5')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 6' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 6')`);
+
+    await pool.end();
     return { ok: true, pesan: 'Migrasi berhasil! Tabel & kolom telah diubah ke Dusun.' };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Terjadi kesalahan';
-    return { ok: false, pesan: `Gagal terhubung ke database: ${msg}` };
+    return { ok: false, pesan: `Gagal: ${msg}` };
   }
 }
 

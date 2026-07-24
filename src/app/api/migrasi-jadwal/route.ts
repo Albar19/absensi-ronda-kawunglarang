@@ -3,26 +3,6 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const PROJECT_REF = SUPABASE_URL.match(/https:\/\/(.+)\.supabase\.co/)?.[1];
-
-const SQL_MIGRASI = `
-ALTER TABLE IF EXISTS jadwal_ronda RENAME COLUMN tanggal TO hari;
-ALTER TABLE IF EXISTS jadwal_ronda ALTER COLUMN hari TYPE text;
-UPDATE jadwal_ronda SET hari = (
-  CASE
-    WHEN EXTRACT(DOW FROM hari::date) = 0 THEN 'Minggu'
-    WHEN EXTRACT(DOW FROM hari::date) = 1 THEN 'Senin'
-    WHEN EXTRACT(DOW FROM hari::date) = 2 THEN 'Selasa'
-    WHEN EXTRACT(DOW FROM hari::date) = 3 THEN 'Rabu'
-    WHEN EXTRACT(DOW FROM hari::date) = 4 THEN 'Kamis'
-    WHEN EXTRACT(DOW FROM hari::date) = 5 THEN 'Jumat'
-    WHEN EXTRACT(DOW FROM hari::date) = 6 THEN 'Sabtu'
-  END
-) WHERE hari IS NOT NULL;
-`;
-
 type CekResult = { done: boolean; pesan: string };
 
 async function cekStatusMigrasi(): Promise<CekResult> {
@@ -44,29 +24,36 @@ async function cekStatusMigrasi(): Promise<CekResult> {
 }
 
 async function jalankanMigrasi(): Promise<{ ok: boolean; pesan: string }> {
-  if (!PROJECT_REF) {
-    return { ok: false, pesan: 'Gagal membaca SUPABASE_URL. Pastikan formatnya https://xxxxx.supabase.co' };
+  const databaseUrl = process.env.SUPABASE_DATABASE_URL;
+  if (!databaseUrl) {
+    return { ok: false, pesan: 'SUPABASE_DATABASE_URL tidak tersedia di environment.' };
   }
 
   try {
-    const res = await fetch(`https://${PROJECT_REF}.supabase.co/pg/query`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query: SQL_MIGRASI }),
-    });
+    const { Pool } = await import('pg');
+    const pool = new Pool({ connectionString: databaseUrl });
 
-    if (!res.ok) {
-      const errBody = await res.text();
-      return { ok: false, pesan: `Gagal: ${res.status} — ${errBody}` };
-    }
+    await pool.query(`ALTER TABLE IF EXISTS jadwal_ronda RENAME COLUMN tanggal TO hari`);
+    await pool.query(`ALTER TABLE IF EXISTS jadwal_ronda ALTER COLUMN hari TYPE text`);
+    await pool.query(`
+      UPDATE jadwal_ronda SET hari = (
+        CASE
+          WHEN EXTRACT(DOW FROM hari::date) = 0 THEN 'Minggu'
+          WHEN EXTRACT(DOW FROM hari::date) = 1 THEN 'Senin'
+          WHEN EXTRACT(DOW FROM hari::date) = 2 THEN 'Selasa'
+          WHEN EXTRACT(DOW FROM hari::date) = 3 THEN 'Rabu'
+          WHEN EXTRACT(DOW FROM hari::date) = 4 THEN 'Kamis'
+          WHEN EXTRACT(DOW FROM hari::date) = 5 THEN 'Jumat'
+          WHEN EXTRACT(DOW FROM hari::date) = 6 THEN 'Sabtu'
+        END
+      ) WHERE hari IS NOT NULL
+    `);
 
+    await pool.end();
     return { ok: true, pesan: 'Migrasi jadwal berhasil! Kolom "tanggal" telah diubah menjadi "hari".' };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Terjadi kesalahan';
-    return { ok: false, pesan: `Gagal terhubung ke database: ${msg}` };
+    return { ok: false, pesan: `Gagal: ${msg}` };
   }
 }
 
