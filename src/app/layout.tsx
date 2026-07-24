@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   title: 'Absensi Ronda - Kawunglarang',
   description: 'Sistem absensi ronda malam resmi Desa Kawunglarang. Catat kehadiran ronda dengan mudah dan cepat.',
   keywords: 'absensi, ronda, desa kawunglarang, ronda malam, keamanan desa',
-  authors: [{ name: 'Desa Kawunglarang' }],
+  authors: [{ name: 'KKN 46 Kawunglarang UNIKU' }],
 };
 
 export default function RootLayout({

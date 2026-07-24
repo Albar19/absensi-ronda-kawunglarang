@@ -61,6 +61,13 @@ export default function HeaderBanner() {
 
       {/* Shadow underline */}
       <div className="h-0.5 bg-blue-900/80" />
+
+      {/* KKN Copyright */}
+      <div className="bg-[#0f2460] text-center py-1">
+        <p className="text-[10px] text-blue-300 font-medium tracking-wide">
+          KKN 46 Kawunglarang — Universitas Kuningan
+        </p>
+      </div>
     </header>
   );
 }

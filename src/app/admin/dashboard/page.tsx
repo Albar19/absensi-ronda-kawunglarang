@@ -411,7 +411,7 @@ export default function AdminDashboardPage() {
         <AbsenTable wargaList={wargaData} absenHariIni={absenHariIni} filter="semua" />
 
         <p className="text-center text-xs text-slate-400 py-4">
-          Sistem Absensi Ronda — Bale Desa Kawunglarang
+          Sistem Absensi Ronda — KKN 46 Kawunglarang UNIKU
         </p>
       </div>
     </main>

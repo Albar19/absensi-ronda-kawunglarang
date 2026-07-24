@@ -133,7 +133,7 @@ export default function AdminLoginPage() {
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-5">
-          Sistem Absensi Ronda — Bale Desa Kawunglarang
+          Sistem Absensi Ronda — KKN 46 Kawunglarang UNIKU
         </p>
       </div>
     </main>
