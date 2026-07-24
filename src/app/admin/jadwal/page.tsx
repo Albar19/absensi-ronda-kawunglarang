@@ -30,7 +30,6 @@ export default function AdminJadwalPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [addHari, setAddHari] = useState(getHariIniIndonesia());
   const [addWargaId, setAddWargaId] = useState('');
-  const [addKet, setAddKet] = useState('');
   const [submitting, setSubmitting] = useState<'add' | 'delete' | null>(null);
 
   async function fetchData() {
@@ -64,13 +63,12 @@ export default function AdminJadwalPage() {
     const res = await fetch('/api/jadwal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hari: addHari, warga_id: addWargaId, keterangan: addKet }),
+      body: JSON.stringify({ hari: addHari, warga_id: addWargaId }),
     });
     setSubmitting(null);
     if (res.ok) {
       setShowAdd(false);
       setAddWargaId('');
-      setAddKet('');
       fetchData();
     } else {
       const data = await res.json();
@@ -158,7 +156,6 @@ export default function AdminJadwalPage() {
                           <p className="font-bold text-slate-900 truncate">{w?.nama || j.warga_id}</p>
                           <div className="flex items-center gap-3 text-xs text-slate-500 font-medium flex-wrap">
                             <span>{w?.dusun || '—'}</span>
-                            {j.keterangan && <span className="truncate">— {j.keterangan}</span>}
                           </div>
                         </div>
                         <button onClick={() => handleDelete(j.id)} disabled={submitting !== null}
@@ -200,16 +197,6 @@ export default function AdminJadwalPage() {
                   <option key={w.id} value={w.id}>{w.nama} ({w.dusun})</option>
                 ))}
               </select>
-            </div>
-
-            
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Keterangan (opsional)</label>
-              <input value={addKet} onChange={e => setAddKet(e.target.value)}
-                placeholder="misal: pos 1"
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-base font-semibold"
-                style={{ minHeight: '48px' }} />
             </div>
 
             <div className="flex gap-3 pt-2">
