@@ -42,6 +42,23 @@ export function isJamAbsenBuka(): boolean {
   return totalMenit >= buka && totalMenit <= tutup;
 }
 
+export function isJamPulangBuka(): boolean {
+  const now = new Date();
+  const totalMenit = now.getHours() * 60 + now.getMinutes();
+  const buka = CONFIG.jamBukaPulang * 60 + CONFIG.menitBukaPulang;
+  const tutup = CONFIG.jamTutupPulang * 60 + CONFIG.menitTutupPulang;
+  if (tutup <= buka) {
+    return totalMenit >= buka || totalMenit < tutup;
+  }
+  return totalMenit >= buka && totalMenit <= tutup;
+}
+
+export function getJenisAbsen(): 'masuk' | 'pulang' | null {
+  if (isJamAbsenBuka()) return 'masuk';
+  if (isJamPulangBuka()) return 'pulang';
+  return null;
+}
+
 export function cekJamStatus(): JamStatus {
   const now = new Date();
   const totalMenit = now.getHours() * 60 + now.getMinutes();

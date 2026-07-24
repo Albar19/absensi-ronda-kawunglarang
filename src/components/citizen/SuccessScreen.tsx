@@ -9,6 +9,7 @@ interface SuccessScreenProps {
 }
 
 export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
+  const isPulang = record.jenis === 'pulang';
   return (
     <div className="flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14 text-center">
       {/* Check icon */}
@@ -16,9 +17,11 @@ export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
         <CheckCircle size={52} className="text-white" strokeWidth={1.8} />
       </div>
 
-      <h2 className="text-3xl sm:text-4xl font-black text-green-700 leading-tight">BERHASIL ABSEN!</h2>
+      <h2 className="text-3xl sm:text-4xl font-black text-green-700 leading-tight">
+        {isPulang ? 'BERHASIL ABSEN PULANG!' : 'BERHASIL ABSEN!'}
+      </h2>
       <p className="text-sm sm:text-base text-green-600 font-semibold mt-1 mb-7">
-        Kehadiran Anda telah tercatat malam ini
+        {isPulang ? 'Absen pulang Anda telah tercatat malam ini' : 'Kehadiran Anda telah tercatat malam ini'}
       </p>
 
       {/* Detail card */}
@@ -28,6 +31,7 @@ export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
           { icon: '🏘️', label: 'Wilayah',  value: record.dusun },
           { icon: '🕐', label: 'Jam Absen', value: `${record.jamAbsen} WIB` },
           { icon: '📍', label: 'Jarak',     value: `± ${record.jarakMeter} meter` },
+          { icon: '📋', label: 'Jenis',     value: isPulang ? 'Absen Pulang' : 'Absen Masuk' },
         ].map((row, i, arr) => (
           <div key={row.label}>
             <div className="flex items-center gap-4 px-5 py-3.5">

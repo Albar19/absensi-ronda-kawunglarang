@@ -109,11 +109,20 @@ export default function AdminDashboardPage() {
   startDate.setDate(startDate.getDate() - 30);
   const cutoff = startDate.toISOString().split('T')[0];
 
-  // Map: warga_id → jumlah hadir dalam 30 hari
+  // Map: warga_id → jumlah hadir dalam 30 hari (hanya jika masuk + pulang)
   const absenCountMap = new Map<string, number>();
+  const dayMap = new Map<string, Set<string>>();
   semuaRiwayat.forEach(r => {
     if (r.tanggal >= cutoff) {
-      absenCountMap.set(r.wargaId, (absenCountMap.get(r.wargaId) || 0) + 1);
+      const key = `${r.wargaId}|${r.tanggal}`;
+      if (!dayMap.has(key)) dayMap.set(key, new Set());
+      dayMap.get(key)!.add(r.jenis);
+    }
+  });
+  dayMap.forEach((jenisSet, key) => {
+    if (jenisSet.has('masuk') && jenisSet.has('pulang')) {
+      const wargaId = key.split('|')[0];
+      absenCountMap.set(wargaId, (absenCountMap.get(wargaId) || 0) + 1);
     }
   });
 

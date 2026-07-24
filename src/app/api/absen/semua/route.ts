@@ -35,6 +35,7 @@ export async function GET() {
     koordinatLat: r.koordinat_lat,
     koordinatLng: r.koordinat_lng,
     status: r.status as 'hadir',
+    jenis: r.jenis as 'masuk' | 'pulang',
   }));
 
   return NextResponse.json(mapped);

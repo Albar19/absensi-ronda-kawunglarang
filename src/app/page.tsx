@@ -107,6 +107,7 @@ export default function HomePage() {
       koordinatLat: koordinat?.lat ?? 0,
       koordinatLng: koordinat?.lng ?? 0,
       status: 'hadir',
+      jenis: 'masuk',
     };
     try {
       const res = await fetch('/api/absen', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(record) });

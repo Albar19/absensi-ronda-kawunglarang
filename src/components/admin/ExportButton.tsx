@@ -133,15 +133,15 @@ export default function ExportButton() {
       ['DETAIL ABSENSI RONDA'],
       [`Periode: ${labelPeriode}`],
       [],
-      ['No', 'Nama', 'Dusun', 'Tanggal', 'Jam Absen', 'Jarak (m)', 'Status'],
+      ['No', 'Nama', 'Dusun', 'Tanggal', 'Jam Absen', 'Jenis', 'Jarak (m)', 'Status'],
     ];
     sortedAbsen.forEach((r, i) => {
-      detailData.push([i + 1, r.nama, r.dusun, formatTanggalIndo(r.tanggal), r.jamAbsen, r.jarakMeter, 'HADIR']);
+      detailData.push([i + 1, r.nama, r.dusun, formatTanggalIndo(r.tanggal), r.jamAbsen, r.jenis === 'pulang' ? 'Pulang' : 'Masuk', r.jarakMeter, 'HADIR']);
     });
 
     const wsDetail = utils.aoa_to_sheet(detailData);
     wsDetail['!cols'] = [
-      { wch: 6 }, { wch: 28 }, { wch: 14 }, { wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
+      { wch: 6 }, { wch: 28 }, { wch: 14 }, { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
     ];
 
     // ── Gabung workbook ──

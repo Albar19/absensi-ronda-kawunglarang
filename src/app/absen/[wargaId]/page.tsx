@@ -8,6 +8,8 @@ import { CONFIG } from '@/lib/config';
 import {
   hitungJarak,
   isJamAbsenBuka,
+  isJamPulangBuka,
+  getJenisAbsen,
   cekJamStatus,
   generateId,
   getTanggalHariIni,
@@ -36,17 +38,31 @@ export default function AbsenQRPage() {
   const [koordinat, setKoordinat] = useState<{ lat: number; lng: number } | null>(null);
   const [pesanError, setPesanError] = useState<string>('');
   const [successRecord, setSuccessRecord] = useState<AbsenRecord | null>(null);
+  const [jenisAbsen, setJenisAbsen] = useState<'masuk' | 'pulang' | null>(null);
+  const [sudahAbsenMasuk, setSudahAbsenMasuk] = useState(false);
 
   useEffect(() => {
     Promise.all([
       fetch('/api/warga').then(r => r.ok ? r.json() : []),
       fetch('/api/jadwal/hari-ini').then(r => r.ok ? r.json() : []),
+      fetch('/api/absen/hari-ini').then(r => r.ok ? r.json() : []),
     ])
-      .then(([wargaData, jadwalIds]: [Warga[], string[]]) => {
+      .then(([wargaData, jadwalIds, absenHariIni]: [Warga[], string[], AbsenRecord[]]) => {
         const found = wargaData.find(w => w.id === wargaId) ?? null;
         setWarga(found);
         setJadwalToday(jadwalIds);
         setWargaLoaded(true);
+
+        // Deteksi jenis absen berdasarkan jam
+        const jenis = getJenisAbsen();
+        setJenisAbsen(jenis);
+
+        // Cek apakah sudah absen masuk hari ini
+        const sudahMasuk = absenHariIni.some(
+          (a: AbsenRecord) => a.wargaId === wargaId && a.jenis === 'masuk'
+        );
+        setSudahAbsenMasuk(sudahMasuk);
+
         if (!found) {
           setFlowState('rejected');
         } else {
@@ -70,20 +86,25 @@ export default function AbsenQRPage() {
     setJarakMeter(null);
     setPesanError('');
 
-    const jamStatus = cekJamStatus();
-    setStatusJam(jamStatus === 'buka' ? 'buka' : 'tutup');
+    const jenis = getJenisAbsen();
+    setJenisAbsen(jenis);
 
-    if (jamStatus !== 'buka') {
-      const jamBuka = CONFIG.jamBukaAbsen.toString().padStart(2, '0') + ':' +
-        CONFIG.menitBukaAbsen.toString().padStart(2, '0');
-      const jamTutup = CONFIG.jamTutupAbsen.toString().padStart(2, '0') + ':' +
-        CONFIG.menitTutupAbsen.toString().padStart(2, '0');
+    if (!jenis) {
       setStatusJarak(null);
       setTimeout(() => {
         setPesanError(
-          jamStatus === 'belum-buka'
-            ? `❌ ABSEN DITOLAK: Absen belum dibuka. Absen dibuka pukul ${jamBuka} WIB.`
-            : `❌ ABSEN DITOLAK: Waktu absen sudah ditutup. Absen hanya tersedia pukul ${jamBuka} – ${jamTutup} WIB.`
+          '❌ ABSEN DITOLAK: Saat ini bukan waktu absen. Absen masuk: 20:00–23:39 WIB. Absen pulang: 23:40–01:00 WIB.'
+        );
+        setFlowState('rejected');
+      }, 800);
+      return;
+    }
+
+    if (jenis === 'pulang' && !sudahAbsenMasuk) {
+      setStatusJarak(null);
+      setTimeout(() => {
+        setPesanError(
+          '❌ ABSEN PULANG DITOLAK: Anda belum absen masuk hari ini. Silakan absen masuk terlebih dahulu.'
         );
         setFlowState('rejected');
       }, 800);
@@ -134,7 +155,7 @@ export default function AbsenQRPage() {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
-  }, []);
+  }, [sudahAbsenMasuk]);
 
   const handleSubmit = useCallback(async () => {
     if (!warga) return;
@@ -156,6 +177,7 @@ export default function AbsenQRPage() {
       koordinatLat: koordinat?.lat ?? 0,
       koordinatLng: koordinat?.lng ?? 0,
       status: 'hadir',
+      jenis: jenisAbsen ?? 'masuk',
     };
 
     try {
@@ -192,6 +214,7 @@ export default function AbsenQRPage() {
     setKoordinat(null);
     setPesanError('');
     setSuccessRecord(null);
+    setJenisAbsen(getJenisAbsen());
   }, []);
 
   if (!wargaLoaded) {
@@ -266,7 +289,9 @@ export default function AbsenQRPage() {
         <div className="px-4 py-8 space-y-6">
           <div className="bg-[#eff6ff] border-2 border-[#1e3a8a] rounded-xl px-5 py-5 text-center">
             <p className="text-3xl mb-2">👤</p>
-            <p className="text-xs font-bold uppercase tracking-widest text-[#1e3a8a]">Absen Atas Nama</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#1e3a8a]">
+              {jenisAbsen === 'pulang' ? 'Absen Pulang Atas Nama' : 'Absen Atas Nama'}
+            </p>
             <p className="text-2xl font-black text-[#1e3a8a] leading-tight mt-1">{warga.nama}</p>
             <p className="text-lg font-bold text-[#1e3a8a]/70 mt-1">{warga.dusun}</p>
           </div>
@@ -277,7 +302,7 @@ export default function AbsenQRPage() {
             <p className="text-sm font-bold text-slate-700 uppercase tracking-wide">Panduan:</p>
             <ol className="space-y-1.5 text-sm text-slate-600 font-medium list-decimal list-inside">
               <li>Pastikan Anda sudah berada di Bale Desa</li>
-              <li>Tekan tombol <strong>MULAI ABSEN</strong></li>
+              <li>Tekan tombol <strong>{jenisAbsen === 'pulang' ? 'ABSEN PULANG' : 'MULAI ABSEN'}</strong></li>
               <li>Izinkan akses lokasi GPS jika diminta</li>
               <li>Nama akan otomatis terisi — langsung tekan <strong>KIRIM ABSEN</strong></li>
             </ol>
@@ -289,7 +314,7 @@ export default function AbsenQRPage() {
             className="w-full bg-[#1e3a8a] text-white rounded-xl py-5 text-2xl font-black tracking-wide active:scale-[0.98] transition-transform border-2 border-[#1e3a8a]"
             style={{ minHeight: '72px' }}
           >
-            🌙 MULAI ABSEN
+            {jenisAbsen === 'pulang' ? '🏠 ABSEN PULANG' : '🌙 MULAI ABSEN'}
           </button>
         </div>
       )}
@@ -320,7 +345,9 @@ export default function AbsenQRPage() {
 
           <div className="px-4 pb-8 space-y-5">
             <div className="bg-green-50 border-2 border-green-500 rounded-xl px-5 py-5 text-center mt-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-green-700">Konfirmasi Absen</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-green-700">
+                {jenisAbsen === 'pulang' ? 'Konfirmasi Absen Pulang' : 'Konfirmasi Absen'}
+              </p>
               <p className="text-2xl font-black text-green-900 mt-1">{warga.nama}</p>
               <p className="text-lg font-bold text-green-700/70">{warga.dusun}</p>
             </div>
@@ -332,7 +359,7 @@ export default function AbsenQRPage() {
               className="w-full bg-[#1e3a8a] text-white rounded-xl py-5 text-xl font-black tracking-wide transition-all active:scale-[0.98] disabled:opacity-60 border-2 border-[#1e3a8a]"
               style={{ minHeight: '64px' }}
             >
-              {isSubmitting ? '⏳ Menyimpan...' : '✅ KIRIM ABSEN'}
+              {isSubmitting ? '⏳ Menyimpan...' : jenisAbsen === 'pulang' ? '✅ KIRIM ABSEN PULANG' : '✅ KIRIM ABSEN'}
             </button>
           </div>
         </div>

@@ -19,6 +19,7 @@ export interface AbsenRecord {
   koordinatLat: number;
   koordinatLng: number;
   status: 'hadir';
+  jenis: 'masuk' | 'pulang';
 }
 
 export type StatusJam = 'buka' | 'tutup';

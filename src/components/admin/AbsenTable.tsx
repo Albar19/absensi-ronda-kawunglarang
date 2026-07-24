@@ -52,7 +52,7 @@ export default function AbsenTable({ wargaList, absenHariIni, filter }: AbsenTab
                 <p className="text-xs text-slate-500 font-semibold mt-0.5">
                   {w.dusun}
                   {record && (
-                    <span className="ml-2 text-slate-400">· {record.jamAbsen} WIB · ±{record.jarakMeter}m</span>
+                    <span className="ml-2 text-slate-400">· {record.jamAbsen} WIB · ±{record.jarakMeter}m · {record.jenis === 'pulang' ? 'Pulang' : 'Masuk'}</span>
                   )}
                 </p>
               </div>
@@ -76,7 +76,7 @@ export default function AbsenTable({ wargaList, absenHariIni, filter }: AbsenTab
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              {['No','Nama','Dusun','Jam Absen','Jarak (m)','Status'].map(h => (
+              {['No','Nama','Dusun','Jam Absen','Jarak (m)','Jenis','Status'].map(h => (
                 <th key={h} className="text-left px-4 py-3 font-black text-slate-500 text-xs uppercase tracking-wider whitespace-nowrap first:rounded-tl-xl last:rounded-tr-xl">
                   {h}
                 </th>
@@ -94,6 +94,15 @@ export default function AbsenTable({ wargaList, absenHariIni, filter }: AbsenTab
                   <td className="px-4 py-3 text-slate-600 font-semibold whitespace-nowrap">{w.dusun}</td>
                   <td className="px-4 py-3 tabular-nums font-semibold text-slate-700 whitespace-nowrap">{record ? record.jamAbsen : '—'}</td>
                   <td className="px-4 py-3 tabular-nums font-semibold text-slate-700 whitespace-nowrap">{record ? `±${record.jarakMeter}` : '—'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {record ? (
+                      <span className={`inline-flex items-center gap-1 text-xs font-black px-2.5 py-1 rounded-full border ${record.jenis === 'pulang' ? 'bg-purple-100 text-purple-800 border-purple-200' : 'bg-blue-100 text-blue-800 border-blue-200'}`}>
+                        {record.jenis === 'pulang' ? 'PULANG' : 'MASUK'}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {hadir ? (
                       <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 text-xs font-black px-3 py-1 rounded-full border border-green-200">
