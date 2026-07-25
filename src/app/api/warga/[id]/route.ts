@@ -16,19 +16,10 @@ export async function PUT(
   const { id } = await params;
   try {
     const { nama, dusun } = await request.json();
-    // Coba update dengan kolom dusun, fallback ke rt kalau belum migrasi
-    let { error } = await supabase
+    const { error } = await supabase
       .from('warga')
       .update({ nama, dusun })
       .eq('id', id);
-
-    if (error && (error.code === 'PGRST204' || error.message?.includes('dusun'))) {
-      const fallback = await supabase
-        .from('warga')
-        .update({ nama, rt: dusun })
-        .eq('id', id);
-      error = fallback.error;
-    }
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });

@@ -72,8 +72,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Coba insert dengan kolom dusun, fallback ke rt kalau belum migrasi
-    let { error } = await supabase.from('absen_records').insert({
+    const { error } = await supabase.from('absen_records').insert({
       id,
       warga_id: wargaId,
       nama,
@@ -86,23 +85,6 @@ export async function POST(request: Request) {
       status: 'hadir',
       jenis,
     });
-
-    if (error && (error.code === 'PGRST204' || error.message?.includes('dusun'))) {
-      const fallback = await supabase.from('absen_records').insert({
-        id,
-        warga_id: wargaId,
-        nama,
-        rt: dusun,
-        tanggal,
-        jam_absen: jamAbsen,
-        jarak_meter: jarakMeter,
-        koordinat_lat: koordinatLat,
-        koordinat_lng: koordinatLng,
-        status: 'hadir',
-        jenis,
-      });
-      error = fallback.error;
-    }
 
     if (error) {
       return NextResponse.json(

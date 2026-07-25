@@ -10,55 +10,86 @@ const DUSUN_SEED = [
   'Dusun Desa Carta',
 ];
 
-/** Cek apakah data dari rt_list masih pake format RT lama */
-function isOldRtFormat(data: { nama: string }[]): boolean {
-  return data.length > 0 && data.every((r) => /^RT\s/i.test(r.nama));
-}
+/** Jalankan migrasi RT → Dusun (rename tabel & kolom, hapus data RT, seed ulang) */
+async function jalankanMigrasiRtKeDusun(): Promise<{ ok: boolean; pesan: string }> {
+  const databaseUrl = process.env.SUPABASE_DATABASE_URL;
+  if (!databaseUrl) {
+    return { ok: false, pesan: 'SUPABASE_DATABASE_URL tidak tersedia — jalankan SQL migration manual.' };
+  }
 
-async function queryDusun() {
-  // Coba pakai tabel dusun_list dulu
-  const { data, error } = await supabase.from('dusun_list').select('*').order('id');
+  try {
+    const { Pool } = await import('pg');
+    const pool = new Pool({ connectionString: databaseUrl });
 
-  // Kalau tabel dusun_list belum ada, fallback ke rt_list (migrasi lama)
-  if (error?.code === 'PGRST205') {
-    const rt = await supabase.from('rt_list').select('*').order('id');
-    if (!rt.error) {
-      // Auto-seed: kalau rt_list masih kosong atau masih RT lama, seed ulang
-      if (!rt.data || rt.data.length === 0 || isOldRtFormat(rt.data)) {
-        // Hapus data RT lama & seed dengan dusun asli
-        await supabase.from('rt_list').delete().neq('id', 0);
-        const { data: seeded } = await supabase
-          .from('rt_list')
-          .insert(DUSUN_SEED.map((nama) => ({ nama })))
-          .select()
-          .order('id');
-        if (seeded) return { data: seeded, error: null };
-      }
-      return rt;
+    // 1. Rename tabel rt_list → dusun_list
+    await pool.query(`ALTER TABLE IF EXISTS rt_list RENAME TO dusun_list`);
+
+    // 2. Rename kolom rt → dusun di warga & absen_records
+    await pool.query(`ALTER TABLE IF EXISTS warga RENAME COLUMN rt TO dusun`);
+    await pool.query(`ALTER TABLE IF EXISTS absen_records RENAME COLUMN rt TO dusun`);
+
+    // 3. Hapus data lama yang masih pake format RT
+    await pool.query(`DELETE FROM warga WHERE id ILIKE 'rt%' OR dusun ILIKE 'RT %'`);
+    await pool.query(`DELETE FROM absen_records WHERE warga_id ILIKE 'rt%' OR dusun ILIKE 'RT %'`);
+
+    // 4. Bersihkan & seed ulang dusun_list
+    await pool.query(`DELETE FROM dusun_list`);
+    for (const nama of DUSUN_SEED) {
+      await pool.query(`INSERT INTO dusun_list (nama) VALUES ($1)`, [nama]);
     }
+
+    await pool.end();
+    return { ok: true, pesan: 'Migrasi RT→Dusun berhasil.' };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Terjadi kesalahan';
+    return { ok: false, pesan: `Gagal migrasi: ${msg}` };
   }
-
-  return { data, error };
-}
-
-async function insertDusun(nama: string) {
-  // Coba insert ke dusun_list dulu
-  const { data, error } = await supabase.from('dusun_list').insert({ nama }).select().single();
-
-  // Kalau tabel dusun_list belum ada, fallback ke rt_list
-  if (error?.code === 'PGRST205') {
-    const fallback = await supabase.from('rt_list').insert({ nama }).select().single();
-    return { data: fallback.data, error: fallback.error };
-  }
-
-  return { data, error };
 }
 
 export async function GET() {
-  const { data, error } = await queryDusun();
+  // Coba query dusun_list dulu
+  const { data, error } = await supabase.from('dusun_list').select('*').order('id');
+
+  // Kalau tabel belum ada, jalankan auto-migrasi
+  if (error?.code === 'PGRST205') {
+    const hasil = await jalankanMigrasiRtKeDusun();
+    if (!hasil.ok) {
+      // Fallback: coba rt_list (kalau masih ada waktu sebelum migrasi)
+      const rt = await supabase.from('rt_list').select('*').order('id');
+      if (!rt.error) {
+        // Seed ulang data RT dengan dusun asli
+        await supabase.from('rt_list').delete().neq('id', 0);
+        const { data: seeded } = await supabase
+          .from('rt_list')
+          .insert(DUSUN_SEED.map((n) => ({ nama: n })))
+          .select()
+          .order('id');
+        if (seeded) return NextResponse.json(seeded);
+      }
+      return NextResponse.json({ error: hasil.pesan }, { status: 500 });
+    }
+    // Migrasi sukses, query ulang
+    const { data: dataBaru, error: errorBaru } = await supabase.from('dusun_list').select('*').order('id');
+    if (errorBaru) {
+      return NextResponse.json({ error: 'Gagal mengambil data Dusun' }, { status: 500 });
+    }
+    return NextResponse.json(dataBaru);
+  }
+
   if (error) {
     return NextResponse.json({ error: 'Gagal mengambil data Dusun' }, { status: 500 });
   }
+
+  // Kalau tabel ada tapi kosong, seed langsung
+  if (!data || data.length === 0) {
+    const { data: seeded } = await supabase
+      .from('dusun_list')
+      .insert(DUSUN_SEED.map((n) => ({ nama: n })))
+      .select()
+      .order('id');
+    if (seeded) return NextResponse.json(seeded);
+  }
+
   return NextResponse.json(data);
 }
 
@@ -70,7 +101,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Nama Dusun tidak boleh kosong' }, { status: 400 });
   }
 
-  const { data, error } = await insertDusun(nama.trim());
+  const { data, error } = await supabase.from('dusun_list').insert({ nama: nama.trim() }).select().single();
 
   if (error) {
     if (error.code === '23505') {
