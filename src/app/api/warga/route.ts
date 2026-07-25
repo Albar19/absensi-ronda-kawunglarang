@@ -4,11 +4,27 @@ import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 export async function GET() {
-  const { data, error } = await supabase
+  // Coba pakai kolom dusun dulu, fallback ke rt kalau belum migrasi
+  let { data, error } = await supabase
     .from('warga')
     .select('*')
     .order('dusun')
     .order('nama');
+
+  if (error && (error.code === 'PGRST204' || error.message?.includes('dusun'))) {
+    const fallback = await supabase
+      .from('warga')
+      .select('*')
+      .order('rt')
+      .order('nama');
+    if (!fallback.error) {
+      data = fallback.data.map((w: Record<string, unknown>) => ({
+        ...w,
+        dusun: w.rt,
+      }));
+    }
+    error = fallback.error;
+  }
 
   if (error) {
     return NextResponse.json({ error: 'Gagal mengambil data' }, { status: 500 });
@@ -29,7 +45,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const { error } = await supabase.from('warga').insert({ id, nama, dusun });
+    // Coba insert dengan kolom dusun, fallback ke rt kalau belum migrasi
+    let { error } = await supabase.from('warga').insert({ id, nama, dusun });
+    if (error && (error.code === 'PGRST204' || error.message?.includes('dusun'))) {
+      const fallback = await supabase.from('warga').insert({ id, nama, rt: dusun });
+      error = fallback.error;
+    }
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

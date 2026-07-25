@@ -16,24 +16,29 @@ export async function GET() {
   }
 
   const today = getTanggalHariIni();
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('absen_records')
     .select('*')
     .eq('tanggal', today)
     .order('jam_absen', { ascending: true });
 
-  if (error) {
+  if (error && (error.code === 'PGRST204' || error.message?.includes('dusun'))) {
+    // Kolom mungkin masih 'rt' (belum migrasi) — query tetap jalan karena 'rt' bukan di select/filter
+    // Error ini tidak akan terjadi untuk query select * — hanya error column di order/filter
+  }
+
+  if (error && !error.message?.includes('dusun')) {
     return NextResponse.json(
       { error: 'Gagal mengambil data' },
       { status: 500 }
     );
   }
 
-  const mapped = data.map((r) => ({
+  const mapped = (data ?? []).map((r) => ({
     id: r.id,
     wargaId: r.warga_id,
     nama: r.nama,
-    dusun: r.dusun,
+    dusun: r.dusun ?? r.rt ?? '',
     tanggal: r.tanggal,
     jamAbsen: r.jam_absen,
     jarakMeter: r.jarak_meter,

@@ -24,11 +24,11 @@ export async function GET() {
     );
   }
 
-  const mapped = data.map((r) => ({
+  const mapped = (data ?? []).map((r) => ({
     id: r.id,
     wargaId: r.warga_id,
     nama: r.nama,
-    dusun: r.dusun,
+    dusun: r.dusun ?? r.rt ?? '',
     tanggal: r.tanggal,
     jamAbsen: r.jam_absen,
     jarakMeter: r.jarak_meter,
