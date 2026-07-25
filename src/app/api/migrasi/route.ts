@@ -11,8 +11,8 @@ async function cekStatusMigrasi(): Promise<{ done: boolean; pesan: string }> {
     }
     // dusun_list ada tapi kosong — seed aja
     await supabase.from('dusun_list').insert([
-      { nama: 'Dusun 1' }, { nama: 'Dusun 2' }, { nama: 'Dusun 3' },
-      { nama: 'Dusun 4' }, { nama: 'Dusun 5' }, { nama: 'Dusun 6' },
+      { nama: 'Dusun Cibangkong' }, { nama: 'Dusun Cibuluh' }, { nama: 'Dusun Bungbulang' },
+      { nama: 'Dusun Gudang' }, { nama: 'Dusun Chargelis' }, { nama: 'Dusun Desa Carta' },
     ]);
     return { done: true, pesan: 'Data Dusun berhasil diisi.' };
   } catch {
@@ -35,12 +35,12 @@ async function jalankanMigrasi(): Promise<{ ok: boolean; pesan: string }> {
     await pool.query(`ALTER TABLE IF EXISTS warga RENAME COLUMN rt TO dusun`);
     await pool.query(`ALTER TABLE IF EXISTS absen_records RENAME COLUMN rt TO dusun`);
 
-    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 1' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 1')`);
-    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 2' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 2')`);
-    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 3' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 3')`);
-    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 4' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 4')`);
-    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 5' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 5')`);
-    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun 6' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 6')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun Cibangkong' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Cibangkong')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun Cibuluh' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Cibuluh')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun Bungbulang' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Bungbulang')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun Gudang' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Gudang')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun Chargelis' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Chargelis')`);
+    await pool.query(`INSERT INTO dusun_list (nama) SELECT 'Dusun Desa Carta' WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Desa Carta')`);
 
     await pool.end();
     return { ok: true, pesan: 'Migrasi berhasil! Tabel & kolom telah diubah ke Dusun.' };

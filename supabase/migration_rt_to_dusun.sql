@@ -13,27 +13,27 @@ ALTER TABLE IF EXISTS warga RENAME COLUMN rt TO dusun;
 -- 3. Rename kolom rt → dusun di tabel absen_records
 ALTER TABLE IF EXISTS absen_records RENAME COLUMN rt TO dusun;
 
--- 4. Seed data: Dusun 1–6 (hanya jika tabel kosong)
+-- 4. Seed data: Nama Dusun asli Desa Kawunglarang (hanya jika tabel kosong)
 INSERT INTO dusun_list (nama)
-SELECT 'Dusun 1'
-WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 1');
+SELECT 'Dusun Cibangkong'
+WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Cibangkong');
 
 INSERT INTO dusun_list (nama)
-SELECT 'Dusun 2'
-WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 2');
+SELECT 'Dusun Cibuluh'
+WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Cibuluh');
 
 INSERT INTO dusun_list (nama)
-SELECT 'Dusun 3'
-WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 3');
+SELECT 'Dusun Bungbulang'
+WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Bungbulang');
 
 INSERT INTO dusun_list (nama)
-SELECT 'Dusun 4'
-WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 4');
+SELECT 'Dusun Gudang'
+WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Gudang');
 
 INSERT INTO dusun_list (nama)
-SELECT 'Dusun 5'
-WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 5');
+SELECT 'Dusun Chargelis'
+WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Chargelis');
 
 INSERT INTO dusun_list (nama)
-SELECT 'Dusun 6'
-WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun 6');
+SELECT 'Dusun Desa Carta'
+WHERE NOT EXISTS (SELECT 1 FROM dusun_list WHERE nama = 'Dusun Desa Carta');
