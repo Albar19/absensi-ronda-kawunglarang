@@ -50,6 +50,11 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  // Hapus data terkait dulu biar aman (defense: fallback kalo cascade belum aktif)
+  await supabase.from('absen_records').delete().eq('warga_id', id);
+  await supabase.from('jadwal_ronda').delete().eq('warga_id', id);
+
   const { error } = await supabase.from('warga').delete().eq('id', id);
 
   if (error) {
