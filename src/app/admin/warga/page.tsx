@@ -24,7 +24,6 @@ export default function AdminWargaPage() {
   const [generatedId, setGeneratedId] = useState('');
   const [addNama, setAddNama] = useState('');
   const [addDusun, setAddDusun] = useState('');
-  const [newDusunName, setNewDusunName] = useState('');
   const [submitting, setSubmitting] = useState<'add' | 'edit' | 'delete' | null>(null);
 
   async function fetchWarga() {
@@ -48,42 +47,22 @@ export default function AdminWargaPage() {
 
   // Fetch auto-generated ID when dusun changes
   useEffect(() => {
-    const dusunFinal = addDusun === '__tambah__' ? newDusunName.trim() : addDusun;
-    if (!dusunFinal) { setGeneratedId(''); return; }
-    fetch(`/api/warga/next-id?dusun=${encodeURIComponent(dusunFinal)}`)
+    if (!addDusun) { setGeneratedId(''); return; }
+    fetch(`/api/warga/next-id?dusun=${encodeURIComponent(addDusun)}`)
       .then(r => r.ok ? r.json() : { id: '' })
       .then(data => setGeneratedId(data.id || ''))
       .catch(() => setGeneratedId(''));
-  }, [addDusun, newDusunName]);
+  }, [addDusun]);
 
   async function handleAdd() {
     if (!generatedId || !addNama || submitting) return;
     if (!addDusun) { alert('Pilih Dusun terlebih dahulu'); return; }
-    if (addDusun === '__tambah__' && !newDusunName.trim()) { alert('Isi nama Dusun baru'); return; }
     setSubmitting('add');
-
-    let dusunFinal = addDusun;
-    if (dusunFinal === '__tambah__' && newDusunName.trim()) {
-      const dRes = await fetch('/api/dusun', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nama: newDusunName.trim() }),
-      });
-      if (dRes.ok) {
-        const data = await dRes.json();
-        dusunFinal = data.nama;
-      } else {
-        const err = await dRes.json();
-        alert(err.error || 'Gagal menambah Dusun');
-        setSubmitting(null);
-        return;
-      }
-    }
 
     const res = await fetch('/api/warga', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: generatedId, nama: addNama.trim(), dusun: dusunFinal }),
+      body: JSON.stringify({ id: generatedId, nama: addNama.trim(), dusun: addDusun }),
     });
     setSubmitting(null);
     if (res.ok) {
@@ -91,7 +70,6 @@ export default function AdminWargaPage() {
       setGeneratedId('');
       setAddNama('');
       setAddDusun('');
-      setNewDusunName('');
       fetchWarga();
     } else {
       const data = await res.json();
@@ -261,14 +239,7 @@ export default function AdminWargaPage() {
                 style={{ minHeight: '48px' }}>
                 <option value="">-- Pilih Dusun --</option>
                 {dusunList.map(r => <option key={r} value={r}>{r}</option>)}
-                <option value="__tambah__">+ Tambah Dusun Baru...</option>
               </select>
-              {addDusun === '__tambah__' && (
-                <input value={newDusunName} onChange={e => setNewDusunName(e.target.value)}
-                  placeholder="Nama Dusun baru (contoh: Dusun 1)"
-                  className="w-full px-4 py-3 border-2 border-blue-500 rounded-xl text-base font-semibold mt-2"
-                  style={{ minHeight: '48px' }} />
-              )}
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setShowAdd(false)} disabled={submitting === 'add'}
