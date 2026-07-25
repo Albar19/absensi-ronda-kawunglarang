@@ -19,6 +19,16 @@ export async function POST(request: Request) {
       );
     }
 
+    if (typeof wargaId !== 'string' || wargaId.length > 50 ||
+        typeof nama !== 'string' || nama.length > 100 ||
+        typeof tanggal !== 'string' || tanggal.length > 20 ||
+        typeof jamAbsen !== 'string' || jamAbsen.length > 20) {
+      return NextResponse.json(
+        { error: 'Data tidak valid' },
+        { status: 400 }
+      );
+    }
+
     if (jenis !== 'masuk' && jenis !== 'pulang') {
       return NextResponse.json(
         { error: 'Jenis absen tidak valid' },

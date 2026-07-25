@@ -4,13 +4,46 @@ import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 import { signToken } from '@/lib/auth';
 
+// ── Rate limiter sederhana (in-memory) ──
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000; // 15 menit
+
+function rateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = loginAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= MAX_ATTEMPTS) return false;
+  entry.count++;
+  return true;
+}
+
 export async function POST(request: Request) {
   try {
+    // Rate limiting by IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    if (!rateLimit(ip)) {
+      return NextResponse.json(
+        { error: 'Terlalu banyak percobaan login. Coba lagi 15 menit.' },
+        { status: 429 }
+      );
+    }
+
     const { username, password } = await request.json();
 
     if (!username || !password) {
       return NextResponse.json(
         { error: 'Username dan password wajib diisi' },
+        { status: 400 }
+      );
+    }
+
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return NextResponse.json(
+        { error: 'Format data tidak valid' },
         { status: 400 }
       );
     }

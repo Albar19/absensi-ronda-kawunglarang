@@ -68,13 +68,20 @@ export async function POST(request: Request) {
     if (!hari || !warga_id) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
+    const HARI_VALID = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    if (!HARI_VALID.includes(hari)) {
+      return NextResponse.json({ error: 'Hari tidak valid' }, { status: 400 });
+    }
+    if (typeof warga_id !== 'string' || warga_id.length > 50) {
+      return NextResponse.json({ error: 'Data warga tidak valid' }, { status: 400 });
+    }
 
     const { error } = await supabase
       .from('jadwal_ronda')
       .insert({ hari, warga_id, shift: 'malam', keterangan });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ error: 'Gagal menambah jadwal' }, { status: 400 });
     }
     return NextResponse.json({ success: true });
   } catch {

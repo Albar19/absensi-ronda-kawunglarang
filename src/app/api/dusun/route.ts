@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 const DUSUN_SEED = [
@@ -40,9 +42,8 @@ async function jalankanMigrasiRtKeDusun(): Promise<{ ok: boolean; pesan: string 
 
     await pool.end();
     return { ok: true, pesan: 'Migrasi RT→Dusun berhasil.' };
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Terjadi kesalahan';
-    return { ok: false, pesan: `Gagal migrasi: ${msg}` };
+  } catch {
+    return { ok: false, pesan: 'Gagal migrasi. Detail error ada di server log.' };
   }
 }
 
@@ -94,11 +95,20 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('admin_token')?.value;
+  if (!token || !(await verifyToken(token))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { nama } = body;
 
   if (!nama || !nama.trim()) {
     return NextResponse.json({ error: 'Nama Dusun tidak boleh kosong' }, { status: 400 });
+  }
+  if (typeof nama !== 'string' || nama.trim().length > 100) {
+    return NextResponse.json({ error: 'Nama Dusun terlalu panjang' }, { status: 400 });
   }
 
   const { data, error } = await supabase.from('dusun_list').insert({ nama: nama.trim() }).select().single();

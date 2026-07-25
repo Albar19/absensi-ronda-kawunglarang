@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 function slugifyDusun(nama: string): string {
@@ -6,6 +8,12 @@ function slugifyDusun(nama: string): string {
 }
 
 export async function GET(request: NextRequest) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('admin_token')?.value;
+  if (!token || !(await verifyToken(token))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const dusun = request.nextUrl.searchParams.get('dusun');
   if (!dusun) {
     return NextResponse.json({ error: 'Parameter dusun diperlukan' }, { status: 400 });

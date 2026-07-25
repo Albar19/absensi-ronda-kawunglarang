@@ -41,6 +41,11 @@ export async function POST(request: Request) {
     if (!id || !nama || !dusun) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
+    if (typeof id !== 'string' || id.length > 50 ||
+        typeof nama !== 'string' || nama.length > 100 ||
+        typeof dusun !== 'string' || dusun.length > 100) {
+      return NextResponse.json({ error: 'Data tidak valid' }, { status: 400 });
+    }
 
     let { error } = await supabase.from('warga').insert({ id, nama, dusun });
     if (isColumnError(error)) {
@@ -48,7 +53,7 @@ export async function POST(request: Request) {
       error = fb.error;
     }
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ error: 'Gagal menambah warga' }, { status: 400 });
     }
     return NextResponse.json({ success: true });
   } catch {

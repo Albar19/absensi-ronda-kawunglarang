@@ -20,6 +20,13 @@ export async function PUT(
   const { id } = await params;
   try {
     const { nama, dusun } = await request.json();
+    if (!nama || !dusun) {
+      return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
+    }
+    if (typeof nama !== 'string' || nama.length > 100 ||
+        typeof dusun !== 'string' || dusun.length > 100) {
+      return NextResponse.json({ error: 'Data tidak valid' }, { status: 400 });
+    }
     let { error } = await supabase
       .from('warga')
       .update({ nama, dusun })
@@ -31,7 +38,7 @@ export async function PUT(
     }
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ error: 'Gagal mengupdate warga' }, { status: 400 });
     }
     return NextResponse.json({ success: true });
   } catch {

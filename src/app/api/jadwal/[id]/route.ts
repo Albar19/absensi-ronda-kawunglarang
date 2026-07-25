@@ -61,7 +61,7 @@ export async function PUT(
       .eq('id', id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ error: 'Gagal mengupdate jadwal' }, { status: 400 });
     }
     return NextResponse.json({ success: true });
   } catch {

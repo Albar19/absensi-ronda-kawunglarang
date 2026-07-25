@@ -44,9 +44,8 @@ async function jalankanMigrasi(): Promise<{ ok: boolean; pesan: string }> {
 
     await pool.end();
     return { ok: true, pesan: 'Migrasi berhasil! Tabel & kolom telah diubah ke Dusun.' };
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Terjadi kesalahan';
-    return { ok: false, pesan: `Gagal: ${msg}` };
+  } catch {
+    return { ok: false, pesan: 'Gagal menjalankan migrasi. Detail error ada di server log.' };
   }
 }
 
