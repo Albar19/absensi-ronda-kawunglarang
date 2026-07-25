@@ -3,6 +3,10 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
+function isColumnError(e: unknown): boolean {
+  return (e as { code?: string })?.code === 'PGRST204' || (e as { message?: string })?.message?.includes('dusun') || false;
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -16,10 +20,15 @@ export async function PUT(
   const { id } = await params;
   try {
     const { nama, dusun } = await request.json();
-    const { error } = await supabase
+    let { error } = await supabase
       .from('warga')
       .update({ nama, dusun })
       .eq('id', id);
+
+    if (isColumnError(error)) {
+      const fb = await supabase.from('warga').update({ nama, rt: dusun }).eq('id', id);
+      error = fb.error;
+    }
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });

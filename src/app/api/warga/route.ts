@@ -3,12 +3,25 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
+// Helper: deteksi apakah kolom pakai 'dusun' atau masih 'rt'
+function isColumnError(e: unknown): boolean {
+  return (e as { code?: string })?.code === 'PGRST204' || (e as { message?: string })?.message?.includes('dusun') || false;
+}
+
 export async function GET() {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('warga')
     .select('*')
     .order('dusun')
     .order('nama');
+
+  if (isColumnError(error)) {
+    const fb = await supabase.from('warga').select('*').order('rt').order('nama');
+    if (!fb.error) {
+      data = fb.data.map((w: Record<string, unknown>) => ({ ...w, dusun: w.rt }));
+    }
+    error = fb?.error ?? error;
+  }
 
   if (error) {
     return NextResponse.json({ error: 'Gagal mengambil data' }, { status: 500 });
@@ -29,7 +42,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const { error } = await supabase.from('warga').insert({ id, nama, dusun });
+    let { error } = await supabase.from('warga').insert({ id, nama, dusun });
+    if (isColumnError(error)) {
+      const fb = await supabase.from('warga').insert({ id, nama, rt: dusun });
+      error = fb.error;
+    }
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

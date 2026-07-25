@@ -3,6 +3,10 @@ import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
 import { hitungJarak } from '@/lib/data';
 
+function isColumnError(e: unknown): boolean {
+  return (e as { code?: string })?.code === 'PGRST204' || (e as { message?: string })?.message?.includes('dusun') || false;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -72,7 +76,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const { error } = await supabase.from('absen_records').insert({
+    let { error } = await supabase.from('absen_records').insert({
       id,
       warga_id: wargaId,
       nama,
@@ -85,6 +89,16 @@ export async function POST(request: Request) {
       status: 'hadir',
       jenis,
     });
+
+    if (isColumnError(error)) {
+      const fb = await supabase.from('absen_records').insert({
+        id, warga_id: wargaId, nama, rt: dusun,
+        tanggal, jam_absen: jamAbsen, jarak_meter: jarakMeter,
+        koordinat_lat: koordinatLat, koordinat_lng: koordinatLng,
+        status: 'hadir', jenis,
+      });
+      error = fb.error;
+    }
 
     if (error) {
       return NextResponse.json(
