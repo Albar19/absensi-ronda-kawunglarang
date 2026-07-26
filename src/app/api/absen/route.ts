@@ -12,9 +12,9 @@ function isDevColError(e: unknown): boolean {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, nama, dusun, tanggal, jamAbsen, latitude, longitude, jarakMeter, deviceId } = body;
+    const { id, nama, dusun, tanggal, jamAbsen, jenisAbsen, latitude, longitude, jarakMeter, deviceId } = body;
 
-    if (!nama || !dusun || !tanggal || !jamAbsen || !deviceId) {
+    if (!nama || !dusun || !tanggal || !jamAbsen || !deviceId || !jenisAbsen) {
       return NextResponse.json(
         { error: 'Data absen tidak lengkap' },
         { status: 400 }
@@ -26,7 +26,8 @@ export async function POST(request: Request) {
       typeof dusun !== 'string' || dusun.trim().length === 0 || dusun.length > 50 ||
       typeof tanggal !== 'string' || tanggal.length > 20 ||
       typeof jamAbsen !== 'string' || jamAbsen.length > 20 ||
-      typeof deviceId !== 'string' || deviceId.length > 100
+      typeof deviceId !== 'string' || deviceId.length > 100 ||
+      (jenisAbsen !== 'masuk' && jenisAbsen !== 'pulang')
     ) {
       return NextResponse.json(
         { error: 'Data tidak valid' },
@@ -52,16 +53,16 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── UPSERT: jika device_id + tanggal sudah ada, UPDATE baris itu ──
+    // ── UPSERT: jika device_id + tanggal_ronda + jenis_absen sudah ada, UPDATE ──
     const { data: existing } = await supabase
       .from('absen_records')
       .select('id')
       .eq('device_id', deviceId)
-      .eq('tanggal', tanggal)
+      .eq('tanggal_ronda', tanggal)
+      .eq('jenis_absen', jenisAbsen)
       .maybeSingle();
 
     if (existing) {
-      // UPDATE record yang sudah ada
       const updateData: Record<string, unknown> = {
         nama_warga: nama.trim(),
         dusun: dusun.trim(),
@@ -77,7 +78,6 @@ export async function POST(request: Request) {
         .eq('id', existing.id);
 
       if (isDevColError(error)) {
-        // Fallback: kolom nama_warga belum ada, pakai 'nama'
         const fbData: Record<string, unknown> = {
           nama: nama.trim(),
           dusun: dusun.trim(),
@@ -111,6 +111,7 @@ export async function POST(request: Request) {
       tanggal,
       tanggal_ronda: tanggal,
       jam_absen: jamAbsen,
+      jenis_absen: jenisAbsen,
       jarak_meter: Math.round(Number(jarakMeter) || 0),
       latitude: Number(latitude) || 0,
       longitude: Number(longitude) || 0,
@@ -120,7 +121,6 @@ export async function POST(request: Request) {
     let { error } = await supabase.from('absen_records').insert(insertData);
 
     if (isDevColError(error)) {
-      // Fallback: pake kolom lama (nama, warga_id, koordinat_lat, koordinat_lng, dll)
       const fbData: Record<string, unknown> = {
         id,
         warga_id: deviceId,
@@ -128,6 +128,7 @@ export async function POST(request: Request) {
         dusun: dusun.trim(),
         tanggal,
         jam_absen: jamAbsen,
+        jenis_absen: jenisAbsen,
         jarak_meter: Math.round(Number(jarakMeter) || 0),
         koordinat_lat: Number(latitude) || 0,
         koordinat_lng: Number(longitude) || 0,

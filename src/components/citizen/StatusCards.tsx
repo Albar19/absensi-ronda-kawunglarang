@@ -2,9 +2,10 @@
 
 import { Clock, MapPin } from 'lucide-react';
 import { CONFIG } from '@/lib/config';
+import { formatJamSesi } from '@/lib/data';
 
 interface StatusCardsProps {
-  statusJam: 'buka' | 'tutup' | null;
+  statusJam: 'masuk' | 'pulang' | 'tutup' | null;
   statusJarak: 'dekat' | 'jauh' | 'loading' | 'error' | null;
   jarakMeter: number | null;
   akurasiMeter?: number | null;
@@ -30,15 +31,14 @@ function dotStyle(state: CardState) {
 }
 
 export default function StatusCards({ statusJam, statusJarak, jarakMeter, akurasiMeter }: StatusCardsProps) {
-  const jamBuka  = `${String(CONFIG.jamBukaAbsen).padStart(2,'0')}:${String(CONFIG.menitBukaAbsen).padStart(2,'0')}`;
-  const jamTutup = `${String(CONFIG.jamTutupAbsen).padStart(2,'0')}:${String(CONFIG.menitTutupAbsen).padStart(2,'0')}`;
-
-  const jamState: CardState = statusJam === null ? 'idle' : statusJam === 'buka' ? 'ok' : 'error';
+  const jamState: CardState = statusJam === null ? 'idle' : statusJam === 'tutup' ? 'error' : 'ok';
   const lokasiState: CardState =
     !statusJarak || statusJarak === 'loading' ? 'idle'
     : statusJarak === 'dekat' ? 'ok'
     : statusJarak === 'error' ? 'warn'
     : 'error';
+
+  const sesiLabel = statusJam === 'pulang' ? 'PULANG' : 'MASUK';
 
   return (
     <div className="px-4 sm:px-5 pt-4 pb-2 space-y-3">
@@ -51,15 +51,15 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
           <p className="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-0.5">Status Jam</p>
           {statusJam === null ? (
             <p className="text-base font-bold text-slate-400 animate-pulse">Memeriksa jam…</p>
-          ) : statusJam === 'buka' ? (
+          ) : statusJam === 'tutup' ? (
             <>
-              <p className="text-lg font-black text-green-700 leading-tight">🟢 BUKA</p>
-              <p className="text-xs font-semibold text-green-600 mt-0.5">Tersedia pukul {jamBuka} – {jamTutup} WIB</p>
+              <p className="text-lg font-black text-red-700 leading-tight">🔴 DITUTUP</p>
+              <p className="text-xs font-semibold text-red-600 mt-0.5">Sesi masuk 20:00–23:40 · Sesi pulang 23:40–01:00</p>
             </>
           ) : (
             <>
-              <p className="text-lg font-black text-red-700 leading-tight">🔴 DITUTUP</p>
-              <p className="text-xs font-semibold text-red-600 mt-0.5">Hanya buka {jamBuka} – {jamTutup} WIB</p>
+              <p className="text-lg font-black text-green-700 leading-tight">🟢 BUKA — SESI {sesiLabel}</p>
+              <p className="text-xs font-semibold text-green-600 mt-0.5">{formatJamSesi(statusJam)}</p>
             </>
           )}
         </div>

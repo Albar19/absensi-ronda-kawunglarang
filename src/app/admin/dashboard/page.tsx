@@ -2,17 +2,39 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Trophy, Users, Clock, MapPin } from 'lucide-react';
-import { AbsenRecord } from '@/lib/types';
+import { LogOut, RefreshCw, Download, Trophy, Users, Clock, MapPin, Calendar, Save } from 'lucide-react';
+import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import ExportButton from '@/components/admin/ExportButton';
 
+type Tab = 'log' | 'jadwal';
+
+const HARI_LABEL: Record<string, string> = {
+  senin: 'Senin',
+  selasa: 'Selasa',
+  rabu: 'Rabu',
+  kamis: 'Kamis',
+  jumat: 'Jumat',
+  sabtu: 'Sabtu',
+  minggu: 'Minggu',
+};
+
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const [tab, setTab] = useState<Tab>('log');
+
+  // ── Log absen ──
   const [absenHariIni, setAbsenHariIni] = useState<AbsenRecord[]>([]);
   const [lastRefresh, setLastRefresh] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // ── Jadwal ──
+  const [jadwal, setJadwal] = useState<JadwalRonda[]>([]);
+  const [jadwalLoading, setJadwalLoading] = useState(false);
+  const [jadwalSaving, setJadwalSaving] = useState(false);
+  const [jadwalMessage, setJadwalMessage] = useState('');
+  const [jadwalDirty, setJadwalDirty] = useState(false);
 
   const refreshData = useCallback(async () => {
     try {
@@ -35,25 +57,78 @@ export default function AdminDashboardPage() {
     );
   }, [router]);
 
+  const loadJadwal = useCallback(async () => {
+    setJadwalLoading(true);
+    try {
+      const res = await fetch('/api/jadwal');
+      if (res.ok) {
+        const data: JadwalRonda[] = await res.json();
+        // Urutkan sesuai hariList
+        const sorted = CONFIG.hariList.map(h => data.find(j => j.hari === h)!).filter(Boolean);
+        // Kalau ada yang kosong, isi default
+        const result = CONFIG.hariList.map((h, i) => {
+          const existing = data.find(j => j.hari === h);
+          if (existing) return existing;
+          return { id: '', hari: h, petugas: CONFIG.petugasList[i % CONFIG.petugasList.length] };
+        });
+        setJadwal(result);
+      }
+    } catch {
+      // silent
+    }
+    setJadwalLoading(false);
+  }, []);
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshData();
     const interval = setInterval(refreshData, 30000);
     return () => clearInterval(interval);
   }, [refreshData]);
+
+  useEffect(() => {
+    loadJadwal();
+  }, [loadJadwal]);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/admin');
   }
 
-  // ── Dusun leaderboard (count per dusun, sorted desc) ──
+  function handleJadwalChange(hari: string, petugas: string) {
+    setJadwal(prev => prev.map(j => j.hari === hari ? { ...j, petugas } : j));
+    setJadwalDirty(true);
+    setJadwalMessage('');
+  }
+
+  async function handleSimpanJadwal() {
+    setJadwalSaving(true);
+    setJadwalMessage('');
+    try {
+      const res = await fetch('/api/jadwal', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jadwal: jadwal.map(j => ({ hari: j.hari, petugas: j.petugas })) }),
+      });
+      if (res.ok) {
+        setJadwalMessage('✅ Jadwal berhasil disimpan.');
+        setJadwalDirty(false);
+        await loadJadwal();
+      } else {
+        const err = await res.json();
+        setJadwalMessage(`❌ ${err.error || 'Gagal menyimpan'}`);
+      }
+    } catch {
+      setJadwalMessage('❌ Gagal terhubung ke server');
+    }
+    setJadwalSaving(false);
+  }
+
+  // ── Dusun leaderboard ──
   const dusunLeaderboard = useMemo(() => {
     const counts = new Map<string, number>();
     absenHariIni.forEach(r => {
       counts.set(r.dusun, (counts.get(r.dusun) || 0) + 1);
     });
-    // Gunakan urutan dusun dari config, lalu urutkan desc
     const dusunOrder = CONFIG.dusunList;
     return dusunOrder
       .map(d => ({ dusun: d, count: counts.get(d) || 0 }))
@@ -62,7 +137,6 @@ export default function AdminDashboardPage() {
 
   const totalHadir = absenHariIni.length;
   const tanggalLabel = formatTanggalIndo(getTanggalHariIni());
-
   const trophyIcons = ['🏆', '🥈', '🥉', '⚠️'];
 
   return (
@@ -87,151 +161,245 @@ export default function AdminDashboardPage() {
       </nav>
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
-        {/* Date + Refresh */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="min-w-0">
-            <h2 className="text-lg font-black text-slate-900 truncate">{tanggalLabel}</h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Total hadir: <strong>{totalHadir}</strong> orang
-              {lastRefresh && <span className="ml-2">· Data: {lastRefresh}</span>}
-            </p>
-          </div>
-          <button onClick={refreshData}
-            className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.97] transition-all"
-            style={{ minHeight: '44px' }}>
-            <RefreshCw size={16} strokeWidth={2.5} />
-            <span className="hidden sm:inline">Refresh</span>
+        {/* ─── TAB NAV ─── */}
+        <div className="flex items-center gap-1 bg-slate-200 rounded-xl p-1">
+          <button
+            type="button"
+            onClick={() => setTab('log')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+              tab === 'log' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+            style={{ minHeight: '42px' }}
+          >
+            <Users size={16} />
+            Log Kehadiran
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('jadwal')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+              tab === 'jadwal' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+            style={{ minHeight: '42px' }}
+          >
+            <Calendar size={16} />
+            Jadwal Ronda
           </button>
         </div>
 
-        {/* ─── DUSUN LEADERBOARD ─── */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200">
-            <div className="flex items-center gap-2">
-              <Trophy size={20} className="text-amber-500" strokeWidth={2} />
-              <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                Dusun Leaderboard — Malam Ini
-              </h3>
+        {/* ════════════════════════════════════════════════ */}
+        {/* TAB: LOG KEHADIRAN                              */}
+        {/* ════════════════════════════════════════════════ */}
+        {tab === 'log' && (
+          <>
+            {/* Date + Refresh */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="min-w-0">
+                <h2 className="text-lg font-black text-slate-900 truncate">{tanggalLabel}</h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Total hadir: <strong>{totalHadir}</strong> orang
+                  {lastRefresh && <span className="ml-2">· Data: {lastRefresh}</span>}
+                </p>
+              </div>
+              <button onClick={refreshData}
+                className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.97] transition-all"
+                style={{ minHeight: '44px' }}>
+                <RefreshCw size={16} strokeWidth={2.5} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
             </div>
-          </div>
 
-          {loading ? (
-            <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">
-              Memuat data...
-            </div>
-          ) : dusunLeaderboard.length === 0 ? (
-            <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">
-              Belum ada data absen malam ini.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {dusunLeaderboard.map((item, idx) => {
-                const icon = trophyIcons[idx] || '📋';
-                const isTop = idx === 0;
-                const bgClass = isTop ? 'bg-amber-50' : idx === 1 ? 'bg-slate-50' : '';
-                return (
-                  <div key={item.dusun} className={`flex items-center justify-between px-5 py-4 ${bgClass}`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-2xl flex-shrink-0" role="img" aria-hidden>{icon}</span>
-                      <div className="min-w-0">
-                        <p className={`font-black truncate ${isTop ? 'text-amber-900 text-lg' : 'text-slate-800'}`}>
-                          {item.dusun}
-                        </p>
-                        <p className="text-xs text-slate-500 font-medium">
-                          {item.count} warga hadir
-                        </p>
+            {/* Dusun Leaderboard */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <Trophy size={20} className="text-amber-500" strokeWidth={2} />
+                  <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
+                    Dusun Leaderboard — Malam Ini
+                  </h3>
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">Memuat data...</div>
+              ) : dusunLeaderboard.length === 0 ? (
+                <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">Belum ada data absen malam ini.</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {dusunLeaderboard.map((item, idx) => {
+                    const icon = trophyIcons[idx] || '📋';
+                    const isTop = idx === 0;
+                    const bgClass = isTop ? 'bg-amber-50' : idx === 1 ? 'bg-slate-50' : '';
+                    return (
+                      <div key={item.dusun} className={`flex items-center justify-between px-5 py-4 ${bgClass}`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-2xl flex-shrink-0" role="img" aria-hidden>{icon}</span>
+                          <div className="min-w-0">
+                            <p className={`font-black truncate ${isTop ? 'text-amber-900 text-lg' : 'text-slate-800'}`}>{item.dusun}</p>
+                            <p className="text-xs text-slate-500 font-medium">{item.count} warga hadir</p>
+                          </div>
+                        </div>
+                        <div className={`flex items-center justify-center w-12 h-12 rounded-xl font-black text-lg flex-shrink-0 ${
+                          isTop ? 'bg-amber-200 text-amber-800' : 'bg-slate-100 text-slate-600'
+                        }`}>{item.count}</div>
                       </div>
-                    </div>
-                    <div className={`flex items-center justify-center w-12 h-12 rounded-xl font-black text-lg flex-shrink-0 ${
-                      isTop ? 'bg-amber-200 text-amber-800' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {item.count}
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
+              <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center gap-2 text-xs font-semibold text-slate-500">
+                <Users size={14} />
+                Total kehadiran malam ini: <strong className="text-slate-800">{totalHadir}</strong> orang
+              </div>
             </div>
-          )}
 
-          {/* Total footer */}
-          <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <Users size={14} />
-            Total kehadiran malam ini: <strong className="text-slate-800">{totalHadir}</strong> orang
-          </div>
-        </div>
-
-        {/* ─── LOG TABLE ─── */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200">
-            <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-              Log Kehadiran ({absenHariIni.length} data)
-            </h3>
-          </div>
-
-          {absenHariIni.length === 0 ? (
-            <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">
-              {loading ? 'Memuat data...' : 'Belum ada absen malam ini.'}
-            </div>
-          ) : (
-            <>
-              {/* Mobile card list */}
-              <div className="sm:hidden divide-y divide-slate-100">
-                {absenHariIni.map((r, i) => (
-                  <div key={r.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
-                    <span className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 text-xs font-black flex items-center justify-center flex-shrink-0 tabular-nums">
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black text-slate-900 truncate">{r.nama}</p>
-                      <p className="text-xs text-slate-500 font-semibold">
-                        {r.dusun}
-                        <span className="ml-2 text-slate-400">· {r.jamAbsen} WIB · ±{r.jarakMeter}m</span>
-                      </p>
-                    </div>
-                  </div>
-                ))}
+            {/* Log Table */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200">
+                <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
+                  Log Kehadiran ({absenHariIni.length} data)
+                </h3>
               </div>
 
-              {/* Desktop table */}
-              <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      {['No', 'Nama', 'Dusun', 'Jam Absen', 'Jarak (m)', 'Waktu'].map(h => (
-                        <th key={h} className="text-left px-4 py-3 font-black text-slate-500 text-xs uppercase tracking-wider whitespace-nowrap">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
+              {absenHariIni.length === 0 ? (
+                <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">
+                  {loading ? 'Memuat data...' : 'Belum ada absen malam ini.'}
+                </div>
+              ) : (
+                <>
+                  <div className="sm:hidden divide-y divide-slate-100">
                     {absenHariIni.map((r, i) => (
-                      <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-slate-400 font-semibold tabular-nums">{i + 1}</td>
-                        <td className="px-4 py-3 font-bold text-slate-900">{r.nama}</td>
-                        <td className="px-4 py-3 text-slate-600 font-semibold whitespace-nowrap">{r.dusun}</td>
-                        <td className="px-4 py-3 tabular-nums font-semibold text-slate-700 whitespace-nowrap">{r.jamAbsen}</td>
-                        <td className="px-4 py-3 tabular-nums font-semibold text-slate-700 whitespace-nowrap">±{r.jarakMeter}</td>
-                        <td className="px-4 py-3 text-xs text-slate-400 tabular-nums">
-                          {r.jamAbsen}
-                        </td>
-                      </tr>
+                      <div key={r.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
+                        <span className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 text-xs font-black flex items-center justify-center flex-shrink-0 tabular-nums">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-black text-slate-900 truncate">{r.nama}</p>
+                          <p className="text-xs text-slate-500 font-semibold">
+                            {r.dusun}
+                            <span className="ml-2 text-slate-400">· {r.jamAbsen} WIB · ±{r.jarakMeter}m</span>
+                          </p>
+                          <span className={`inline-block mt-1 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                            r.jenisAbsen === 'masuk' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                          }`}>{r.jenisAbsen === 'masuk' ? 'MASUK' : 'PULANG'}</span>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
 
-              <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-xs font-semibold text-slate-400">
-                Menampilkan {absenHariIni.length} data kehadiran
-              </div>
-            </>
-          )}
-        </div>
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          {['No', 'Nama', 'Dusun', 'Jam Absen', 'Jenis', 'Jarak (m)'].map(h => (
+                            <th key={h} className="text-left px-4 py-3 font-black text-slate-500 text-xs uppercase tracking-wider whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {absenHariIni.map((r, i) => (
+                          <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3 text-slate-400 font-semibold tabular-nums">{i + 1}</td>
+                            <td className="px-4 py-3 font-bold text-slate-900">{r.nama}</td>
+                            <td className="px-4 py-3 text-slate-600 font-semibold whitespace-nowrap">{r.dusun}</td>
+                            <td className="px-4 py-3 tabular-nums font-semibold text-slate-700 whitespace-nowrap">{r.jamAbsen}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-block text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                                r.jenisAbsen === 'masuk' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                              }`}>{r.jenisAbsen === 'masuk' ? 'MASUK' : 'PULANG'}</span>
+                            </td>
+                            <td className="px-4 py-3 tabular-nums font-semibold text-slate-700 whitespace-nowrap">±{r.jarakMeter}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-        {/* ─── TOOLBAR ─── */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <ExportButton />
-        </div>
+                  <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-xs font-semibold text-slate-400">
+                    Menampilkan {absenHariIni.length} data kehadiran
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <ExportButton />
+            </div>
+          </>
+        )}
+
+        {/* ════════════════════════════════════════════════ */}
+        {/* TAB: JADWAL RONDA                               */}
+        {/* ════════════════════════════════════════════════ */}
+        {tab === 'jadwal' && (
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Calendar size={20} className="text-[#1e3a8a]" strokeWidth={2} />
+                <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
+                  Jadwal Ronda Mingguan
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 font-medium">
+                Atur petugas ronda setiap hari. Tersedia 7 hari (Senin — Minggu).
+              </p>
+            </div>
+
+            {jadwalLoading ? (
+              <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">Memuat jadwal...</div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="text-left px-5 py-3 font-black text-slate-500 text-xs uppercase tracking-wider w-32">Hari</th>
+                        <th className="text-left px-5 py-3 font-black text-slate-500 text-xs uppercase tracking-wider">Petugas Ronda</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {jadwal.map(j => (
+                        <tr key={j.hari} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-5 py-3 font-black text-slate-800">{HARI_LABEL[j.hari] || j.hari}</td>
+                          <td className="px-5 py-3">
+                            <select
+                              value={j.petugas}
+                              onChange={e => handleJadwalChange(j.hari, e.target.value)}
+                              className="w-full max-w-xs px-3 py-2.5 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-800 bg-white focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                              style={{ minHeight: '44px' }}
+                            >
+                              {CONFIG.petugasList.map(p => (
+                                <option key={p} value={p}>{p}</option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Message + Save */}
+                <div className="px-5 py-4 bg-slate-50 border-t border-slate-200 space-y-3">
+                  {jadwalMessage && (
+                    <p className="text-sm font-bold text-slate-700">{jadwalMessage}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSimpanJadwal}
+                    disabled={jadwalSaving}
+                    className="inline-flex items-center gap-2 bg-[#1e3a8a] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#1e40af] active:scale-[0.98] transition-all disabled:opacity-50"
+                    style={{ minHeight: '48px' }}
+                  >
+                    <Save size={18} strokeWidth={2.5} />
+                    {jadwalSaving ? '⏳ Menyimpan...' : jadwalDirty ? '💾 Simpan Jadwal' : 'Simpan Jadwal'}
+                  </button>
+                  {!jadwalDirty && jadwal.length > 0 && (
+                    <p className="text-xs text-slate-400 font-medium">Tidak ada perubahan.</p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <p className="text-center text-xs text-slate-400 py-4">
           Sistem Absensi Ronda — KKN 46 Kawunglarang UNIKU

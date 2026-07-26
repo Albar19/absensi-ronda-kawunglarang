@@ -8,7 +8,6 @@ function getTanggalHariIni(): string {
 export async function DELETE() {
   const today = getTanggalHariIni();
 
-  // Coba hapus pakai 'tanggal_ronda', fallback ke 'tanggal'
   let { error } = await supabase
     .from('absen_records')
     .delete()

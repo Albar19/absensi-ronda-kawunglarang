@@ -9,6 +9,9 @@ interface SuccessScreenProps {
 }
 
 export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
+  const labelSesi = record.jenisAbsen === 'pulang' ? 'PULANG' : 'MASUK';
+  const iconSesi = record.jenisAbsen === 'pulang' ? '🌄' : '🌙';
+
   return (
     <div className="flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14 text-center">
       {/* Check icon */}
@@ -26,10 +29,11 @@ export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
       {/* Detail card */}
       <div className="w-full max-w-sm bg-white border-2 border-green-400 rounded-2xl overflow-hidden shadow-sm mb-6">
         {[
-          { icon: '👤', label: 'Nama',     value: record.nama },
-          { icon: '🏘️', label: 'Wilayah',  value: record.dusun },
-          { icon: '🕐', label: 'Jam Absen', value: `${record.jamAbsen} WIB` },
-          { icon: '📍', label: 'Jarak',     value: `± ${record.jarakMeter} meter` },
+          { icon: iconSesi,  label: 'Sesi',     value: labelSesi },
+          { icon: '👤',      label: 'Nama',     value: record.nama },
+          { icon: '🏘️',     label: 'Wilayah',  value: record.dusun },
+          { icon: '🕐',      label: 'Jam Absen', value: `${record.jamAbsen} WIB` },
+          { icon: '📍',      label: 'Jarak',     value: `± ${record.jarakMeter} meter` },
         ].map((row, i, arr) => (
           <div key={row.label}>
             <div className="flex items-center gap-4 px-5 py-3.5">

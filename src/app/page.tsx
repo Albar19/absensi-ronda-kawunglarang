@@ -2,10 +2,12 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { FlowState, AbsenRecord } from '@/lib/types';
-import { CONFIG } from '@/lib/config';
+import { CONFIG, type JenisAbsen } from '@/lib/config';
 import {
   hitungJarak,
   cekJamStatus,
+  getJenisAbsenSaatIni,
+  formatJamSesi,
   generateId,
   getTanggalHariIni,
   getDeviceId,
@@ -20,13 +22,14 @@ import SuccessScreen  from '@/components/citizen/SuccessScreen';
 export default function HomePage() {
   const [flowState,      setFlowState]      = useState<FlowState>('idle');
   const [isSubmitting,   setIsSubmitting]   = useState(false);
-  const [statusJam,      setStatusJam]      = useState<'buka'|'tutup'|null>(null);
+  const [statusJam,      setStatusJam]      = useState<JamStatusDisplay>(null);
   const [statusJarak,    setStatusJarak]    = useState<'dekat'|'jauh'|'loading'|'error'|null>(null);
   const [jarakMeter,     setJarakMeter]     = useState<number|null>(null);
   const [akurasi,        setAkurasi]        = useState<number|null>(null);
   const [koordinat,      setKoordinat]      = useState<{lat:number;lng:number}|null>(null);
   const [pesanError,     setPesanError]     = useState('');
   const [successRecord,  setSuccessRecord]  = useState<AbsenRecord|null>(null);
+  const [jenisAbsen,     setJenisAbsen]     = useState<JenisAbsen>('masuk');
 
   // Form state
   const [nama, setNama] = useState('');
@@ -43,7 +46,7 @@ export default function HomePage() {
     }
   }, []);
 
-  const mulaiCek = useCallback(() => {
+  const mulaiCek = useCallback(async () => {
     setFlowState('checking');
     setStatusJam(null);
     setStatusJarak('loading');
@@ -51,21 +54,48 @@ export default function HomePage() {
     setPesanError('');
 
     const jamStatus = cekJamStatus();
-    setStatusJam(jamStatus === 'buka' ? 'buka' : 'tutup');
 
-    if (jamStatus !== 'buka') {
-      const jb = `${String(CONFIG.jamBukaAbsen).padStart(2,'0')}:${String(CONFIG.menitBukaAbsen).padStart(2,'0')}`;
-      const jt = `${String(CONFIG.jamTutupAbsen).padStart(2,'0')}:${String(CONFIG.menitTutupAbsen).padStart(2,'0')}`;
+    if (jamStatus === 'belum-buka' || jamStatus === 'ditutup') {
+      setStatusJam('tutup');
       setStatusJarak(null);
       setTimeout(() => {
-        setPesanError(
-          jamStatus === 'belum-buka'
-            ? `Absen belum dibuka. Absen dibuka pukul ${jb} WIB.`
-            : `Waktu absen sudah ditutup. Absen hanya tersedia pukul ${jb} – ${jt} WIB.`
-        );
+        if (jamStatus === 'belum-buka') {
+          setPesanError(`Absen belum dibuka. Sesi masuk pukul 20:00 - 23:40 WIB, sesi pulang pukul 23:40 - 01:00 WIB.`);
+        } else {
+          setPesanError(`Waktu absen sudah ditutup. Absen hanya tersedia pukul 20:00 - 01:00 WIB.`);
+        }
         setFlowState('rejected');
       }, 700);
       return;
+    }
+
+    // Tentukan sesi
+    const sesi = getJenisAbsenSaatIni();
+    setJenisAbsen(sesi);
+    setStatusJam(sesi); // 'masuk' or 'pulang'
+
+    // Kalau pulang, cek dulu apakah sudah absen masuk hari ini
+    if (sesi === 'pulang') {
+      const deviceId = getDeviceId();
+      try {
+        const cekRes = await fetch(`/api/absen/cek-masuk?device_id=${encodeURIComponent(deviceId)}&tanggal=${getTanggalHariIni()}`);
+        if (!cekRes.ok) {
+          const cekData = await cekRes.json();
+          setStatusJarak(null);
+          setTimeout(() => {
+            setPesanError(cekData.error || 'Anda belum absen masuk malam ini. Hubungi admin jika ada kendala.');
+            setFlowState('rejected');
+          }, 700);
+          return;
+        }
+      } catch {
+        setStatusJarak(null);
+        setTimeout(() => {
+          setPesanError('Gagal memeriksa absen masuk. Periksa koneksi Anda.');
+          setFlowState('rejected');
+        }, 700);
+        return;
+      }
     }
 
     if (!navigator.geolocation) {
@@ -91,7 +121,7 @@ export default function HomePage() {
         } else {
           setStatusJarak('jauh');
           setTimeout(() => {
-            setPesanError(`Jarak Anda terlalu jauh dari Bale Desa (±${jarak} meter). Anda harus berada dalam radius ${CONFIG.radiusMeter} meter.`);
+            setPesanError(`Jarak Anda terlalu jauh dari Bale Desa (${jarak} meter). Anda harus berada dalam radius ${CONFIG.radiusMeter} meter.`);
             setFlowState('rejected');
           }, 700);
         }
@@ -125,6 +155,7 @@ export default function HomePage() {
       dusun,
       tanggal: getTanggalHariIni(),
       jamAbsen: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`,
+      jenisAbsen,
       latitude: koordinat?.lat ?? 0,
       longitude: koordinat?.lng ?? 0,
       jarakMeter: jarakMeter ?? 0,
@@ -150,7 +181,7 @@ export default function HomePage() {
     }
     setIsSubmitting(false);
     setFlowState('rejected');
-  }, [nama, dusun, jarakMeter, koordinat]);
+  }, [nama, dusun, jarakMeter, koordinat, jenisAbsen]);
 
   const handleReset = useCallback(() => {
     setFlowState('idle');
@@ -170,6 +201,15 @@ export default function HomePage() {
 
   const isFormValid = nama.trim().length > 0 && dusun.length > 0;
 
+  // ── Adaptive labels ──
+  const jamStatus = cekJamStatus();
+  const sesiAktif = jamStatus === 'masuk' || jamStatus === 'pulang' ? jamStatus : null;
+  const labelSesi = sesiAktif === 'pulang' ? 'PULANG' : 'MASUK';
+  const labelSesiLower = sesiAktif === 'pulang' ? 'pulang' : 'masuk';
+  const tombolMulai = sesiAktif === 'pulang' ? '🌙 MULAI ABSEN PULANG' : sesiAktif === 'masuk' ? '🌙 MULAI ABSEN MASUK' : '🔒 ABSEN DITUTUP';
+  const tombolSubmit = sesiAktif === 'pulang' ? '🌙 SAYA PULANG RONDA' : '🌙 SAYA HADIR RONDA';
+  const jamSesiStr = sesiAktif ? formatJamSesi(sesiAktif) : '';
+
   return (
     <main className="min-h-screen bg-slate-100 sm:flex sm:items-start sm:justify-center sm:py-8 lg:py-12">
       <div className="w-full sm:max-w-md bg-white sm:rounded-2xl sm:shadow-lg">
@@ -184,7 +224,9 @@ export default function HomePage() {
               <p className="text-5xl" role="img" aria-label="bulan">🌙</p>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Selamat Datang</h2>
               <p className="text-sm sm:text-base text-slate-500 font-medium leading-relaxed max-w-xs mx-auto">
-                Tekan tombol di bawah untuk memulai absen ronda malam.
+                {sesiAktif
+                  ? `Sesi ${labelSesiLower} sedang dibuka (${jamSesiStr}).`
+                  : 'Tekan tombol di bawah untuk memulai absen ronda malam.'}
               </p>
             </div>
 
@@ -193,10 +235,10 @@ export default function HomePage() {
               <p className="text-xs font-black tracking-widest uppercase text-slate-400 mb-3">Cara Absen</p>
               <ol className="space-y-2">
                 {[
-                  'Tekan tombol MULAI ABSEN',
+                  `Tekan tombol MULAI ABSEN ${labelSesi}`,
                   'Izinkan akses lokasi GPS jika diminta',
                   'Isi Nama dan pilih Dusun',
-                  'Tekan SAYA HADIR RONDA',
+                  `Tekan ${tombolSubmit.replace(/^[^\s]+\s/, '')}`,
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-[#1e3a8a] text-white text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -212,10 +254,11 @@ export default function HomePage() {
             <button
               type="button"
               onClick={mulaiCek}
-              className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide active:scale-[0.98] transition-all shadow-sm"
+              disabled={!sesiAktif}
+              className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide active:scale-[0.98] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ minHeight: '68px' }}
             >
-              🌙 MULAI ABSEN
+              {tombolMulai}
             </button>
 
             <div className="text-center pt-2 border-t border-slate-100">
@@ -258,15 +301,26 @@ export default function HomePage() {
             <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} akurasiMeter={akurasi} />
             <div className="h-px bg-slate-100" />
 
+            {/* Sesi badge */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3">
+              <span className="text-xl flex-shrink-0">{sesiAktif === 'pulang' ? '🌄' : '🌙'}</span>
+              <div>
+                <p className="text-sm font-bold text-blue-900">
+                  Sesi <span className="uppercase">{labelSesi}</span>
+                </p>
+                <p className="text-xs text-blue-700">{jamSesiStr}</p>
+              </div>
+            </div>
+
             {/* Auto-fill hint */}
             {showEditHint && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-start gap-3">
+              <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-3">
                 <span className="text-xl flex-shrink-0 mt-0.5">👤</span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-blue-900">
+                  <p className="text-sm font-bold text-green-900">
                     Data Anda sudah terisi otomatis.
                   </p>
-                  <p className="text-xs text-blue-700 mt-0.5">
+                  <p className="text-xs text-green-700 mt-0.5">
                     Jika nama atau dusun salah, klik <strong>"✏️ Ubah Nama / Dusun"</strong> di bawah.
                   </p>
                 </div>
@@ -313,7 +367,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Tombol utama: SAYA HADIR RONDA */}
+            {/* Tombol utama: adaptif */}
             <button
               type="button"
               onClick={handleSubmitAbsen}
@@ -326,11 +380,11 @@ export default function HomePage() {
                   <span className="animate-spin">⏳</span> Menyimpan…
                 </span>
               ) : (
-                '🌙 SAYA HADIR RONDA'
+                tombolSubmit
               )}
             </button>
 
-            {/* Tombol sekunder: Ubah Nama / Dusun (muncul jika auto-fill aktif) */}
+            {/* Tombol sekunder: Ubah Nama / Dusun */}
             {showEditHint && (
               <button
                 type="button"
@@ -353,3 +407,5 @@ export default function HomePage() {
     </main>
   );
 }
+
+type JamStatusDisplay = 'masuk' | 'pulang' | 'tutup' | null;

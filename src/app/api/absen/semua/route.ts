@@ -8,6 +8,7 @@ function mapRecord(r: Record<string, unknown>) {
     dusun: r.dusun ?? '',
     tanggal: r.tanggal ?? r.tanggal_ronda ?? '',
     jamAbsen: r.jam_absen ?? '',
+    jenisAbsen: r.jenis_absen ?? 'masuk',
     latitude: Number(r.latitude ?? r.koordinat_lat ?? 0),
     longitude: Number(r.longitude ?? r.koordinat_lng ?? 0),
     jarakMeter: Number(r.jarak_meter ?? 0),
@@ -18,7 +19,6 @@ function mapRecord(r: Record<string, unknown>) {
 export async function GET() {
   let data: Record<string, unknown>[] | null = null;
 
-  // Coba query dengan created_at, fallback jika kolom baru belum ada
   const result = await supabase
     .from('absen_records')
     .select('*')

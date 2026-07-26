@@ -12,6 +12,7 @@ function mapRecord(r: Record<string, unknown>) {
     dusun: r.dusun ?? '',
     tanggal: r.tanggal ?? r.tanggal_ronda ?? '',
     jamAbsen: r.jam_absen ?? '',
+    jenisAbsen: r.jenis_absen ?? 'masuk',
     latitude: Number(r.latitude ?? r.koordinat_lat ?? 0),
     longitude: Number(r.longitude ?? r.koordinat_lng ?? 0),
     jarakMeter: Number(r.jarak_meter ?? 0),
@@ -22,9 +23,7 @@ function mapRecord(r: Record<string, unknown>) {
 export async function GET() {
   const today = getTanggalHariIni();
   let data: Record<string, unknown>[] | null = null;
-  let error: unknown = null;
 
-  // Coba query pakai kolom baru 'tanggal_ronda', fallback ke 'tanggal'
   const result = await supabase
     .from('absen_records')
     .select('*')
@@ -32,7 +31,6 @@ export async function GET() {
     .order('created_at', { ascending: false });
 
   if (result.error && (result.error.code === 'PGRST204' || result.error.message?.includes('tanggal_ronda'))) {
-    // Kolom baru tidak ada, fallback ke 'tanggal'
     const fb = await supabase
       .from('absen_records')
       .select('*')
