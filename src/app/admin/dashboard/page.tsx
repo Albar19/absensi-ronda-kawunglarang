@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Trophy, Users, Clock, MapPin, Calendar, Save } from 'lucide-react';
+import { LogOut, RefreshCw, Download, Trophy, Users, Clock, MapPin, Calendar, Save, QrCode } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
@@ -322,6 +322,15 @@ export default function AdminDashboardPage() {
 
             <div className="flex items-center justify-between flex-wrap gap-3">
               <ExportButton />
+              <a
+                href="/api/qr"
+                download
+                className="inline-flex items-center gap-2 bg-white text-[#1e3a8a] border-2 border-[#1e3a8a] px-5 py-3 rounded-lg font-bold text-sm hover:bg-[#1e3a8a] hover:text-white active:scale-[0.98] transition-all"
+                style={{ minHeight: '44px' }}
+              >
+                <QrCode size={18} strokeWidth={2.5} />
+                Download QR Code
+              </a>
             </div>
           </>
         )}

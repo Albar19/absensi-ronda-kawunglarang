@@ -60,9 +60,9 @@ export default function HomePage() {
       setStatusJarak(null);
       setTimeout(() => {
         if (jamStatus === 'belum-buka') {
-          setPesanError(`Absen belum dibuka. Sesi masuk pukul 20:00 - 23:40 WIB, sesi pulang pukul 23:40 - 01:00 WIB.`);
+          setPesanError('Absen belum dibuka. Sesi masuk pukul 20:00 - 23:40 WIB, sesi pulang pukul 23:40 - 01:00 WIB.');
         } else {
-          setPesanError(`Waktu absen sudah ditutup. Absen hanya tersedia pukul 20:00 - 01:00 WIB.`);
+          setPesanError('Waktu absen sudah ditutup. Absen hanya tersedia pukul 20:00 - 01:00 WIB.');
         }
         setFlowState('rejected');
       }, 700);
@@ -238,7 +238,7 @@ export default function HomePage() {
                   `Tekan tombol MULAI ABSEN ${labelSesi}`,
                   'Izinkan akses lokasi GPS jika diminta',
                   'Isi Nama dan pilih Dusun',
-                  `Tekan ${tombolSubmit.replace(/^[^\s]+\s/, '')}`,
+                  `Tekan ${sesiAktif === 'pulang' ? 'SAYA PULANG RONDA' : 'SAYA HADIR RONDA'}`,
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-[#1e3a8a] text-white text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">
