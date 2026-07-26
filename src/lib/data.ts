@@ -1,8 +1,7 @@
 // ============================================================
-// DATA LAYER — Warga, helpers, Haversine
+// DATA LAYER — Helpers, Haversine, Device ID, LocalStorage
 // ============================================================
 
-import { Warga } from './types';
 import { CONFIG } from './config';
 
 // ----------------------------------------------------------
@@ -12,7 +11,7 @@ export function hitungJarak(
   lat1: number, lng1: number,
   lat2: number, lng2: number
 ): number {
-  const R = 6371000; // radius bumi dalam meter
+  const R = 6371000;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
@@ -25,38 +24,18 @@ export function hitungJarak(
 }
 
 // ----------------------------------------------------------
-// VALIDASI JAM ABSEN
+// VALIDASI JAM ABSEN — 20:00 - 00:00 WIB (1 sesi)
 // ----------------------------------------------------------
 export type JamStatus = 'buka' | 'belum-buka' | 'ditutup';
 
 export function isJamAbsenBuka(): boolean {
   const now = new Date();
-  const jam = now.getHours();
-  const menit = now.getMinutes();
-  const totalMenit = jam * 60 + menit;
-  const buka = CONFIG.jamBukaAbsen * 60 + CONFIG.menitBukaAbsen;
-  const tutup = CONFIG.jamTutupAbsen * 60 + CONFIG.menitTutupAbsen;
-  if (tutup <= buka) {
-    return totalMenit >= buka || totalMenit < tutup;
-  }
-  return totalMenit >= buka && totalMenit <= tutup;
-}
-
-export function isJamPulangBuka(): boolean {
-  const now = new Date();
   const totalMenit = now.getHours() * 60 + now.getMinutes();
-  const buka = CONFIG.jamBukaPulang * 60 + CONFIG.menitBukaPulang;
-  const tutup = CONFIG.jamTutupPulang * 60 + CONFIG.menitTutupPulang;
-  if (tutup <= buka) {
-    return totalMenit >= buka || totalMenit < tutup;
-  }
-  return totalMenit >= buka && totalMenit <= tutup;
-}
-
-export function getJenisAbsen(): 'masuk' | 'pulang' | null {
-  if (isJamAbsenBuka()) return 'masuk';
-  if (isJamPulangBuka()) return 'pulang';
-  return null;
+  const buka = CONFIG.jamBukaAbsen * 60 + CONFIG.menitBukaAbsen;       // 20:00 = 1200
+  const tutup = CONFIG.jamTutupAbsen * 60 + CONFIG.menitTutupAbsen;   // 00:00 = 0
+  // Rentang yang melewati tengah malam: 20:00 (1200) s.d. 00:00 (0 besok)
+  if (totalMenit >= buka || totalMenit < tutup) return true;
+  return false;
 }
 
 export function cekJamStatus(): JamStatus {
@@ -65,15 +44,13 @@ export function cekJamStatus(): JamStatus {
   const buka = CONFIG.jamBukaAbsen * 60 + CONFIG.menitBukaAbsen;
   const tutup = CONFIG.jamTutupAbsen * 60 + CONFIG.menitTutupAbsen;
 
-  if (tutup <= buka) {
-    if (totalMenit >= buka) return 'buka';
-    if (totalMenit < tutup) return 'buka';
-    return 'belum-buka';
-  }
-
-  if (totalMenit < buka) return 'belum-buka';
-  if (totalMenit > tutup) return 'ditutup';
-  return 'buka';
+  // 00:00 - 19:59 => belum-buka (kecuali 00:00 yang masih dalam sesi)
+  if (totalMenit >= tutup && totalMenit < buka) return 'belum-buka';
+  // 20:00 - 23:59 => buka
+  if (totalMenit >= buka) return 'buka';
+  // 00:00 => masih dalam sesi (00:00 = tutup, batas akhir)
+  if (totalMenit < tutup) return 'buka';
+  return 'ditutup';
 }
 
 // ----------------------------------------------------------
@@ -98,26 +75,6 @@ export function formatTanggalIndo(tanggalStr: string): string {
 }
 
 // ----------------------------------------------------------
-// Hitung berapa kali hari tertentu muncul dalam rentang tanggal
-// ----------------------------------------------------------
-const DAY_INDEX: Record<string, number> = {
-  'Minggu': 0, 'Senin': 1, 'Selasa': 2, 'Rabu': 3,
-  'Kamis': 4, 'Jumat': 5, 'Sabtu': 6,
-};
-
-export function countHariDalamRentang(hari: string, start: Date, end: Date): number {
-  const target = DAY_INDEX[hari];
-  if (target === undefined) return 0;
-  let count = 0;
-  const d = new Date(start);
-  while (d <= end) {
-    if (d.getDay() === target) count++;
-    d.setDate(d.getDate() + 1);
-  }
-  return count;
-}
-
-// ----------------------------------------------------------
 // Dapatkan nama hari dalam bahasa Indonesia
 // ----------------------------------------------------------
 export function getHariIniIndonesia(): string {
@@ -129,32 +86,47 @@ export function getHariIniIndonesia(): string {
 // GENERATE UNIQUE ID
 // ----------------------------------------------------------
 export function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
 // ----------------------------------------------------------
-// 1 HP 1 NAMA — localStorage lock
+// DEVICE ID — identifikasi unik per HP (disimpan di localStorage)
 // ----------------------------------------------------------
-const STORAGE_KEY = 'absensi_hp';
+const DEVICE_KEY = 'absensi_device_id';
+const WARGA_KEY = 'absensi_warga_data';
 
-export function simpanLockHP(wargaId: string, nama: string) {
+export function getDeviceId(): string {
+  if (typeof window === 'undefined') return '';
+  let deviceId = localStorage.getItem(DEVICE_KEY);
+  if (!deviceId) {
+    deviceId = generateId() + '-' + Date.now().toString(36);
+    localStorage.setItem(DEVICE_KEY, deviceId);
+  }
+  return deviceId;
+}
+
+// ----------------------------------------------------------
+// Simpan & muat data warga (nama + dusun) ke localStorage
+// untuk auto-fill di kunjungan berikutnya
+// ----------------------------------------------------------
+export interface WargaData {
+  nama: string;
+  dusun: string;
+}
+
+export function simpanDataWarga(nama: string, dusun: string): void {
   if (typeof window === 'undefined') return;
-  const data = { tanggal: getTanggalHariIni(), wargaId, nama };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  const data: WargaData = { nama, dusun };
+  localStorage.setItem(WARGA_KEY, JSON.stringify(data));
 }
 
-export function cekLockHP(wargaId: string): { ok: boolean; pesan?: string } {
-  if (typeof window === 'undefined') return { ok: true };
+export function muatDataWarga(): WargaData | null {
+  if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ok: true };
-    const data = JSON.parse(raw);
-    if (data.tanggal !== getTanggalHariIni()) return { ok: true };
-    if (data.wargaId !== wargaId) {
-      return { ok: false, pesan: `HP ini sudah dipakai untuk absen atas nama ${data.nama} hari ini. Ganti HP atau hubungi petugas.` };
-    }
-    return { ok: true };
+    const raw = localStorage.getItem(WARGA_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as WargaData;
   } catch {
-    return { ok: true };
+    return null;
   }
 }

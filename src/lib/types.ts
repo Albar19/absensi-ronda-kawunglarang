@@ -1,35 +1,18 @@
 // ============================================================
 // TYPE DEFINITIONS — Sistem Absensi Ronda Kawunglarang
+// Model Relawan / Open-Input (tanpa master data warga)
 // ============================================================
-
-export interface Warga {
-  id: string;
-  nama: string;
-  dusun: string;
-}
 
 export interface AbsenRecord {
   id: string;
-  wargaId: string;
   nama: string;
   dusun: string;
   tanggal: string;       // format: "YYYY-MM-DD"
   jamAbsen: string;      // format: "HH:MM:SS"
+  latitude: number;
+  longitude: number;
   jarakMeter: number;
-  koordinatLat: number;
-  koordinatLng: number;
-  status: 'hadir';
-  jenis: 'masuk' | 'pulang';
-}
-
-export type StatusJam = 'buka' | 'tutup';
-export type StatusJarak = 'dekat' | 'jauh' | 'loading' | 'error';
-
-export interface ValidationResult {
-  statusJam: StatusJam;
-  statusJarak: StatusJarak;
-  jarakMeter: number | null;
-  pesanError: string | null;
+  deviceId: string;
 }
 
 export type FlowState =
@@ -37,7 +20,4 @@ export type FlowState =
   | 'checking'
   | 'rejected'
   | 'form'
-  | 'submitting'
   | 'success';
-
-export type FilterType = 'semua' | 'sudah' | 'belum';

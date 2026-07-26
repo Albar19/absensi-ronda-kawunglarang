@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Download, X } from 'lucide-react';
 import { formatTanggalIndo } from '@/lib/data';
 import { AbsenRecord } from '@/lib/types';
+import { CONFIG } from '@/lib/config';
 
 const BULAN_INDONESIA = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -42,84 +43,57 @@ export default function ExportButton() {
     setLoading(true);
     const { utils, writeFile } = await import('xlsx');
 
-    const [absenRes, jadwalRes, wargaRes] = await Promise.all([
-      fetch('/api/absen/semua'),
-      fetch('/api/jadwal'),
-      fetch('/api/warga'),
-    ]);
-
+    const absenRes = await fetch('/api/absen/semua');
     if (!absenRes.ok) { alert('Gagal mengambil data absensi.'); setLoading(false); return; }
-    if (!jadwalRes.ok) { alert('Gagal mengambil data jadwal.'); setLoading(false); return; }
-    if (!wargaRes.ok)  { alert('Gagal mengambil data warga.');  setLoading(false); return; }
 
     const semuaAbsen: AbsenRecord[] = await absenRes.json();
-    const semuaJadwal: { id: string; tanggal: string; warga_id: string }[] = await jadwalRes.json();
-    const semuaWarga: { id: string; nama: string; dusun: string }[] = await wargaRes.json();
 
     let filteredAbsen = semuaAbsen;
-    let filteredJadwal = semuaJadwal;
     let labelFile = 'Semua_Bulan';
     let labelPeriode = 'Semua Periode';
 
     if (selectedMonth) {
       filteredAbsen = semuaAbsen.filter(r => r.tanggal.startsWith(selectedMonth));
-      filteredJadwal = semuaJadwal.filter(j => j.tanggal.startsWith(selectedMonth));
       const [tahun, bulan] = selectedMonth.split('-');
       labelFile = `${BULAN_INDONESIA[parseInt(bulan) - 1]}_${tahun}`;
       labelPeriode = `${BULAN_INDONESIA[parseInt(bulan) - 1]} ${tahun}`;
     }
 
-    if (filteredAbsen.length === 0 && filteredJadwal.length === 0) {
+    if (filteredAbsen.length === 0) {
       alert('Tidak ada data untuk periode ini.');
       setLoading(false);
       return;
     }
 
-    const totalHadir = filteredAbsen.length;
-    const totalScheduled = filteredJadwal.length;
-    const persentase = totalScheduled > 0 ? Math.round((totalHadir / totalScheduled) * 100) : 0;
-
     // ── Hitung rekap per dusun ──
-    const dusunHadirMap = new Map<string, number>();
-    const dusunWargaSet = new Map<string, Set<string>>();
-    const absenTanggal = new Set(filteredAbsen.map(r => r.tanggal));
-
-    semuaWarga.forEach(w => {
-      if (!dusunWargaSet.has(w.dusun)) dusunWargaSet.set(w.dusun, new Set());
-      dusunWargaSet.get(w.dusun)!.add(w.id);
-    });
+    const dusunCounts = new Map<string, number>();
     filteredAbsen.forEach(r => {
-      dusunHadirMap.set(r.dusun, (dusunHadirMap.get(r.dusun) || 0) + 1);
+      dusunCounts.set(r.dusun, (dusunCounts.get(r.dusun) || 0) + 1);
     });
 
-    const jumlahHari = absenTanggal.size || 1;
-    const dusunSummary = Array.from(dusunWargaSet.entries())
-      .map(([dusun, wargaIds]) => {
-        const totalWarga = wargaIds.size;
-        const totalKehadiran = dusunHadirMap.get(dusun) || 0;
-        const maksKehadiran = totalWarga * jumlahHari;
-        const pct = maksKehadiran > 0 ? Math.round((totalKehadiran / maksKehadiran) * 100) : 0;
-        const status = pct >= 70 ? 'Aktif' : pct >= 30 ? 'Cukup' : 'Jarang';
-        return { dusun, totalWarga, totalKehadiran, maksKehadiran, pct, status };
-      })
-      .sort((a, b) => b.pct - a.pct);
+    const dusunSummary = CONFIG.dusunList.map(d => {
+      const count = dusunCounts.get(d) || 0;
+      return { dusun: d, count };
+    }).sort((a, b) => b.count - a.count);
+
+    const totalKehadiran = filteredAbsen.length;
 
     // ── Sheet 1: Rekap per Dusun ──
-    const rekapData: any[][] = [
+    const rekapData: unknown[][] = [
       ['REKAPITULASI ABSENSI RONDA PER DUSUN'],
       [`Periode: ${labelPeriode}`],
       [],
-      ['Dusun', 'Jumlah Warga', 'Total Kehadiran', 'Maks Kehadiran', 'Rata-rata', 'Status'],
+      ['Dusun', 'Jumlah Kehadiran'],
     ];
     dusunSummary.forEach(d => {
-      rekapData.push([d.dusun, d.totalWarga, d.totalKehadiran, d.maksKehadiran, `${d.pct}%`, d.status]);
+      rekapData.push([d.dusun, d.count]);
     });
     rekapData.push([]);
-    rekapData.push(['TOTAL', semuaWarga.length, totalHadir, totalScheduled, `${persentase}%`, '']);
+    rekapData.push(['TOTAL', totalKehadiran]);
 
     const wsRekap = utils.aoa_to_sheet(rekapData);
     wsRekap['!cols'] = [
-      { wch: 16 }, { wch: 16 }, { wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 12 },
+      { wch: 20 }, { wch: 20 },
     ];
 
     // ── Sheet 2: Detail Absensi ──
@@ -129,19 +103,19 @@ export default function ExportButton() {
       return b.jamAbsen.localeCompare(a.jamAbsen);
     });
 
-    const detailData: any[][] = [
+    const detailData: unknown[][] = [
       ['DETAIL ABSENSI RONDA'],
       [`Periode: ${labelPeriode}`],
       [],
-      ['No', 'Nama', 'Dusun', 'Tanggal', 'Jam Absen', 'Jenis', 'Jarak (m)', 'Status'],
+      ['No', 'Nama', 'Dusun', 'Tanggal', 'Jam Absen', 'Jarak (m)'],
     ];
     sortedAbsen.forEach((r, i) => {
-      detailData.push([i + 1, r.nama, r.dusun, formatTanggalIndo(r.tanggal), r.jamAbsen, r.jenis === 'pulang' ? 'Pulang' : 'Masuk', r.jarakMeter, 'HADIR']);
+      detailData.push([i + 1, r.nama, r.dusun, formatTanggalIndo(r.tanggal), r.jamAbsen, r.jarakMeter]);
     });
 
     const wsDetail = utils.aoa_to_sheet(detailData);
     wsDetail['!cols'] = [
-      { wch: 6 }, { wch: 28 }, { wch: 14 }, { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 10 },
+      { wch: 6 }, { wch: 28 }, { wch: 14 }, { wch: 30 }, { wch: 12 }, { wch: 12 },
     ];
 
     // ── Gabung workbook ──
@@ -162,7 +136,7 @@ export default function ExportButton() {
         style={{ minHeight: '44px' }}
       >
         <Download size={18} strokeWidth={2.5} />
-        Export Excel
+        Download Rekap Excel
       </button>
 
       {showModal && (

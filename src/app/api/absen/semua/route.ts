@@ -1,42 +1,44 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
+function mapRecord(r: Record<string, unknown>) {
+  return {
+    id: r.id,
+    nama: r.nama_warga ?? r.nama ?? '',
+    dusun: r.dusun ?? '',
+    tanggal: r.tanggal ?? r.tanggal_ronda ?? '',
+    jamAbsen: r.jam_absen ?? '',
+    latitude: Number(r.latitude ?? r.koordinat_lat ?? 0),
+    longitude: Number(r.longitude ?? r.koordinat_lng ?? 0),
+    jarakMeter: Number(r.jarak_meter ?? 0),
+    deviceId: r.device_id ?? r.warga_id ?? '',
+  };
+}
+
 export async function GET() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('admin_token')?.value;
+  let data: Record<string, unknown>[] | null = null;
 
-  if (!token || !(await verifyToken(token))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { data, error } = await supabase
+  // Coba query dengan created_at, fallback jika kolom baru belum ada
+  const result = await supabase
     .from('absen_records')
     .select('*')
-    .order('tanggal', { ascending: false })
-    .order('jam_absen', { ascending: false });
+    .order('created_at', { ascending: false });
 
-  if (error) {
-    return NextResponse.json(
-      { error: 'Gagal mengambil data' },
-      { status: 500 }
-    );
+  if (result.error && (result.error.code === 'PGRST204' || result.error.message?.includes('created_at'))) {
+    const fb = await supabase
+      .from('absen_records')
+      .select('*')
+      .order('id', { ascending: false });
+    if (fb.error) {
+      return NextResponse.json({ error: 'Gagal mengambil data' }, { status: 500 });
+    }
+    data = fb.data;
+  } else if (result.error) {
+    return NextResponse.json({ error: 'Gagal mengambil data' }, { status: 500 });
+  } else {
+    data = result.data;
   }
 
-  const mapped = (data ?? []).map((r) => ({
-    id: r.id,
-    wargaId: r.warga_id,
-    nama: r.nama,
-    dusun: r.dusun ?? r.rt ?? '',
-    tanggal: r.tanggal,
-    jamAbsen: r.jam_absen,
-    jarakMeter: r.jarak_meter,
-    koordinatLat: r.koordinat_lat,
-    koordinatLng: r.koordinat_lng,
-    status: r.status as 'hadir',
-    jenis: r.jenis as 'masuk' | 'pulang',
-  }));
-
+  const mapped = (data ?? []).map(mapRecord);
   return NextResponse.json(mapped);
 }

@@ -3,110 +3,137 @@ import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
 import { hitungJarak } from '@/lib/data';
 
-function isColumnError(e: unknown): boolean {
-  return (e as { code?: string })?.code === 'PGRST204' || (e as { message?: string })?.message?.includes('dusun') || false;
+function isDevColError(e: unknown): boolean {
+  return (e as { code?: string })?.code === 'PGRST204' ||
+    (e as { message?: string })?.message?.includes('device_id') ||
+    false;
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, wargaId, nama, dusun, tanggal, jamAbsen, jarakMeter, koordinatLat, koordinatLng, jenis } = body;
+    const { id, nama, dusun, tanggal, jamAbsen, latitude, longitude, jarakMeter, deviceId } = body;
 
-    if (!wargaId || !nama || !tanggal || !jamAbsen || !jenis) {
+    if (!nama || !dusun || !tanggal || !jamAbsen || !deviceId) {
       return NextResponse.json(
         { error: 'Data absen tidak lengkap' },
         { status: 400 }
       );
     }
 
-    if (typeof wargaId !== 'string' || wargaId.length > 50 ||
-        typeof nama !== 'string' || nama.length > 100 ||
-        typeof tanggal !== 'string' || tanggal.length > 20 ||
-        typeof jamAbsen !== 'string' || jamAbsen.length > 20) {
+    if (
+      typeof nama !== 'string' || nama.trim().length === 0 || nama.length > 100 ||
+      typeof dusun !== 'string' || dusun.trim().length === 0 || dusun.length > 50 ||
+      typeof tanggal !== 'string' || tanggal.length > 20 ||
+      typeof jamAbsen !== 'string' || jamAbsen.length > 20 ||
+      typeof deviceId !== 'string' || deviceId.length > 100
+    ) {
       return NextResponse.json(
         { error: 'Data tidak valid' },
         { status: 400 }
       );
     }
 
-    if (jenis !== 'masuk' && jenis !== 'pulang') {
-      return NextResponse.json(
-        { error: 'Jenis absen tidak valid' },
-        { status: 400 }
-      );
+    // Validasi jarak server-side (Haversine)
+    if (latitude != null && longitude != null) {
+      const latNum = Number(latitude);
+      const lngNum = Number(longitude);
+      if (!isNaN(latNum) && !isNaN(lngNum)) {
+        const jarakServer = hitungJarak(
+          latNum, lngNum,
+          CONFIG.baleDesaLat, CONFIG.baleDesaLng
+        );
+        if (jarakServer > CONFIG.radiusMeter) {
+          return NextResponse.json(
+            { error: `Lokasi Anda terlalu jauh dari Bale Desa (${jarakServer}m, maks ${CONFIG.radiusMeter}m)` },
+            { status: 403 }
+          );
+        }
+      }
     }
 
-    // Cek absen duplikat: 1x masuk + 1x pulang per hari per warga
+    // ── UPSERT: jika device_id + tanggal sudah ada, UPDATE baris itu ──
     const { data: existing } = await supabase
       .from('absen_records')
-      .select('id, jenis')
-      .eq('warga_id', wargaId)
-      .eq('tanggal', tanggal);
+      .select('id')
+      .eq('device_id', deviceId)
+      .eq('tanggal', tanggal)
+      .maybeSingle();
 
     if (existing) {
-      const sudahMasuk = existing.some(r => r.jenis === 'masuk');
-      const sudahPulang = existing.some(r => r.jenis === 'pulang');
+      // UPDATE record yang sudah ada
+      const updateData: Record<string, unknown> = {
+        nama_warga: nama.trim(),
+        dusun: dusun.trim(),
+        jam_absen: jamAbsen,
+        jarak_meter: Math.round(Number(jarakMeter) || 0),
+        latitude: Number(latitude) || 0,
+        longitude: Number(longitude) || 0,
+      };
 
-      if (jenis === 'masuk' && sudahMasuk) {
+      let { error } = await supabase
+        .from('absen_records')
+        .update(updateData)
+        .eq('id', existing.id);
+
+      if (isDevColError(error)) {
+        // Fallback: kolom nama_warga belum ada, pakai 'nama'
+        const fbData: Record<string, unknown> = {
+          nama: nama.trim(),
+          dusun: dusun.trim(),
+          jam_absen: jamAbsen,
+          jarak_meter: Math.round(Number(jarakMeter) || 0),
+          koordinat_lat: Number(latitude) || 0,
+          koordinat_lng: Number(longitude) || 0,
+        };
+        const fb = await supabase
+          .from('absen_records')
+          .update(fbData)
+          .eq('id', existing.id);
+        error = fb.error;
+      }
+
+      if (error) {
         return NextResponse.json(
-          { error: 'Anda sudah absen masuk hari ini. Absen masuk hanya 1 kali per hari.' },
-          { status: 409 }
+          { error: 'Gagal mengupdate absen' },
+          { status: 500 }
         );
       }
-      if (jenis === 'pulang' && sudahPulang) {
-        return NextResponse.json(
-          { error: 'Anda sudah absen pulang hari ini. Absen pulang hanya 1 kali per hari.' },
-          { status: 409 }
-        );
-      }
-      if (jenis === 'pulang' && !sudahMasuk) {
-        return NextResponse.json(
-          { error: 'Anda belum absen masuk hari ini. Silakan absen masuk terlebih dahulu.' },
-          { status: 409 }
-        );
-      }
-    } else if (jenis === 'pulang') {
-      return NextResponse.json(
-        { error: 'Anda belum absen masuk hari ini. Silakan absen masuk terlebih dahulu.' },
-        { status: 409 }
-      );
+
+      return NextResponse.json({ success: true, updated: true });
     }
 
-    // Validasi jarak server-side
-    if (koordinatLat != null && koordinatLng != null) {
-      const jarakServer = hitungJarak(
-        koordinatLat, koordinatLng,
-        CONFIG.baleDesaLat, CONFIG.baleDesaLng
-      );
-      if (jarakServer > CONFIG.radiusMeter) {
-        return NextResponse.json(
-          { error: `Lokasi Anda terlalu jauh dari Bale Desa (${jarakServer}m, maks ${CONFIG.radiusMeter}m)` },
-          { status: 403 }
-        );
-      }
-    }
-
-    let { error } = await supabase.from('absen_records').insert({
+    // ── INSERT baru ──
+    const insertData: Record<string, unknown> = {
       id,
-      warga_id: wargaId,
-      nama,
-      dusun,
+      nama_warga: nama.trim(),
+      dusun: dusun.trim(),
       tanggal,
+      tanggal_ronda: tanggal,
       jam_absen: jamAbsen,
-      jarak_meter: jarakMeter,
-      koordinat_lat: koordinatLat,
-      koordinat_lng: koordinatLng,
-      status: 'hadir',
-      jenis,
-    });
+      jarak_meter: Math.round(Number(jarakMeter) || 0),
+      latitude: Number(latitude) || 0,
+      longitude: Number(longitude) || 0,
+      device_id: deviceId,
+    };
 
-    if (isColumnError(error)) {
-      const fb = await supabase.from('absen_records').insert({
-        id, warga_id: wargaId, nama, rt: dusun,
-        tanggal, jam_absen: jamAbsen, jarak_meter: jarakMeter,
-        koordinat_lat: koordinatLat, koordinat_lng: koordinatLng,
-        status: 'hadir', jenis,
-      });
+    let { error } = await supabase.from('absen_records').insert(insertData);
+
+    if (isDevColError(error)) {
+      // Fallback: pake kolom lama (nama, warga_id, koordinat_lat, koordinat_lng, dll)
+      const fbData: Record<string, unknown> = {
+        id,
+        warga_id: deviceId,
+        nama: nama.trim(),
+        dusun: dusun.trim(),
+        tanggal,
+        jam_absen: jamAbsen,
+        jarak_meter: Math.round(Number(jarakMeter) || 0),
+        koordinat_lat: Number(latitude) || 0,
+        koordinat_lng: Number(longitude) || 0,
+        status: 'hadir',
+      };
+      const fb = await supabase.from('absen_records').insert(fbData);
       error = fb.error;
     }
 
@@ -117,7 +144,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, updated: false });
   } catch {
     return NextResponse.json(
       { error: 'Terjadi kesalahan server' },

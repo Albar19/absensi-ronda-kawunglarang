@@ -1,12 +1,11 @@
 'use client';
 
 import { Clock, MapPin } from 'lucide-react';
-import { StatusJam, StatusJarak } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 
 interface StatusCardsProps {
-  statusJam: StatusJam | null;
-  statusJarak: StatusJarak | null;
+  statusJam: 'buka' | 'tutup' | null;
+  statusJarak: 'dekat' | 'jauh' | 'loading' | 'error' | null;
   jarakMeter: number | null;
   akurasiMeter?: number | null;
 }

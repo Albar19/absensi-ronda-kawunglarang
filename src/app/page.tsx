@@ -1,32 +1,47 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Warga, FlowState, AbsenRecord } from '@/lib/types';
+import { useState, useCallback, useEffect } from 'react';
+import { FlowState, AbsenRecord } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import {
   hitungJarak,
-  isJamAbsenBuka,
   cekJamStatus,
   generateId,
   getTanggalHariIni,
-  simpanLockHP,
+  getDeviceId,
+  muatDataWarga,
+  simpanDataWarga,
 } from '@/lib/data';
 import HeaderBanner  from '@/components/citizen/HeaderBanner';
 import StatusCards   from '@/components/citizen/StatusCards';
-import NameSelector  from '@/components/citizen/NameSelector';
 import RejectedScreen from '@/components/citizen/RejectedScreen';
 import SuccessScreen  from '@/components/citizen/SuccessScreen';
 
 export default function HomePage() {
-  const [flowState,    setFlowState]    = useState<FlowState>('idle');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusJam,    setStatusJam]    = useState<'buka'|'tutup'|null>(null);
-  const [statusJarak,  setStatusJarak]  = useState<'dekat'|'jauh'|'loading'|'error'|null>(null);
-  const [jarakMeter,   setJarakMeter]   = useState<number|null>(null);
-  const [akurasi,      setAkurasi]      = useState<number|null>(null);
-  const [koordinat,    setKoordinat]    = useState<{lat:number;lng:number}|null>(null);
-  const [pesanError,   setPesanError]   = useState('');
-  const [successRecord,setSuccessRecord]= useState<AbsenRecord|null>(null);
+  const [flowState,      setFlowState]      = useState<FlowState>('idle');
+  const [isSubmitting,   setIsSubmitting]   = useState(false);
+  const [statusJam,      setStatusJam]      = useState<'buka'|'tutup'|null>(null);
+  const [statusJarak,    setStatusJarak]    = useState<'dekat'|'jauh'|'loading'|'error'|null>(null);
+  const [jarakMeter,     setJarakMeter]     = useState<number|null>(null);
+  const [akurasi,        setAkurasi]        = useState<number|null>(null);
+  const [koordinat,      setKoordinat]      = useState<{lat:number;lng:number}|null>(null);
+  const [pesanError,     setPesanError]     = useState('');
+  const [successRecord,  setSuccessRecord]  = useState<AbsenRecord|null>(null);
+
+  // Form state
+  const [nama, setNama] = useState('');
+  const [dusun, setDusun] = useState('');
+  const [showEditHint, setShowEditHint] = useState(false);
+
+  // Load saved warga data from localStorage on mount
+  useEffect(() => {
+    const saved = muatDataWarga();
+    if (saved) {
+      setNama(saved.nama);
+      setDusun(saved.dusun);
+      setShowEditHint(true);
+    }
+  }, []);
 
   const mulaiCek = useCallback(() => {
     setFlowState('checking');
@@ -93,26 +108,37 @@ export default function HomePage() {
     );
   }, []);
 
-  const handleSubmitAbsen = useCallback(async (warga: Warga) => {
+  const handleSubmitAbsen = useCallback(async () => {
+    const namaTrim = nama.trim();
+    if (!namaTrim || !dusun) {
+      setPesanError('Nama dan Dusun harus diisi.');
+      setFlowState('rejected');
+      return;
+    }
+
     setIsSubmitting(true);
     const now = new Date();
+    const deviceId = getDeviceId();
     const record: AbsenRecord = {
       id: generateId(),
-      wargaId: warga.id,
-      nama: warga.nama,
-      dusun: warga.dusun,
+      nama: namaTrim,
+      dusun,
       tanggal: getTanggalHariIni(),
       jamAbsen: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`,
+      latitude: koordinat?.lat ?? 0,
+      longitude: koordinat?.lng ?? 0,
       jarakMeter: jarakMeter ?? 0,
-      koordinatLat: koordinat?.lat ?? 0,
-      koordinatLng: koordinat?.lng ?? 0,
-      status: 'hadir',
-      jenis: 'masuk',
+      deviceId,
     };
+
     try {
-      const res = await fetch('/api/absen', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(record) });
+      const res = await fetch('/api/absen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record),
+      });
       if (res.ok) {
-        simpanLockHP(warga.id, warga.nama);
+        simpanDataWarga(namaTrim, dusun);
         setSuccessRecord(record);
         setTimeout(() => { setIsSubmitting(false); setFlowState('success'); }, 300);
         return;
@@ -124,7 +150,7 @@ export default function HomePage() {
     }
     setIsSubmitting(false);
     setFlowState('rejected');
-  }, [jarakMeter, koordinat]);
+  }, [nama, dusun, jarakMeter, koordinat]);
 
   const handleReset = useCallback(() => {
     setFlowState('idle');
@@ -138,8 +164,13 @@ export default function HomePage() {
     setSuccessRecord(null);
   }, []);
 
+  const handleEditToggle = useCallback(() => {
+    setShowEditHint(false);
+  }, []);
+
+  const isFormValid = nama.trim().length > 0 && dusun.length > 0;
+
   return (
-    /* Center card on large screens, full-width on mobile */
     <main className="min-h-screen bg-slate-100 sm:flex sm:items-start sm:justify-center sm:py-8 lg:py-12">
       <div className="w-full sm:max-w-md bg-white sm:rounded-2xl sm:shadow-lg">
 
@@ -153,7 +184,7 @@ export default function HomePage() {
               <p className="text-5xl" role="img" aria-label="bulan">🌙</p>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Selamat Datang</h2>
               <p className="text-sm sm:text-base text-slate-500 font-medium leading-relaxed max-w-xs mx-auto">
-                Tekan tombol di bawah untuk memulai proses absen ronda malam.
+                Tekan tombol di bawah untuk memulai absen ronda malam.
               </p>
             </div>
 
@@ -164,8 +195,8 @@ export default function HomePage() {
                 {[
                   'Tekan tombol MULAI ABSEN',
                   'Izinkan akses lokasi GPS jika diminta',
-                  'Cari dan pilih nama Anda',
-                  'Tekan KIRIM ABSEN',
+                  'Isi Nama dan pilih Dusun',
+                  'Tekan SAYA HADIR RONDA',
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-[#1e3a8a] text-white text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -213,8 +244,8 @@ export default function HomePage() {
 
         {/* ─── FORM ─── */}
         {flowState === 'form' && (
-          <div>
-            <div className="px-4 sm:px-5 pt-3">
+          <div className="px-4 sm:px-5 pb-8 space-y-4">
+            <div className="pt-3">
               <button
                 type="button"
                 onClick={handleReset}
@@ -223,17 +254,93 @@ export default function HomePage() {
                 ← Kembali
               </button>
             </div>
-            <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} akurasiMeter={akurasi} />
-            <div className="mx-4 my-3 h-px bg-slate-100" />
-            <NameSelector onSubmit={handleSubmitAbsen} isSubmitting={isSubmitting} />
-          </div>
-        )}
 
-        {/* ─── SUBMITTING overlay ─── */}
-        {isSubmitting && (
-          <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <span className="text-5xl animate-pulse">⏳</span>
-            <p className="text-xl font-black text-slate-700">Menyimpan absen…</p>
+            <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} akurasiMeter={akurasi} />
+            <div className="h-px bg-slate-100" />
+
+            {/* Auto-fill hint */}
+            {showEditHint && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                <span className="text-xl flex-shrink-0 mt-0.5">👤</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-blue-900">
+                    Data Anda sudah terisi otomatis.
+                  </p>
+                  <p className="text-xs text-blue-700 mt-0.5">
+                    Jika nama atau dusun salah, klik <strong>"✏️ Ubah Nama / Dusun"</strong> di bawah.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Form fields */}
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="nama" className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
+                  Nama Lengkap
+                </label>
+                <input
+                  id="nama"
+                  type="text"
+                  inputMode="text"
+                  autoComplete="name"
+                  placeholder="Ketik nama lengkap Anda"
+                  value={nama}
+                  onChange={e => setNama(e.target.value)}
+                  readOnly={!showEditHint && !!muatDataWarga()}
+                  className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors read-only:bg-slate-50 read-only:text-slate-500"
+                  style={{ minHeight: '56px' }}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="dusun" className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
+                  Pilih Dusun
+                </label>
+                <select
+                  id="dusun"
+                  value={dusun}
+                  onChange={e => setDusun(e.target.value)}
+                  disabled={!showEditHint && !!muatDataWarga()}
+                  className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-[#1e3a8a] focus:outline-none transition-colors disabled:bg-slate-50 disabled:text-slate-500"
+                  style={{ minHeight: '56px' }}
+                >
+                  <option value="">-- Pilih Dusun --</option>
+                  {CONFIG.dusunList.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Tombol utama: SAYA HADIR RONDA */}
+            <button
+              type="button"
+              onClick={handleSubmitAbsen}
+              disabled={!isFormValid || isSubmitting}
+              className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              style={{ minHeight: '68px' }}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="animate-spin">⏳</span> Menyimpan…
+                </span>
+              ) : (
+                '🌙 SAYA HADIR RONDA'
+              )}
+            </button>
+
+            {/* Tombol sekunder: Ubah Nama / Dusun (muncul jika auto-fill aktif) */}
+            {showEditHint && (
+              <button
+                type="button"
+                onClick={handleEditToggle}
+                className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98]"
+                style={{ minHeight: '52px' }}
+              >
+                ✏️ Ubah Nama / Dusun
+              </button>
+            )}
           </div>
         )}
 

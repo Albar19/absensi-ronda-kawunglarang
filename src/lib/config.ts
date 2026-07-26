@@ -6,17 +6,14 @@ export const CONFIG = {
   baleDesaLat: -7.166841,
   baleDesaLng: 108.481306,
 
-  radiusMeter: 150,
+  radiusMeter: 500,
 
-  // Absen Masuk: 20:00 - 23:39
+  // Jam operasional: 20:00 - 00:00 WIB (1 sesi)
   jamBukaAbsen: 20,
   menitBukaAbsen: 0,
-  jamTutupAbsen: 23,
-  menitTutupAbsen: 39,
+  jamTutupAbsen: 0,
+  menitTutupAbsen: 0,
 
-  // Absen Pulang: 23:40 - 01:00
-  jamBukaPulang: 23,
-  menitBukaPulang: 40,
-  jamTutupPulang: 1,
-  menitTutupPulang: 0,
+  // Daftar dusun
+  dusunList: ['Dusun Pahing', 'Dusun Manis', 'Dusun Wage', 'Dusun Pon'],
 } as const;

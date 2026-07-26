@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
-import { supabase } from '@/lib/supabase';
 import { signToken } from '@/lib/auth';
 
 // ── Rate limiter sederhana (in-memory) ──
@@ -48,28 +47,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: user, error } = await supabase
-      .from('admin_users')
-      .select('*')
-      .eq('username', username)
-      .single();
+    // Validasi dari environment variable
+    const adminUser = process.env.ADMIN_USERNAME || 'admin';
+    const adminPass = process.env.ADMIN_PASSWORD || 'kawunglarang2026';
+    const adminHash = process.env.ADMIN_PASSWORD_HASH;
 
-    if (error || !user) {
+    let passwordValid = false;
+    if (username === adminUser) {
+      if (adminHash) {
+        passwordValid = await bcrypt.compare(password, adminHash);
+      } else {
+        passwordValid = password === adminPass;
+      }
+    }
+
+    if (!passwordValid) {
       return NextResponse.json(
         { error: 'Username atau password salah' },
         { status: 401 }
       );
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
-    if (!passwordMatch) {
-      return NextResponse.json(
-        { error: 'Username atau password salah' },
-        { status: 401 }
-      );
-    }
-
-    const token = await signToken({ role: 'admin', username: user.username });
+    const token = await signToken({ role: 'admin', username });
 
     const cookieStore = await cookies();
     cookieStore.set('admin_token', token, {

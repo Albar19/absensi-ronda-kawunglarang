@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 function getTanggalHariIni(): string {
@@ -8,24 +6,24 @@ function getTanggalHariIni(): string {
 }
 
 export async function DELETE() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('admin_token')?.value;
-
-  if (!token || !(await verifyToken(token))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const today = getTanggalHariIni();
-  const { error } = await supabase
+
+  // Coba hapus pakai 'tanggal_ronda', fallback ke 'tanggal'
+  let { error } = await supabase
     .from('absen_records')
     .delete()
-    .eq('tanggal', today);
+    .eq('tanggal_ronda', today);
+
+  if (error && (error.code === 'PGRST204' || error.message?.includes('tanggal_ronda'))) {
+    const fb = await supabase
+      .from('absen_records')
+      .delete()
+      .eq('tanggal', today);
+    error = fb.error;
+  }
 
   if (error) {
-    return NextResponse.json(
-      { error: 'Gagal mereset data' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Gagal mereset data' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
