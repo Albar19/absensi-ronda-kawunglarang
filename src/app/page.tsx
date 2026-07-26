@@ -268,23 +268,53 @@ export default function HomePage() {
             </div>
 
             {/* Step guide */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-4">
-              <p className="text-xs font-black tracking-widest uppercase text-slate-400 mb-3">Cara Absen</p>
-              <ol className="space-y-2">
-                {[
-                  `Tekan tombol MULAI ABSEN ${labelSesi}`,
-                  'Izinkan akses lokasi GPS jika diminta',
-                  'Isi Nama dan pilih Dusun',
-                  `Tekan ${sesiAktif === 'pulang' ? 'SAYA PULANG RONDA' : 'SAYA HADIR RONDA'}`,
-                ].map((step, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-[#1e3a8a] text-white text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">
-                      {i + 1}
-                    </span>
-                    <span className="text-sm font-semibold text-slate-700 leading-snug">{step}</span>
-                  </li>
-                ))}
-              </ol>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 space-y-3">
+              <p className="text-xs font-black tracking-widest uppercase text-slate-400">Cara Absen — 2 Sesi</p>
+
+              {/* Sesi 1: Masuk */}
+              <div>
+                <p className="text-xs font-black text-green-700 uppercase tracking-wider mb-1.5">Sesi 1: Absen Masuk (20:00 — 23:40 WIB)</p>
+                <ol className="space-y-1.5">
+                  {[
+                    'Tekan tombol MULAI ABSEN MASUK',
+                    'Izinkan akses lokasi GPS',
+                    'Isi Nama dan pilih Dusun',
+                    'Tekan SAYA HADIR RONDA',
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-green-600 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-700 leading-snug">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              {/* Sesi 2: Pulang */}
+              <div>
+                <p className="text-xs font-black text-yellow-700 uppercase tracking-wider mb-1.5">Sesi 2: Absen Pulang (23:40 — 01:00 WIB)</p>
+                <ol className="space-y-1.5">
+                  {[
+                    'Tekan tombol MULAI ABSEN PULANG',
+                    'Sistem cek — wajib sudah absen masuk',
+                    'Izinkan akses lokasi GPS',
+                    'Tekan SAYA PULANG RONDA',
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-yellow-600 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-700 leading-snug">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              {/* Note */}
+              <p className="text-xs font-semibold text-slate-400 leading-relaxed pt-1 border-t border-slate-200">
+                Hadir dihitung hanya jika melakukan <strong className="text-slate-600">MASUK + PULANG</strong> di malam yang sama.
+              </p>
             </div>
 
             {/* CTA */}
