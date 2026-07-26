@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Trophy, Users, Clock, MapPin, Calendar, Save, QrCode } from 'lucide-react';
+import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
@@ -140,7 +140,7 @@ export default function AdminDashboardPage() {
 
   const totalHadir = absenPulang.length;
   const tanggalLabel = formatTanggalIndo(getTanggalHariIni());
-  const trophyIcons = ['🏆', '🥈', '🥉', '⚠️'];
+  const maxCount = Math.max(...dusunLeaderboard.map(d => d.count), 1);
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -212,39 +212,39 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
-            {/* Dusun Leaderboard */}
+            {/* Rekapitulasi Kehadiran per Dusun */}
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-200">
-                <div className="flex items-center gap-2">
-                  <Trophy size={20} className="text-amber-500" strokeWidth={2} />
-                  <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                    Dusun Leaderboard — Malam Ini
-                  </h3>
-                </div>
+                <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
+                  Rekapitulasi Kehadiran per Dusun — Malam Ini
+                </h3>
               </div>
 
               {loading ? (
                 <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">Memuat data...</div>
-              ) : dusunLeaderboard.length === 0 ? (
+              ) : dusunLeaderboard.length === 0 || totalHadir === 0 ? (
                 <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">Belum ada data absen malam ini.</div>
               ) : (
-                <div className="divide-y divide-slate-100">
+                <div className="px-5 py-4 space-y-4">
                   {dusunLeaderboard.map((item, idx) => {
-                    const icon = trophyIcons[idx] || '📋';
-                    const isTop = idx === 0;
-                    const bgClass = isTop ? 'bg-amber-50' : idx === 1 ? 'bg-slate-50' : '';
+                    const pct = Math.round((item.count / maxCount) * 100);
                     return (
-                      <div key={item.dusun} className={`flex items-center justify-between px-5 py-4 ${bgClass}`}>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-2xl flex-shrink-0" role="img" aria-hidden>{icon}</span>
-                          <div className="min-w-0">
-                            <p className={`font-black truncate ${isTop ? 'text-amber-900 text-lg' : 'text-slate-800'}`}>{item.dusun}</p>
-                            <p className="text-xs text-slate-500 font-medium">{item.count} warga hadir</p>
+                      <div key={item.dusun} className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-black flex items-center justify-center flex-shrink-0">
+                              {idx + 1}
+                            </span>
+                            <p className="text-sm font-bold text-slate-800 truncate">{item.dusun}</p>
                           </div>
+                          <p className="text-sm font-black text-slate-900 tabular-nums flex-shrink-0 ml-3">{item.count} org</p>
                         </div>
-                        <div className={`flex items-center justify-center w-12 h-12 rounded-xl font-black text-lg flex-shrink-0 ${
-                          isTop ? 'bg-amber-200 text-amber-800' : 'bg-slate-100 text-slate-600'
-                        }`}>{item.count}</div>
+                        <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#1e3a8a] rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
                     );
                   })}
