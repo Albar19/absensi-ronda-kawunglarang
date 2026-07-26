@@ -209,18 +209,42 @@ export default function HomePage() {
   const labelSesiLower = sesiAktif === 'pulang' ? 'pulang' : 'masuk';
   const jamSesiStr = sesiAktif ? formatJamSesi(sesiAktif) : '';
 
+  function BadgeSesi({ warna, label }: { warna: string; label: string }) {
+    return (
+      <span className={`flex items-center gap-1.5 text-sm font-bold ${warna}`}>
+        <span className="w-2 h-2 rounded-full bg-current" />
+        <span>{label}</span>
+      </span>
+    );
+  }
+
   const tombolMulai: React.ReactNode = sesiAktif === 'pulang' ? (
-    <><Moon size={24} /> MULAI ABSEN PULANG</>
+    <span className="flex flex-col items-center gap-0.5">
+      <BadgeSesi warna="text-yellow-400" label="PULANG" />
+      <span className="flex items-center gap-2"><Moon size={24} /> MULAI ABSEN PULANG</span>
+    </span>
   ) : sesiAktif === 'masuk' ? (
-    <><Moon size={24} /> MULAI ABSEN MASUK</>
+    <span className="flex flex-col items-center gap-0.5">
+      <BadgeSesi warna="text-green-400" label="MASUK" />
+      <span className="flex items-center gap-2"><Moon size={24} /> MULAI ABSEN MASUK</span>
+    </span>
   ) : (
-    <><Lock size={24} /> ABSEN DITUTUP</>
+    <span className="flex flex-col items-center gap-0.5">
+      <BadgeSesi warna="text-red-400" label="TUTUP" />
+      <span className="flex items-center gap-2"><Lock size={24} /> ABSEN DITUTUP</span>
+    </span>
   );
 
   const tombolSubmit: React.ReactNode = sesiAktif === 'pulang' ? (
-    <><Sunrise size={24} /> SAYA PULANG RONDA</>
+    <span className="flex flex-col items-center gap-0.5">
+      <BadgeSesi warna="text-yellow-400" label="PULANG" />
+      <span className="flex items-center gap-2"><Sunrise size={24} /> SAYA PULANG RONDA</span>
+    </span>
   ) : (
-    <><Moon size={24} /> SAYA HADIR RONDA</>
+    <span className="flex flex-col items-center gap-0.5">
+      <BadgeSesi warna="text-green-400" label="MASUK" />
+      <span className="flex items-center gap-2"><Moon size={24} /> SAYA HADIR RONDA</span>
+    </span>
   );
 
   return (
