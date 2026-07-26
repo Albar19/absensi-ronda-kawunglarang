@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Landmark } from 'lucide-react';
 import { CONFIG } from '@/lib/config';
 
 export default function HeaderBanner() {
@@ -31,7 +32,7 @@ export default function HeaderBanner() {
         <div className="flex items-center gap-3 sm:gap-4">
           {/* Emblem */}
           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white border-2 border-[#f59e0b] flex items-center justify-center flex-shrink-0 shadow-sm">
-            <span className="text-xl sm:text-2xl leading-none" role="img" aria-label="balai desa">🏛️</span>
+            <Landmark size={24} className="text-[#1e3a8a]" />
           </div>
 
           {/* Title block */}

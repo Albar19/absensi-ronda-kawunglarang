@@ -6,7 +6,7 @@ export const CONFIG = {
   baleDesaLat: -7.166841,
   baleDesaLng: 108.481306,
 
-  radiusMeter: 500,
+  radiusMeter: 150,
 
   // Sesi Masuk: 20:00 - 23:40 WIB
   jamBukaMasuk: 20,

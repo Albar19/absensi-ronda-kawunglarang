@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, MapPin, Clock, Smartphone, QrCode, ShieldCheck, Download, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Smartphone, QrCode, ShieldCheck, Download, FileSpreadsheet, Calendar, BarChart3 } from 'lucide-react';
 
 const fiturList = [
   {
@@ -19,8 +19,8 @@ const fiturList = [
   },
   {
     icon: ShieldCheck,
-    title: '1 HP 1 Nama',
-    desc: 'Mencegah absen bergantian dalam satu perangkat.',
+    title: 'Cegah Absen Ganda',
+    desc: 'Mencegah absen ganda dari perangkat yang sama dalam satu sesi.',
   },
   {
     icon: Smartphone,
@@ -36,6 +36,16 @@ const fiturList = [
     icon: Download,
     title: 'Download QR Card',
     desc: 'Cetak QR Code untuk ditempel di Bale Desa.',
+  },
+  {
+    icon: Calendar,
+    title: 'Jadwal Ronda Mingguan',
+    desc: 'Admin atur petugas ronda setiap hari (Senin — Minggu) via dropdown.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Leaderboard Dusun',
+    desc: 'Progress bar kehadiran per dusun, hanya absen pulang yang dihitung.',
   },
 ];
 

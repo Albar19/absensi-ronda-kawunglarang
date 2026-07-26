@@ -8,8 +8,7 @@ interface RejectedScreenProps {
 }
 
 export default function RejectedScreen({ pesanError, onRetry }: RejectedScreenProps) {
-  // Strip the leading "❌ ABSEN DITOLAK: " prefix for cleaner display
-  const cleanMsg = pesanError.replace(/^❌\s*ABSEN DITOLAK:\s*/i, '');
+  const cleanMsg = pesanError;
 
   return (
     <div className="flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14 text-center">

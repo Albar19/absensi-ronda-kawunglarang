@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, X, Loader } from 'lucide-react';
 import { formatTanggalIndo } from '@/lib/data';
 import { AbsenRecord } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
@@ -169,7 +169,7 @@ export default function ExportButton() {
               <button onClick={handleExport} disabled={loading}
                 className="flex-1 py-3 rounded-xl bg-green-700 text-white font-bold text-base disabled:opacity-60 transition-all"
                 style={{ minHeight: '48px' }}>
-                {loading ? '⏳ Memproses...' : '📥 Export'}
+                {loading ? <><Loader size={18} className="animate-spin" /> Memproses...</> : 'Export'}
               </button>
             </div>
           </div>

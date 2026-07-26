@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode } from 'lucide-react';
+import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode, Loader } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
@@ -110,15 +110,15 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ jadwal: jadwal.map(j => ({ hari: j.hari, petugas: j.petugas })) }),
       });
       if (res.ok) {
-        setJadwalMessage('✅ Jadwal berhasil disimpan.');
+        setJadwalMessage('Jadwal berhasil disimpan.');
         setJadwalDirty(false);
         await loadJadwal();
       } else {
         const err = await res.json();
-        setJadwalMessage(`❌ ${err.error || 'Gagal menyimpan'}`);
+        setJadwalMessage(`${err.error || 'Gagal menyimpan'}`);
       }
     } catch {
-      setJadwalMessage('❌ Gagal terhubung ke server');
+      setJadwalMessage('Gagal terhubung ke server');
     }
     setJadwalSaving(false);
   }
@@ -392,7 +392,7 @@ export default function AdminDashboardPage() {
                 {/* Message + Save */}
                 <div className="px-5 py-4 bg-slate-50 border-t border-slate-200 space-y-3">
                   {jadwalMessage && (
-                    <p className="text-sm font-bold text-slate-700">{jadwalMessage}</p>
+                    <p className={`text-sm font-bold ${jadwalMessage.includes('berhasil') ? 'text-green-700' : 'text-red-700'}`}>{jadwalMessage}</p>
                   )}
                   <button
                     type="button"
@@ -402,7 +402,7 @@ export default function AdminDashboardPage() {
                     style={{ minHeight: '48px' }}
                   >
                     <Save size={18} strokeWidth={2.5} />
-                    {jadwalSaving ? '⏳ Menyimpan...' : jadwalDirty ? '💾 Simpan Jadwal' : 'Simpan Jadwal'}
+                    {jadwalSaving ? <><Loader size={18} className="animate-spin" strokeWidth={2.5} /> Menyimpan...</> : jadwalDirty ? 'Simpan Jadwal' : 'Simpan Jadwal'}
                   </button>
                   {!jadwalDirty && jadwal.length > 0 && (
                     <p className="text-xs text-slate-400 font-medium">Tidak ada perubahan.</p>

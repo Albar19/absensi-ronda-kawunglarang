@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Moon, Sunrise, User, Building2, Clock, MapPin } from 'lucide-react';
 import { AbsenRecord } from '@/lib/types';
 
 interface SuccessScreenProps {
@@ -10,7 +10,15 @@ interface SuccessScreenProps {
 
 export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
   const labelSesi = record.jenisAbsen === 'pulang' ? 'PULANG' : 'MASUK';
-  const iconSesi = record.jenisAbsen === 'pulang' ? '🌄' : '🌙';
+  const IconSesi = record.jenisAbsen === 'pulang' ? Sunrise : Moon;
+
+  const detailItems: { Icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: string }[] = [
+    { Icon: IconSesi,  label: 'Sesi',      value: labelSesi },
+    { Icon: User,      label: 'Nama',      value: record.nama },
+    { Icon: Building2, label: 'Wilayah',   value: record.dusun },
+    { Icon: Clock,     label: 'Jam Absen', value: `${record.jamAbsen} WIB` },
+    { Icon: MapPin,    label: 'Jarak',     value: `± ${record.jarakMeter} meter` },
+  ];
 
   return (
     <div className="flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14 text-center">
@@ -28,19 +36,15 @@ export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
 
       {/* Detail card */}
       <div className="w-full max-w-sm bg-white border-2 border-green-400 rounded-2xl overflow-hidden shadow-sm mb-6">
-        {[
-          { icon: iconSesi,  label: 'Sesi',     value: labelSesi },
-          { icon: '👤',      label: 'Nama',     value: record.nama },
-          { icon: '🏘️',     label: 'Wilayah',  value: record.dusun },
-          { icon: '🕐',      label: 'Jam Absen', value: `${record.jamAbsen} WIB` },
-          { icon: '📍',      label: 'Jarak',     value: `± ${record.jarakMeter} meter` },
-        ].map((row, i, arr) => (
-          <div key={row.label}>
+        {detailItems.map(({ Icon, label, value }, i, arr) => (
+          <div key={label}>
             <div className="flex items-center gap-4 px-5 py-3.5">
-              <span className="text-2xl w-8 text-center flex-shrink-0" role="img" aria-hidden>{row.icon}</span>
+              <div className="w-8 flex justify-center flex-shrink-0">
+                <Icon size={22} className="text-green-600" />
+              </div>
               <div className="min-w-0 text-left">
-                <p className="text-[10px] font-black uppercase tracking-widest text-green-500">{row.label}</p>
-                <p className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">{row.value}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-green-500">{label}</p>
+                <p className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">{value}</p>
               </div>
             </div>
             {i < arr.length - 1 && <div className="h-px bg-green-100 mx-5" />}
@@ -55,7 +59,7 @@ export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
         className="w-full max-w-sm bg-slate-100 hover:bg-slate-200 text-slate-700 border-2 border-slate-200 rounded-xl font-black text-base active:scale-[0.98] transition-all"
         style={{ minHeight: '54px' }}
       >
-        ← Kembali ke Halaman Utama
+        Kembali ke Halaman Utama
       </button>
     </div>
   );

@@ -53,12 +53,12 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
             <p className="text-base font-bold text-slate-400 animate-pulse">Memeriksa jam…</p>
           ) : statusJam === 'tutup' ? (
             <>
-              <p className="text-lg font-black text-red-700 leading-tight">🔴 DITUTUP</p>
+              <p className="text-lg font-black text-red-700 leading-tight">DITUTUP</p>
               <p className="text-xs font-semibold text-red-600 mt-0.5">Sesi masuk 20:00–23:40 · Sesi pulang 23:40–01:00</p>
             </>
           ) : (
             <>
-              <p className="text-lg font-black text-green-700 leading-tight">🟢 BUKA — SESI {sesiLabel}</p>
+              <p className="text-lg font-black text-green-700 leading-tight">BUKA — SESI {sesiLabel}</p>
               <p className="text-xs font-semibold text-green-600 mt-0.5">{formatJamSesi(statusJam)}</p>
             </>
           )}
@@ -76,7 +76,7 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
             <p className="text-base font-bold text-slate-400 animate-pulse">Mendeteksi GPS…</p>
           ) : statusJarak === 'dekat' ? (
             <>
-              <p className="text-lg font-black text-green-700 leading-tight">🟢 BALE DESA</p>
+              <p className="text-lg font-black text-green-700 leading-tight">BALE DESA</p>
               <p className="text-xs font-semibold text-green-600 mt-0.5">
                 Jarak anda: ±{jarakMeter} m
                 {akurasiMeter != null && ` · Akurasi GPS: ±${akurasiMeter} m`}
@@ -84,12 +84,12 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
             </>
           ) : statusJarak === 'error' ? (
             <>
-              <p className="text-lg font-black text-yellow-700 leading-tight">⚠️ GPS TIDAK AKTIF</p>
+              <p className="text-lg font-black text-yellow-700 leading-tight">GPS TIDAK AKTIF</p>
               <p className="text-xs font-semibold text-yellow-600 mt-0.5">Izinkan akses lokasi di browser</p>
             </>
           ) : (
             <>
-              <p className="text-lg font-black text-red-700 leading-tight">🔴 TERLALU JAUH</p>
+              <p className="text-lg font-black text-red-700 leading-tight">TERLALU JAUH</p>
               <p className="text-xs font-semibold text-red-600 mt-0.5">
                 Jarak: ±{jarakMeter} m — maks {CONFIG.radiusMeter} m dari Bale Desa
               </p>

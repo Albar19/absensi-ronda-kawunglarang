@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { Moon, Sunrise, Lock, User, Pencil, Loader } from 'lucide-react';
 import { FlowState, AbsenRecord } from '@/lib/types';
 import { CONFIG, type JenisAbsen } from '@/lib/config';
 import {
@@ -206,9 +207,21 @@ export default function HomePage() {
   const sesiAktif = jamStatus === 'masuk' || jamStatus === 'pulang' ? jamStatus : null;
   const labelSesi = sesiAktif === 'pulang' ? 'PULANG' : 'MASUK';
   const labelSesiLower = sesiAktif === 'pulang' ? 'pulang' : 'masuk';
-  const tombolMulai = sesiAktif === 'pulang' ? '🌙 MULAI ABSEN PULANG' : sesiAktif === 'masuk' ? '🌙 MULAI ABSEN MASUK' : '🔒 ABSEN DITUTUP';
-  const tombolSubmit = sesiAktif === 'pulang' ? '🌙 SAYA PULANG RONDA' : '🌙 SAYA HADIR RONDA';
   const jamSesiStr = sesiAktif ? formatJamSesi(sesiAktif) : '';
+
+  const tombolMulai: React.ReactNode = sesiAktif === 'pulang' ? (
+    <><Moon size={24} /> MULAI ABSEN PULANG</>
+  ) : sesiAktif === 'masuk' ? (
+    <><Moon size={24} /> MULAI ABSEN MASUK</>
+  ) : (
+    <><Lock size={24} /> ABSEN DITUTUP</>
+  );
+
+  const tombolSubmit: React.ReactNode = sesiAktif === 'pulang' ? (
+    <><Sunrise size={24} /> SAYA PULANG RONDA</>
+  ) : (
+    <><Moon size={24} /> SAYA HADIR RONDA</>
+  );
 
   return (
     <main className="min-h-screen bg-slate-100 sm:flex sm:items-start sm:justify-center sm:py-8 lg:py-12">
@@ -221,7 +234,7 @@ export default function HomePage() {
           <div className="px-4 sm:px-6 py-8 space-y-5">
             {/* Welcome */}
             <div className="text-center space-y-1.5">
-              <p className="text-5xl" role="img" aria-label="bulan">🌙</p>
+              <Moon size={56} className="text-slate-300 mx-auto" />
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Selamat Datang</h2>
               <p className="text-sm sm:text-base text-slate-500 font-medium leading-relaxed max-w-xs mx-auto">
                 {sesiAktif
@@ -274,7 +287,7 @@ export default function HomePage() {
           <div className="py-2">
             <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} akurasiMeter={akurasi} />
             <div className="px-4 py-5 flex items-center justify-center gap-2 text-slate-400 text-sm font-semibold">
-              <span className="animate-spin inline-block">⏳</span>
+              <Loader size={18} className="animate-spin" />
               Sedang memeriksa…
             </div>
           </div>
@@ -303,7 +316,7 @@ export default function HomePage() {
 
             {/* Sesi badge */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3">
-              <span className="text-xl flex-shrink-0">{sesiAktif === 'pulang' ? '🌄' : '🌙'}</span>
+              {sesiAktif === 'pulang' ? <Sunrise size={24} className="text-blue-700" /> : <Moon size={24} className="text-blue-700" />}
               <div>
                 <p className="text-sm font-bold text-blue-900">
                   Sesi <span className="uppercase">{labelSesi}</span>
@@ -315,13 +328,13 @@ export default function HomePage() {
             {/* Auto-fill hint */}
             {showEditHint && (
               <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                <span className="text-xl flex-shrink-0 mt-0.5">👤</span>
+                <User size={22} className="text-green-700 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-green-900">
                     Data Anda sudah terisi otomatis.
                   </p>
                   <p className="text-xs text-green-700 mt-0.5">
-                    Jika nama atau dusun salah, klik <strong>"✏️ Ubah Nama / Dusun"</strong> di bawah.
+                      Jika nama atau dusun salah, klik <strong>"Ubah Nama / Dusun"</strong> di bawah.
                   </p>
                 </div>
               </div>
@@ -377,7 +390,7 @@ export default function HomePage() {
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="animate-spin">⏳</span> Menyimpan…
+                  <Loader size={22} className="animate-spin" /> Menyimpan…
                 </span>
               ) : (
                 tombolSubmit
@@ -392,7 +405,7 @@ export default function HomePage() {
                 className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98]"
                 style={{ minHeight: '52px' }}
               >
-                ✏️ Ubah Nama / Dusun
+                <Pencil size={18} /> Ubah Nama / Dusun
               </button>
             )}
           </div>
