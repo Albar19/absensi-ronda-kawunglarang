@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react';
 import { Landmark } from 'lucide-react';
 import { CONFIG } from '@/lib/config';
+import { cekJamStatus } from '@/lib/data';
 
 export default function HeaderBanner() {
   const [waktu, setWaktu] = useState('');
   const [tanggal, setTanggal] = useState('');
+  const [sesi, setSesi] = useState('');
+  const [warnaSesi, setWarnaSesi] = useState('');
 
   useEffect(() => {
     const HARI  = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
@@ -16,6 +19,18 @@ export default function HeaderBanner() {
       const now = new Date();
       setTanggal(`${HARI[now.getDay()]}, ${now.getDate()} ${BULAN[now.getMonth()]} ${now.getFullYear()}`);
       setWaktu(`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')} WIB`);
+
+      const status = cekJamStatus();
+      if (status === 'masuk') {
+        setSesi('MASUK');
+        setWarnaSesi('text-green-400');
+      } else if (status === 'pulang') {
+        setSesi('PULANG');
+        setWarnaSesi('text-yellow-400');
+      } else {
+        setSesi('TUTUP');
+        setWarnaSesi('text-red-400');
+      }
     }
     tick();
     const id = setInterval(tick, 1000);
@@ -49,12 +64,18 @@ export default function HeaderBanner() {
           </div>
         </div>
 
-        {/* ─── Date/time row ─── */}
-        <div className="mt-3 pt-3 border-t border-blue-700/60 flex items-end justify-between gap-4">
-          <p className="text-sm sm:text-base font-semibold text-blue-200 leading-tight">
-            {tanggal || 'Memuat…'}
+        {/* ─── Date / Session / Time row ─── */}
+        <div className="mt-3 pt-3 border-t border-blue-700/60 flex items-center gap-3">
+          <p className="text-sm sm:text-base font-bold text-blue-200 min-w-0 flex-1 truncate">
+            {tanggal || 'Memuat...'}
           </p>
-          <p className="text-2xl sm:text-3xl font-black tracking-widest tabular-nums text-white flex-shrink-0">
+          {sesi && (
+            <span className={`flex items-center gap-1.5 flex-shrink-0 ${warnaSesi}`}>
+              <span className="w-2 h-2 rounded-full bg-current" />
+              <span className="text-sm sm:text-base font-black tracking-wider">{sesi}</span>
+            </span>
+          )}
+          <p className="text-sm sm:text-base font-bold tabular-nums text-white flex-shrink-0">
             {waktu || '--:--:--'}
           </p>
         </div>
