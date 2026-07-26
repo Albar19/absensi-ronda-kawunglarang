@@ -224,7 +224,7 @@ export default function HomePage() {
   );
 
   return (
-    <main className="min-h-screen bg-slate-100 sm:flex sm:items-start sm:justify-center sm:py-8 lg:py-12">
+    <main className="bg-slate-100 sm:flex sm:items-start sm:justify-center">
       <div className="w-full sm:max-w-md bg-white sm:rounded-2xl sm:shadow-lg">
 
         <HeaderBanner />
