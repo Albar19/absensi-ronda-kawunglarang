@@ -123,19 +123,22 @@ export default function AdminDashboardPage() {
     setJadwalSaving(false);
   }
 
+  // ── Hanya absen pulang yang dihitung (pulang = sudah masuk & lengkap) ──
+  const absenPulang = useMemo(() => absenHariIni.filter(r => r.jenisAbsen === 'pulang'), [absenHariIni]);
+
   // ── Dusun leaderboard ──
   const dusunLeaderboard = useMemo(() => {
     const counts = new Map<string, number>();
-    absenHariIni.forEach(r => {
+    absenPulang.forEach(r => {
       counts.set(r.dusun, (counts.get(r.dusun) || 0) + 1);
     });
     const dusunOrder = CONFIG.dusunList;
     return dusunOrder
       .map(d => ({ dusun: d, count: counts.get(d) || 0 }))
       .sort((a, b) => b.count - a.count);
-  }, [absenHariIni]);
+  }, [absenPulang]);
 
-  const totalHadir = absenHariIni.length;
+  const totalHadir = absenPulang.length;
   const tanggalLabel = formatTanggalIndo(getTanggalHariIni());
   const trophyIcons = ['🏆', '🥈', '🥉', '⚠️'];
 
@@ -197,7 +200,7 @@ export default function AdminDashboardPage() {
               <div className="min-w-0">
                 <h2 className="text-lg font-black text-slate-900 truncate">{tanggalLabel}</h2>
                 <p className="text-xs text-slate-500 font-medium">
-                  Total hadir: <strong>{totalHadir}</strong> orang
+                  Total absen: <strong>{absenHariIni.length}</strong> · Hadir lengkap: <strong className="text-green-700">{totalHadir}</strong> orang
                   {lastRefresh && <span className="ml-2">· Data: {lastRefresh}</span>}
                 </p>
               </div>
@@ -249,7 +252,7 @@ export default function AdminDashboardPage() {
               )}
               <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center gap-2 text-xs font-semibold text-slate-500">
                 <Users size={14} />
-                Total kehadiran malam ini: <strong className="text-slate-800">{totalHadir}</strong> orang
+                Total hadir lengkap (masuk + pulang): <strong className="text-slate-800">{totalHadir}</strong> orang
               </div>
             </div>
 
@@ -314,7 +317,7 @@ export default function AdminDashboardPage() {
                   </div>
 
                   <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-xs font-semibold text-slate-400">
-                    Menampilkan {absenHariIni.length} data kehadiran
+                    Menampilkan {absenHariIni.length} data absensi ({totalHadir} hadir lengkap)
                   </div>
                 </>
               )}
