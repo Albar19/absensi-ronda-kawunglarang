@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode, Loader, Printer } from 'lucide-react';
+import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode, Loader, FileDown } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
@@ -404,12 +404,13 @@ export default function AdminDashboardPage() {
                       {jadwalSaving ? <><Loader size={18} className="animate-spin" strokeWidth={2.5} /> Menyimpan...</> : jadwalDirty ? 'Simpan Jadwal' : 'Simpan Jadwal'}
                     </button>
                     <a
-                      href="/admin/jadwal/cetak"
+                      href="/api/jadwal/download"
+                      download
                       className="inline-flex items-center gap-2 bg-white text-slate-700 border-2 border-slate-300 px-5 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 active:scale-[0.98] transition-all"
                       style={{ minHeight: '48px' }}
                     >
-                      <Printer size={18} strokeWidth={2.5} />
-                      Cetak Jadwal
+                      <FileDown size={18} strokeWidth={2.5} />
+                      Download Jadwal
                     </a>
                   </div>
                   {!jadwalDirty && jadwal.length > 0 && (
