@@ -58,7 +58,7 @@ export default function RootLayout({
             </nav>
 
             <p className="text-center text-[11px] text-blue-400 font-medium mt-3 tracking-wide">
-              KKN 46 Kawunglarang — Universitas Kuningan
+              &copy; {new Date().getFullYear()} KKN 46 Kawunglarang — Universitas Kuningan
             </p>
           </div>
 

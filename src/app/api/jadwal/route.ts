@@ -68,31 +68,44 @@ export async function PUT(request: Request) {
         );
 
       if (error) {
-        // Fallback: pakai insert biasa
+        console.error(`[PUT /api/jadwal] upsert gagal untuk ${item.hari}:`, error.message);
+
+        // Fallback: insert biasa kalau upsert gagal (misal karena row belum ada)
         const { error: fbError } = await supabase
           .from('jadwal_ronda')
-          .update({ petugas: item.petugas })
-          .eq('hari', item.hari);
+          .insert({ hari: item.hari, petugas: item.petugas });
 
         if (fbError && fbError.code === 'PGRST204') {
-          // Tabel belum ada — lewati
-          continue;
+          // Tabel belum ada — skip, nanti dikasih tahu user
+          console.error(`[PUT /api/jadwal] tabel jadwal_ronda tidak ditemukan`);
+          return NextResponse.json({
+            error: 'Tabel jadwal_ronda belum ada. Jalankan migration SQL di Supabase Dashboard terlebih dahulu.',
+          }, { status: 500 });
         }
 
         if (fbError) {
-          return NextResponse.json({ error: `Gagal menyimpan ${item.hari}` }, { status: 500 });
+          console.error(`[PUT /api/jadwal] insert fallback gagal untuk ${item.hari}:`, fbError.message);
+          return NextResponse.json({ error: `Gagal menyimpan ${item.hari}: ${fbError.message}` }, { status: 500 });
         }
       }
     }
 
     // Ambil data terbaru
-    const { data } = await supabase
+    const { data, error: selectError } = await supabase
       .from('jadwal_ronda')
       .select('id, hari, petugas')
       .order('hari', { ascending: true });
 
+    if (selectError) {
+      console.error(`[PUT /api/jadwal] select setelah simpan gagal:`, selectError.message);
+      // Tetap return success karena data sudah tersimpan
+      return NextResponse.json({ success: true, jadwal: [] });
+    }
+
     return NextResponse.json({ success: true, jadwal: data ?? [] });
-  } catch {
-    return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Terjadi kesalahan server';
+    console.error(`[PUT /api/jadwal] unexpected error:`, msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

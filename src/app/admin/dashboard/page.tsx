@@ -63,8 +63,6 @@ export default function AdminDashboardPage() {
       const res = await fetch('/api/jadwal');
       if (res.ok) {
         const data: JadwalRonda[] = await res.json();
-        // Urutkan sesuai hariList
-        const sorted = CONFIG.hariList.map(h => data.find(j => j.hari === h)!).filter(Boolean);
         // Kalau ada yang kosong, isi default
         const result = CONFIG.hariList.map((h, i) => {
           const existing = data.find(j => j.hari === h);
