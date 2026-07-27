@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode, Loader } from 'lucide-react';
+import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode, Loader, Printer } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
@@ -392,16 +392,26 @@ export default function AdminDashboardPage() {
                   {jadwalMessage && (
                     <p className={`text-sm font-bold ${jadwalMessage.includes('berhasil') ? 'text-green-700' : 'text-red-700'}`}>{jadwalMessage}</p>
                   )}
-                  <button
-                    type="button"
-                    onClick={handleSimpanJadwal}
-                    disabled={jadwalSaving}
-                    className="inline-flex items-center gap-2 bg-[#1e3a8a] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#1e40af] active:scale-[0.98] transition-all disabled:opacity-50"
-                    style={{ minHeight: '48px' }}
-                  >
-                    <Save size={18} strokeWidth={2.5} />
-                    {jadwalSaving ? <><Loader size={18} className="animate-spin" strokeWidth={2.5} /> Menyimpan...</> : jadwalDirty ? 'Simpan Jadwal' : 'Simpan Jadwal'}
-                  </button>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleSimpanJadwal}
+                      disabled={jadwalSaving}
+                      className="inline-flex items-center gap-2 bg-[#1e3a8a] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#1e40af] active:scale-[0.98] transition-all disabled:opacity-50"
+                      style={{ minHeight: '48px' }}
+                    >
+                      <Save size={18} strokeWidth={2.5} />
+                      {jadwalSaving ? <><Loader size={18} className="animate-spin" strokeWidth={2.5} /> Menyimpan...</> : jadwalDirty ? 'Simpan Jadwal' : 'Simpan Jadwal'}
+                    </button>
+                    <a
+                      href="/admin/jadwal/cetak"
+                      className="inline-flex items-center gap-2 bg-white text-slate-700 border-2 border-slate-300 px-5 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 active:scale-[0.98] transition-all"
+                      style={{ minHeight: '48px' }}
+                    >
+                      <Printer size={18} strokeWidth={2.5} />
+                      Cetak Jadwal
+                    </a>
+                  </div>
                   {!jadwalDirty && jadwal.length > 0 && (
                     <p className="text-xs text-slate-400 font-medium">Tidak ada perubahan.</p>
                   )}

@@ -154,3 +154,12 @@ button { user-select: none; cursor: pointer; }
 }
 .input-base::placeholder { color: #9ca3af; font-weight: 400; }
 .input-base:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(30,58,138,0.08); }
+
+/* ═══════════════════════════════════════════════════
+   PRINT
+═══════════════════════════════════════════════════ */
+@media print {
+  @page { margin: 1.5cm; size: A4 portrait; }
+  body { background: #fff !important; color: #000 !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
