@@ -53,6 +53,46 @@ export async function POST(request: Request) {
       }
     }
 
+    // ── VALIDASI: 1 device hanya boleh 1 nama (cegah titip absen) ──
+    const namaTrimmed = nama.trim();
+    const { data: namaLain } = await supabase
+      .from('absen_records')
+      .select('nama_warga')
+      .eq('device_id', deviceId)
+      .neq('nama_warga', namaTrimmed)
+      .limit(1);
+
+    if (namaLain && namaLain.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Perangkat ini sudah terdaftar atas nama "${namaLain[0].nama_warga}". Tidak bisa absen atas nama berbeda. Hubungi Admin jika ingin mengganti nama.`,
+          code: 'DEVICE_NAME_CONFLICT',
+          registeredName: namaLain[0].nama_warga,
+        },
+        { status: 409 }
+      );
+    }
+
+    // Fallback untuk schema lama (kolom 'nama' bukan 'nama_warga')
+    if (!namaLain || namaLain.length === 0) {
+      const { data: fbNamaLain } = await supabase
+        .from('absen_records')
+        .select('nama')
+        .eq('warga_id', deviceId)
+        .neq('nama', namaTrimmed)
+        .limit(1);
+      if (fbNamaLain && fbNamaLain.length > 0) {
+        return NextResponse.json(
+          {
+            error: `Perangkat ini sudah terdaftar atas nama "${fbNamaLain[0].nama}". Tidak bisa absen atas nama berbeda. Hubungi Admin jika ingin mengganti nama.`,
+            code: 'DEVICE_NAME_CONFLICT',
+            registeredName: fbNamaLain[0].nama,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     // ── UPSERT: jika device_id + tanggal_ronda + jenis_absen sudah ada, UPDATE ──
     const { data: existing } = await supabase
       .from('absen_records')

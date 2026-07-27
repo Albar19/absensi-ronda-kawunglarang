@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { Moon, Sunrise, Lock, User, Pencil, Loader } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Moon, Sunrise, Lock, User, Pencil, Loader, AlertTriangle, Shield } from 'lucide-react';
 import { FlowState, AbsenRecord } from '@/lib/types';
 import { CONFIG, type JenisAbsen } from '@/lib/config';
 import {
@@ -36,15 +36,52 @@ export default function HomePage() {
   const [nama, setNama] = useState('');
   const [dusun, setDusun] = useState('');
   const [showEditHint, setShowEditHint] = useState(false);
+  const [namaRegistered, setNamaRegistered] = useState(false); // apakah nama sudah terdaftar di server
+  const [deviceRegisteredName, setDeviceRegisteredName] = useState<string | null>(null);
+  const [showEditWarning, setShowEditWarning] = useState(false);
+  const [namaList, setNamaList] = useState<string[]>([]);
+  const namaInputRef = useRef<HTMLInputElement>(null);
 
-  // Load saved warga data from localStorage on mount
+  // Load saved warga data + check device registration + fetch name list on mount
   useEffect(() => {
-    const saved = muatDataWarga();
-    if (saved) {
-      setNama(saved.nama);
-      setDusun(saved.dusun);
-      setShowEditHint(true);
-    }
+    const init = async () => {
+      // Muat localStorage dulu sebagai base
+      const saved = muatDataWarga();
+
+      // 1. Fetch daftar nama untuk autocomplete
+      try {
+        const namaRes = await fetch('/api/absen/daftar-nama');
+        if (namaRes.ok) {
+          const namaData = await namaRes.json();
+          if (namaData.names) setNamaList(namaData.names);
+        }
+      } catch { /* silent */ }
+
+      // 2. Cek apakah device sudah terdaftar di server (nama override localStorage)
+      const deviceId = getDeviceId();
+      try {
+        const devRes = await fetch(`/api/absen/cek-device?device_id=${encodeURIComponent(deviceId)}`);
+        if (devRes.ok) {
+          const devData = await devRes.json();
+          if (devData.registered && devData.nama) {
+            setNama(devData.nama);
+            setDusun(saved?.dusun || '');
+            setNamaRegistered(true);
+            setDeviceRegisteredName(devData.nama);
+            // Nama registered — tidak ada tombol edit nama, hanya dusun bisa diganti
+            return;
+          }
+        }
+      } catch { /* silent */ }
+
+      // 3. Fallback ke localStorage (device belum terdaftar)
+      if (saved) {
+        setNama(saved.nama);
+        setDusun(saved.dusun);
+        setShowEditHint(true);
+      }
+    };
+    init();
   }, []);
 
   const mulaiCek = useCallback(async () => {
@@ -170,13 +207,28 @@ export default function HomePage() {
         body: JSON.stringify(record),
       });
       if (res.ok) {
+        // Simpan nama ke localStorage setelah sukses (first time)
         simpanDataWarga(namaTrim, dusun);
+        if (!namaRegistered) {
+          // Nama baru terdaftar — lock untuk selanjutnya
+          setNamaRegistered(true);
+          setDeviceRegisteredName(namaTrim);
+        }
         setSuccessRecord(record);
         setTimeout(() => { setIsSubmitting(false); setFlowState('success'); }, 300);
         return;
       }
       const err = await res.json();
-      setPesanError(err.error || 'Gagal menyimpan absen');
+      // Handle konflik nama device (titip absen)
+      if (err.code === 'DEVICE_NAME_CONFLICT' && err.registeredName) {
+        setPesanError(`Perangkat ini sudah terdaftar atas nama "${err.registeredName}". Tidak bisa absen atas nama berbeda. Hubungi Admin jika Anda ingin mengganti nama.`);
+        // Update form dengan nama terdaftar
+        setNama(err.registeredName);
+        setNamaRegistered(true);
+        setDeviceRegisteredName(err.registeredName);
+      } else {
+        setPesanError(err.error || 'Gagal menyimpan absen');
+      }
     } catch {
       setPesanError('Gagal terhubung ke server');
     }
@@ -197,7 +249,24 @@ export default function HomePage() {
   }, []);
 
   const handleEditToggle = useCallback(() => {
+    // Jika device sudah terdaftar di server, tampilkan warning dulu
+    if (namaRegistered) {
+      setShowEditWarning(true);
+    } else {
+      setShowEditHint(false);
+    }
+  }, [namaRegistered]);
+
+  const handleConfirmEditName = useCallback(() => {
+    setShowEditWarning(false);
     setShowEditHint(false);
+    // Nama registered tetap bisa diedit setelah warning, tapi submit akan ditolak server
+    // Ini untuk kasus typo — user bisa coba perbaiki, server akan tolak dengan konflik,
+    // lalu user hubungi admin untuk reset
+  }, []);
+
+  const handleCancelEditWarning = useCallback(() => {
+    setShowEditWarning(false);
   }, []);
 
   const isFormValid = nama.trim().length > 0 && dusun.length > 0;
@@ -354,7 +423,7 @@ export default function HomePage() {
 
         {/* ─── FORM ─── */}
         {flowState === 'form' && (
-          <div className="px-4 sm:px-5 pb-8 space-y-4">
+          <><div className="px-4 sm:px-5 pb-8 space-y-4">
             <div className="pt-3">
               <button
                 type="button"
@@ -379,8 +448,23 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Auto-fill hint */}
-            {showEditHint && (
+            {/* Device registered badge */}
+            {namaRegistered && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                <Shield size={22} className="text-amber-700 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-amber-900">
+                    Perangkat terdaftar: {deviceRegisteredName}
+                  </p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Nama tidak bisa diganti (1 perangkat = 1 warga). Hubungi Admin jika ada kesalahan nama.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Auto-fill hint (hanya jika belum registered) */}
+            {showEditHint && !namaRegistered && (
               <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-3">
                 <User size={22} className="text-green-700 flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
@@ -402,16 +486,26 @@ export default function HomePage() {
                 </label>
                 <input
                   id="nama"
+                  ref={namaInputRef}
                   type="text"
                   inputMode="text"
                   autoComplete="name"
-                  placeholder="Ketik nama lengkap Anda"
+                  placeholder={namaRegistered ? deviceRegisteredName || 'Nama terdaftar' : 'Ketik nama lengkap Anda'}
                   value={nama}
                   onChange={e => setNama(e.target.value)}
-                  readOnly={!showEditHint && !!muatDataWarga()}
+                  readOnly={namaRegistered || (!showEditHint && !!muatDataWarga())}
+                  list="daftar-nama-list"
                   className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors read-only:bg-slate-50 read-only:text-slate-500"
                   style={{ minHeight: '56px' }}
                 />
+                {/* Datalist autocomplete */}
+                {namaList.length > 0 && (
+                  <datalist id="daftar-nama-list">
+                    {namaList.map(n => (
+                      <option key={n} value={n} />
+                    ))}
+                  </datalist>
+                )}
               </div>
 
               <div>
@@ -452,7 +546,7 @@ export default function HomePage() {
             </button>
 
             {/* Tombol sekunder: Ubah Nama / Dusun */}
-            {showEditHint && (
+            {showEditHint && !namaRegistered && (
               <button
                 type="button"
                 onClick={handleEditToggle}
@@ -462,7 +556,56 @@ export default function HomePage() {
                 <Pencil size={18} /> Ubah Nama / Dusun
               </button>
             )}
+            {namaRegistered && (
+              <button
+                type="button"
+                onClick={handleEditToggle}
+                className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98]"
+                style={{ minHeight: '52px' }}
+              >
+                <Pencil size={18} /> Ubah Dusun (Nama tetap)
+              </button>
+            )}
           </div>
+
+          {/* ─── WARNING MODAL: Edit nama registered ─── */}
+          {showEditWarning && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4">
+              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-auto space-y-4">
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                    <AlertTriangle size={32} className="text-red-600" strokeWidth={1.8} />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900">Peringatan!</h3>
+                  <p className="text-sm text-slate-600 font-semibold leading-relaxed">
+                    Perangkat ini sudah terdaftar atas nama <strong>{deviceRegisteredName}</strong>.
+                    Mengganti nama dapat dianggap sebagai <strong>titip absen</strong> dan melanggar aturan.
+                  </p>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Jika Anda ingin mengganti nama karena salah ketik, hubungi Admin untuk reset perangkat Anda.
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelEditWarning}
+                    className="flex-1 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-bold text-base hover:bg-slate-50 active:scale-[0.98] transition-all"
+                    style={{ minHeight: '48px' }}
+                  >
+                    Kembali
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmEditName}
+                    className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-base hover:bg-red-700 active:scale-[0.98] transition-all"
+                    style={{ minHeight: '48px' }}
+                  >
+                    Tetap Ganti Nama
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}</>
         )}
 
         {/* ─── SUCCESS ─── */}

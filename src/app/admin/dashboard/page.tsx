@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode, Loader, FileDown } from 'lucide-react';
+import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode, Loader, FileDown, Smartphone, Trash2, AlertTriangle, Search } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import ExportButton from '@/components/admin/ExportButton';
 
-type Tab = 'log' | 'jadwal';
+type Tab = 'log' | 'jadwal' | 'device';
 
 const HARI_LABEL: Record<string, string> = {
   senin: 'Senin',
@@ -35,6 +35,15 @@ export default function AdminDashboardPage() {
   const [jadwalSaving, setJadwalSaving] = useState(false);
   const [jadwalMessage, setJadwalMessage] = useState('');
   const [jadwalDirty, setJadwalDirty] = useState(false);
+
+  // ── Device management ──
+  const [deviceSearch, setDeviceSearch] = useState('');
+  const [deviceResults, setDeviceResults] = useState<{ nama: string; deviceId: string; dusun: string; count: number }[]>([]);
+  const [deviceSearchLoading, setDeviceSearchLoading] = useState(false);
+  const [resetConfirmDeviceId, setResetConfirmDeviceId] = useState<string | null>(null);
+  const [resetConfirmNama, setResetConfirmNama] = useState<string | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState('');
 
   const refreshData = useCallback(async () => {
     try {
@@ -121,6 +130,93 @@ export default function AdminDashboardPage() {
     setJadwalSaving(false);
   }
 
+  // ── Device management ──
+  async function handleCariDevice() {
+    const q = deviceSearch.trim();
+    if (!q || q.length < 2) {
+      setResetMessage('Ketik minimal 2 karakter (nama atau device ID).');
+      return;
+    }
+    setDeviceSearchLoading(true);
+    setResetMessage('');
+    try {
+      const res = await fetch(`/api/absen/semua`);
+      if (!res.ok) {
+        setResetMessage('Gagal mengambil data.');
+        setDeviceSearchLoading(false);
+        return;
+      }
+      const allData: AbsenRecord[] = await res.json();
+
+      // Filter: nama atau device_id mengandung query
+      const qLower = q.toLowerCase();
+      const matched = new Map<string, { nama: string; deviceId: string; dusun: string; count: number }>();
+      allData.forEach(r => {
+        if (
+          r.nama.toLowerCase().includes(qLower) ||
+          r.deviceId.toLowerCase().includes(qLower)
+        ) {
+          const key = r.deviceId;
+          if (!matched.has(key)) {
+            matched.set(key, { nama: r.nama, deviceId: r.deviceId, dusun: r.dusun, count: 0 });
+          }
+          const entry = matched.get(key)!;
+          entry.count++;
+          // Update nama ke yang terbaru
+          if (allData.indexOf(r) < allData.findIndex(x => x.deviceId === key)) {
+            // this is an earlier record, skip
+          }
+          // Use the latest name for display
+          const existingIdx = allData.findIndex(x => x.deviceId === key && x.nama === r.nama);
+          if (existingIdx >= 0) {
+            entry.nama = r.nama;
+            entry.dusun = r.dusun;
+          }
+        }
+      });
+
+      // Urutkan: yang cocok nama dulu
+      const results = Array.from(matched.values()).sort((a, b) => {
+        const aName = a.nama.toLowerCase().includes(qLower) ? 0 : 1;
+        const bName = b.nama.toLowerCase().includes(qLower) ? 0 : 1;
+        return aName - bName;
+      });
+
+      setDeviceResults(results);
+      if (results.length === 0) {
+        setResetMessage('Tidak ditemukan perangkat dengan kata kunci tersebut.');
+      }
+    } catch {
+      setResetMessage('Gagal mencari data.');
+    }
+    setDeviceSearchLoading(false);
+  }
+
+  async function handleResetDevice(deviceId: string, nama: string) {
+    setResetLoading(true);
+    setResetMessage('');
+    try {
+      const res = await fetch('/api/absen/reset-nama', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: deviceId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResetMessage(data.message || 'Device berhasil direset.');
+        // Hapus dari hasil pencarian
+        setDeviceResults(prev => prev.filter(d => d.deviceId !== deviceId));
+      } else {
+        setResetMessage(data.error || 'Gagal mereset device.');
+      }
+    } catch {
+      setResetMessage('Gagal terhubung ke server.');
+    }
+    setResetLoading(false);
+    setResetConfirmDeviceId(null);
+    setResetConfirmNama(null);
+  }
+
   // ── Hanya absen pulang yang dihitung (pulang = sudah masuk & lengkap) ──
   const absenPulang = useMemo(() => absenHariIni.filter(r => r.jenisAbsen === 'pulang'), [absenHariIni]);
 
@@ -185,6 +281,17 @@ export default function AdminDashboardPage() {
           >
             <Calendar size={16} />
             Jadwal Ronda
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('device')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+              tab === 'device' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+            style={{ minHeight: '42px' }}
+          >
+            <Smartphone size={16} />
+            Perangkat
           </button>
         </div>
 
@@ -419,6 +526,142 @@ export default function AdminDashboardPage() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* ════════════════════════════════════════════════ */}
+        {/* TAB: PERANGKAT (DEVICE MANAGEMENT)              */}
+        {/* ════════════════════════════════════════════════ */}
+        {tab === 'device' && (
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Smartphone size={20} className="text-[#1e3a8a]" strokeWidth={2} />
+                <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
+                  Manajemen Perangkat
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 font-medium">
+                Cari perangkat untuk mereset nama. 1 perangkat = 1 warga. Reset jika ada salah ketik nama.
+              </p>
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+              {/* Search */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={deviceSearch}
+                    onChange={e => setDeviceSearch(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleCariDevice(); }}
+                    placeholder="Cari nama warga atau ID perangkat..."
+                    className="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                    style={{ minHeight: '46px' }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCariDevice}
+                  disabled={deviceSearchLoading}
+                  className="bg-[#1e3a8a] text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-[#1e40af] active:scale-[0.98] transition-all disabled:opacity-50"
+                  style={{ minHeight: '46px', whiteSpace: 'nowrap' }}
+                >
+                  {deviceSearchLoading ? <Loader size={16} className="animate-spin" /> : 'Cari'}
+                </button>
+              </div>
+
+              {/* Message */}
+              {resetMessage && (
+                <p className={`text-sm font-bold ${resetMessage.includes('berhasil') || resetMessage.includes('ditemukan') ? 'text-green-700' : 'text-red-700'}`}>
+                  {resetMessage}
+                </p>
+              )}
+
+              {/* Results */}
+              {deviceResults.length > 0 && (
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+                  {deviceResults.map(dev => (
+                    <div key={dev.deviceId} className="flex items-center justify-between gap-3 px-4 py-3.5 hover:bg-slate-50">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-black text-slate-900 truncate">{dev.nama}</p>
+                        <p className="text-xs text-slate-500 font-semibold truncate">
+                          {dev.dusun} · {dev.count} absen
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono truncate mt-0.5">
+                          ID: {dev.deviceId.slice(0, 24)}…
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResetConfirmDeviceId(dev.deviceId);
+                          setResetConfirmNama(dev.nama);
+                        }}
+                        className="flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 px-3.5 py-2 rounded-lg text-xs font-bold hover:bg-red-100 active:scale-[0.97] transition-all flex-shrink-0"
+                        style={{ minHeight: '38px' }}
+                      >
+                        <Trash2 size={14} strokeWidth={2.5} />
+                        Reset
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty state */}
+              {deviceResults.length === 0 && !deviceSearchLoading && !resetMessage && (
+                <div className="text-center py-8 text-slate-400 text-sm font-semibold">
+                  <Smartphone size={40} className="mx-auto mb-3 text-slate-300" strokeWidth={1.5} />
+                  Cari nama warga untuk melihat perangkat terdaftar.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ─── RESET CONFIRMATION MODAL ─── */}
+        {resetConfirmDeviceId && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-auto space-y-4">
+              <div className="flex flex-col items-center text-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle size={32} className="text-red-600" strokeWidth={1.8} />
+                </div>
+                <h3 className="text-xl font-black text-slate-900">Reset Perangkat</h3>
+                <p className="text-sm text-slate-600 font-semibold leading-relaxed">
+                  Semua data absen untuk perangkat milik <strong>{resetConfirmNama}</strong> akan <strong>dihapus permanen</strong>.
+                  Perangkat ini bisa digunakan dengan nama baru setelah direset.
+                </p>
+                <p className="text-xs text-slate-500 font-medium">
+                  Tindakan ini tidak bisa dibatalkan. Data yang terlanjur di-export tidak terpengaruh.
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetConfirmDeviceId(null);
+                    setResetConfirmNama(null);
+                  }}
+                  disabled={resetLoading}
+                  className="flex-1 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-bold text-base hover:bg-slate-50 transition-all disabled:opacity-50"
+                  style={{ minHeight: '48px' }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleResetDevice(resetConfirmDeviceId, resetConfirmNama || '')}
+                  disabled={resetLoading}
+                  className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-base hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ minHeight: '48px' }}
+                >
+                  {resetLoading ? <><Loader size={16} className="animate-spin" /> Mereset...</> : 'Ya, Reset'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
