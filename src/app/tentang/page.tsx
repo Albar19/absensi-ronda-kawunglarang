@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, MapPin, Clock, Smartphone, QrCode, ShieldCheck, Download, FileSpreadsheet, Calendar, BarChart3 } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Smartphone, QrCode, ShieldCheck, Download, FileSpreadsheet, Calendar, BarChart3, List } from 'lucide-react';
 
 const fiturList = [
   {
@@ -19,8 +19,8 @@ const fiturList = [
   },
   {
     icon: ShieldCheck,
-    title: 'Cegah Absen Ganda',
-    desc: 'Mencegah absen ganda dari perangkat yang sama dalam satu sesi.',
+    title: '1 Perangkat = 1 Warga',
+    desc: 'Setiap perangkat hanya bisa digunakan oleh 1 nama. Mencegah titip absen. Hubungi Admin jika salah ketik.',
   },
   {
     icon: Smartphone,
@@ -46,6 +46,11 @@ const fiturList = [
     icon: BarChart3,
     title: 'Leaderboard Dusun',
     desc: 'Progress bar kehadiran per dusun, hanya absen pulang yang dihitung.',
+  },
+  {
+    icon: List,
+    title: 'Autocomplete Nama',
+    desc: 'Saat ketik nama, otomatis muncul saran dari nama yang pernah absen sebelumnya.',
   },
 ];
 

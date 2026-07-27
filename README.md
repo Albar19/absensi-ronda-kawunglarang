@@ -28,10 +28,13 @@ Sistem absensi ronda malam berbasis web untuk **Desa Kawunglarang**, dikembangka
 |-------|-----------|
 | **Absen Masuk** | Warga buka halaman, cek GPS (radius 150m dari Bale Desa), absen masuk (20:00–23:40 WIB) |
 | **Absen Pulang** | Warga absen pulang (23:40–01:00 WIB) — wajib sudah absen masuk malam ini |
+| **1 Device = 1 Nama** | Setiap perangkat hanya bisa digunakan oleh 1 nama. Mencegah titip absen. |
+| **Autocomplete Nama** | Saat ketik nama, otomatis muncul saran dari nama yang pernah absen sebelumnya. |
 | **Jadwal Ronda Mingguan** | Admin atur petugas ronda per hari (Senin–Minggu) via dropdown di dashboard |
 | **Dashboard Admin** | Log kehadiran real-time + leaderboard progress bar per dusun |
 | **Export Excel** | Export rekap per dusun + detail absensi per bulan ke file `.xlsx` |
 | **QR Code** | Download QR Code (biru #1e3a8a) untuk ditempel di Bale Desa |
+| **Reset Perangkat** | Admin bisa reset binding nama perangkat jika warga salah ketik nama. |
 
 Perhitungan kehadiran: hanya **absen pulang** yang dihitung sebagai hadir lengkap (masuk + pulang = 1).
 
@@ -57,20 +60,20 @@ Perhitungan kehadiran: hanya **absen pulang** yang dihitung sebagai hadir lengka
 
 | Kolom | Tipe | Keterangan |
 |-------|------|------------|
-| `id` | text (PK) | Generate dari frontend |
-| `device_id` | text | ID perangkat unik (localStorage) |
-| `nama` | text | Nama warga (denormalized) |
+| `id` | uuid (PK) | Auto generate dari database |
+| `nama_warga` | text | Nama warga (denormalized) |
 | `dusun` | text | Dusun warga (denormalized) |
-| `tanggal` | date | Tanggal ronda |
-| `tanggal_ronda` | text | Tanggal ronda (format YYYY-MM-DD, indexed) |
+| `created_at` | timestamptz | Auto timestamp |
+| `tanggal_ronda` | date | Tanggal ronda (indexed) |
 | `jam_absen` | text | Jam absen HH:MM:SS |
 | `jenis_absen` | text | `"masuk"` atau `"pulang"` (indexed) |
 | `latitude` | float8 | Latitude GPS |
 | `longitude` | float8 | Longitude GPS |
-| `jarak_meter` | int8 | Jarak dari Bale Desa (meter) |
-| `created_at` | timestamptz | Auto timestamp |
+| `jarak_meter` | int4 | Jarak dari Bale Desa (meter) |
+| `device_id` | text | ID perangkat unik (localStorage) |
 
-Unique constraint: `(device_id, tanggal_ronda, jenis_absen)` — 1 device 1 absen per jenis per malam.
+Index: `idx_absen_tanggal_dusun` pada `(tanggal_ronda, dusun)`  
+Index: `idx_absen_device_jenis` pada `(device_id, tanggal_ronda, jenis_absen)`
 
 ### Tabel `jadwal_ronda`
 
@@ -182,9 +185,9 @@ src/
 │   ├── kontak/
 │   │   └── page.tsx           # Halaman kontak
 │   └── api/
-│       ├── absen/             # POST absen + GET hari-ini + cek-masuk + semua
+│       ├── absen/             # POST absen + GET (hari-ini, semua, cek-masuk, cek-device, daftar-nama, reset-nama, reset)
 │       ├── auth/              # Login/logout admin (cookie JWT)
-│       ├── jadwal/            # GET/PUT jadwal ronda + hari-ini
+│       ├── jadwal/            # GET/PUT jadwal ronda + hari-ini + download
 │       └── qr/                # GET QR Code (PNG)
 ├── components/
 │   ├── admin/
@@ -284,7 +287,7 @@ export const CONFIG = {
 
 - **Database:** Semua operasi database melalui Supabase client (`src/lib/supabase.ts`)
 - **Auth admin:** Menggunakan cookie `admin_token` dengan JWT sederhana (via `src/app/api/auth/`)
-- **Device ID:** Menggunakan localStorage untuk upsert — mencegah absen ganda dari device sama
+- **Device ID:** Menggunakan localStorage — 1 device hanya bisa 1 nama (anti-titip absen). Hubungi admin jika reset diperlukan.
 - **Validasi GPS:** Dilakukan 2x (client-side + server-side) untuk keamanan
 - **Jam absen:** Menggunakan waktu client — pastikan zona waktu sudah sesuai (WIB)
 
