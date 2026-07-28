@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Moon, Sunrise, Lock, User, Pencil, Loader, AlertTriangle, Shield } from 'lucide-react';
+import { Moon, Sunrise, Lock, User, Pencil, Loader, AlertTriangle, Shield, CheckCircle } from 'lucide-react';
 import { FlowState, AbsenRecord } from '@/lib/types';
 import { CONFIG, type JenisAbsen } from '@/lib/config';
 import {
@@ -262,8 +262,6 @@ export default function HomePage() {
   }, [nama, dusun, jarakMeter, koordinat, jenisAbsen]);
 
   const handleReset = useCallback(() => {
-    // Hapus flag supaya bisa absen ulang (misal perbaiki dusun)
-    clearSudahAbsen(getDeviceId(), getTanggalHariIni(), jenisAbsen);
     setFlowState('idle');
     setIsSubmitting(false);
     setStatusJam(null);
@@ -273,7 +271,13 @@ export default function HomePage() {
     setKoordinat(null);
     setPesanError('');
     setSuccessRecord(null);
-  }, [jenisAbsen]);
+  }, []);
+
+  const handlePerbaikiData = useCallback(() => {
+    const sesi = getJenisAbsenSaatIni();
+    clearSudahAbsen(getDeviceId(), getTanggalHariIni(), sesi);
+    mulaiCek();
+  }, [mulaiCek]);
 
   const handleEditToggle = useCallback(() => {
     // Jika device sudah terdaftar di server, tampilkan warning dulu
@@ -307,6 +311,7 @@ export default function HomePage() {
   const labelSesi = sesiAktif === 'pulang' ? 'PULANG' : 'MASUK';
   const labelSesiLower = sesiAktif === 'pulang' ? 'pulang' : 'masuk';
   const jamSesiStr = sesiAktif ? formatJamSesi(sesiAktif) : '';
+  const sudahAbsen = sesiAktif ? cekSudahAbsen(getDeviceId(), getTanggalHariIni(), sesiAktif) : false;
 
   function BadgeSesi({ warna, label }: { warna: string; label: string }) {
     return (
@@ -317,7 +322,17 @@ export default function HomePage() {
     );
   }
 
-  const tombolMulai: React.ReactNode = sesiAktif === 'pulang' ? (
+  const tombolMulai: React.ReactNode = sudahAbsen && sesiAktif === 'pulang' ? (
+    <span className="flex flex-col items-center gap-0.5">
+      <BadgeSesi warna="text-yellow-400" label="PULANG" />
+      <span className="flex items-center gap-2"><CheckCircle size={24} strokeWidth={2} /> SUDAH ABSEN PULANG</span>
+    </span>
+  ) : sudahAbsen && sesiAktif === 'masuk' ? (
+    <span className="flex flex-col items-center gap-0.5">
+      <BadgeSesi warna="text-green-400" label="MASUK" />
+      <span className="flex items-center gap-2"><CheckCircle size={24} strokeWidth={2} /> SUDAH ABSEN MASUK</span>
+    </span>
+  ) : sesiAktif === 'pulang' ? (
     <span className="flex flex-col items-center gap-0.5">
       <BadgeSesi warna="text-yellow-400" label="PULANG" />
       <span className="flex items-center gap-2"><Moon size={24} strokeWidth={2} /> MULAI ABSEN PULANG</span>
@@ -419,13 +434,28 @@ export default function HomePage() {
             {/* CTA */}
             <button
               type="button"
-              onClick={mulaiCek}
-              disabled={!sesiAktif}
-              className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide active:scale-[0.98] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={sudahAbsen ? undefined : mulaiCek}
+              disabled={!sesiAktif || sudahAbsen}
+              className={`w-full text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide active:scale-[0.98] transition-all shadow-sm disabled:opacity-80 disabled:cursor-not-allowed ${
+                sudahAbsen ? 'bg-green-600' : 'bg-[#1e3a8a] hover:bg-[#1e40af]'
+              }`}
               style={{ minHeight: '68px' }}
             >
               {tombolMulai}
             </button>
+
+            {/* Perbaiki data — hanya jika sudah absen */}
+            {sudahAbsen && (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={handlePerbaikiData}
+                  className="text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors underline underline-offset-2 flex items-center gap-1.5"
+                >
+                  <Pencil size={14} strokeWidth={2} /> Perbaiki Nama / Dusun
+                </button>
+              </div>
+            )}
 
             <div className="text-center pt-2 border-t border-slate-100">
               <a href="/admin" className="text-xs text-slate-400 underline hover:text-slate-600 transition-colors">
@@ -640,7 +670,7 @@ export default function HomePage() {
 
         {/* ─── SUCCESS ─── */}
         {flowState === 'success' && successRecord && (
-          <SuccessScreen record={successRecord} onBack={handleReset} />
+          <SuccessScreen record={successRecord} onBack={handleReset} onPerbaikiData={handlePerbaikiData} />
         )}
 
       </div>

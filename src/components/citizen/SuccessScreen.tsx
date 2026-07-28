@@ -1,14 +1,15 @@
 'use client';
 
-import { CheckCircle, Moon, Sunrise, User, Building2, Clock, MapPin } from 'lucide-react';
+import { CheckCircle, Moon, Sunrise, User, Building2, Clock, MapPin, Pencil } from 'lucide-react';
 import { AbsenRecord } from '@/lib/types';
 
 interface SuccessScreenProps {
   record: AbsenRecord;
   onBack: () => void;
+  onPerbaikiData: () => void;
 }
 
-export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
+export default function SuccessScreen({ record, onBack, onPerbaikiData }: SuccessScreenProps) {
   const labelSesi = record.jenisAbsen === 'pulang' ? 'PULANG' : 'MASUK';
   const IconSesi = record.jenisAbsen === 'pulang' ? Sunrise : Moon;
 
@@ -52,15 +53,26 @@ export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
         ))}
       </div>
 
-      {/* Back button */}
-      <button
-        type="button"
-        onClick={onBack}
-        className="w-full max-w-sm bg-slate-100 hover:bg-slate-200 text-slate-700 border-2 border-slate-200 rounded-xl font-black text-base active:scale-[0.98] transition-all"
-        style={{ minHeight: '54px' }}
-      >
-        Kembali ke Halaman Utama
-      </button>
+      {/* Action buttons */}
+      <div className="w-full max-w-sm space-y-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 border-2 border-slate-200 rounded-xl font-black text-base active:scale-[0.98] transition-all"
+          style={{ minHeight: '54px' }}
+        >
+          Kembali ke Halaman Utama
+        </button>
+
+        <button
+          type="button"
+          onClick={onPerbaikiData}
+          className="w-full bg-white hover:bg-slate-50 text-slate-500 border-2 border-slate-200 rounded-xl font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          style={{ minHeight: '46px' }}
+        >
+          <Pencil size={16} strokeWidth={2} /> Perbaiki Nama / Dusun
+        </button>
+      </div>
     </div>
   );
 }
