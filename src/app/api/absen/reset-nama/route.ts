@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
-// POST /api/absen/reset-nama — Admin-only: reset device name binding
+// POST /api/absen/reset-nama — Admin-only: rename device owner
 export async function POST(request: Request) {
   // ── Auth check ──
   const cookieStore = await cookies();
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { device_id } = body;
+    const { device_id, nama_baru } = body;
 
     if (!device_id || typeof device_id !== 'string') {
       return NextResponse.json(
@@ -26,6 +26,15 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    if (!nama_baru || typeof nama_baru !== 'string' || nama_baru.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Nama baru wajib diisi' },
+        { status: 400 }
+      );
+    }
+
+    const namaTrimmed = nama_baru.trim();
 
     // Cek apakah device_id punya record
     const { data: existing, error: cekError } = await supabase
@@ -47,51 +56,41 @@ export async function POST(request: Request) {
       if (!fb.data || fb.data.length === 0) {
         return NextResponse.json({ message: 'Device tidak ditemukan' });
       }
-      return NextResponse.json({ success: true, message: 'Device name binding direset. Data absen tetap tersimpan.' });
+      // Update via warga_id
+      const { error: upError } = await supabase
+        .from('absen_records')
+        .update({ nama: namaTrimmed })
+        .eq('warga_id', device_id);
+      if (upError) {
+        return NextResponse.json({ error: 'Gagal mengganti nama' }, { status: 500 });
+      }
+      return NextResponse.json({
+        success: true,
+        message: `Nama berhasil diganti menjadi "${namaTrimmed}". Data absen tetap tersimpan.`,
+      });
     }
 
     if (cekError) {
       return NextResponse.json({ error: 'Gagal memeriksa device' }, { status: 500 });
     }
 
-    // Reset dilakukan dengan menghapus record — TAPI kita tidak hapus record,
-    // kita hanya akui bahwa device boleh pakai nama baru.
-    // Cara: hapus record absen device ini (agar binding name-nya hilang)
-    // Tapi sebaiknya kita tidak hapus data absen.
-    // Alternatif: cukup return success — lain kali device ini absen,
-    // karena tidak ada record, name binding baru akan dibuat.
-    // TAPI itu tidak benar karena masih ada record lama.
-    //
-    // Solusi: kita tidak hapus apa-apa. Admin cukup mengkonfirmasi reset,
-    // dan server melonggarkan validasi untuk device ini di submit berikutnya.
-    // Tapi itu kompleks. Solusi paling praktis:
-    // Hapus SEMUA record device ini (data absen hilang).
-    // Atau: buat approach berbeda — kita tidak pakai "name binding permanen",
-    // kita pakai "per-sesi binding".
+    if (!existing || existing.length === 0) {
+      return NextResponse.json({ message: 'Device tidak ditemukan' });
+    }
 
-    // Pendekatan yang dipakai: Hapus SEMUA record absen device ini.
-    // Ini drastis tapi paling bersih.
-    // Admin akan diberi konfirmasi sebelum reset.
-    const { error: delError } = await supabase
+    // ── UPDATE semua record device_id dengan nama baru ──
+    const { error: upError } = await supabase
       .from('absen_records')
-      .delete()
+      .update({ nama_warga: namaTrimmed })
       .eq('device_id', device_id);
 
-    if (delError && (delError.code === 'PGRST204' || delError.message?.includes('device_id'))) {
-      const fb = await supabase
-        .from('absen_records')
-        .delete()
-        .eq('warga_id', device_id);
-      if (fb.error) {
-        return NextResponse.json({ error: 'Gagal mereset device' }, { status: 500 });
-      }
-    } else if (delError) {
-      return NextResponse.json({ error: 'Gagal mereset device' }, { status: 500 });
+    if (upError) {
+      return NextResponse.json({ error: 'Gagal mengganti nama' }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Data absen untuk device ini telah dihapus. Device dapat digunakan dengan nama baru.',
+      message: `Nama berhasil diganti menjadi "${namaTrimmed}". Data absen tetap tersimpan.`,
     });
   } catch {
     return NextResponse.json(

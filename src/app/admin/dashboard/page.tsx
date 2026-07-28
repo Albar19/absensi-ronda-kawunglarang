@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode, Loader, FileDown, Smartphone, Trash2, AlertTriangle, Search } from 'lucide-react';
+import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode, Loader, FileDown, Smartphone, Pencil, AlertTriangle, Search } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
@@ -40,9 +40,10 @@ export default function AdminDashboardPage() {
   const [deviceSearch, setDeviceSearch] = useState('');
   const [deviceResults, setDeviceResults] = useState<{ nama: string; deviceId: string; dusun: string; count: number }[]>([]);
   const [deviceSearchLoading, setDeviceSearchLoading] = useState(false);
-  const [resetConfirmDeviceId, setResetConfirmDeviceId] = useState<string | null>(null);
-  const [resetConfirmNama, setResetConfirmNama] = useState<string | null>(null);
-  const [resetLoading, setResetLoading] = useState(false);
+  const [renameDeviceId, setRenameDeviceId] = useState<string | null>(null);
+  const [renameNamaLama, setRenameNamaLama] = useState<string | null>(null);
+  const [renameNamaBaru, setRenameNamaBaru] = useState('');
+  const [renameLoading, setRenameLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
 
   const refreshData = useCallback(async () => {
@@ -192,29 +193,32 @@ export default function AdminDashboardPage() {
     setDeviceSearchLoading(false);
   }
 
-  async function handleResetDevice(deviceId: string, nama: string) {
-    setResetLoading(true);
+  async function handleRenameDevice(deviceId: string, namaBaru: string) {
+    setRenameLoading(true);
     setResetMessage('');
     try {
       const res = await fetch('/api/absen/reset-nama', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: deviceId }),
+        body: JSON.stringify({ device_id: deviceId, nama_baru: namaBaru }),
       });
       const data = await res.json();
       if (res.ok) {
-        setResetMessage(data.message || 'Device berhasil direset.');
-        // Hapus dari hasil pencarian
-        setDeviceResults(prev => prev.filter(d => d.deviceId !== deviceId));
+        setResetMessage(data.message || 'Nama berhasil diganti.');
+        // Update nama di hasil pencarian
+        setDeviceResults(prev => prev.map(d =>
+          d.deviceId === deviceId ? { ...d, nama: namaBaru } : d
+        ));
       } else {
-        setResetMessage(data.error || 'Gagal mereset device.');
+        setResetMessage(data.error || 'Gagal mengganti nama.');
       }
     } catch {
       setResetMessage('Gagal terhubung ke server.');
     }
-    setResetLoading(false);
-    setResetConfirmDeviceId(null);
-    setResetConfirmNama(null);
+    setRenameLoading(false);
+    setRenameDeviceId(null);
+    setRenameNamaLama(null);
+    setRenameNamaBaru('');
   }
 
   // ── Hanya absen pulang yang dihitung (pulang = sudah masuk & lengkap) ──
@@ -542,7 +546,7 @@ export default function AdminDashboardPage() {
                 </h3>
               </div>
               <p className="text-xs text-slate-500 mt-1 font-medium">
-                Cari perangkat untuk mereset nama. 1 perangkat = 1 warga. Reset jika ada salah ketik nama.
+                Cari perangkat untuk mengganti nama warga. 1 perangkat = 1 warga. Data absen tetap tersimpan.
               </p>
             </div>
 
@@ -596,14 +600,15 @@ export default function AdminDashboardPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setResetConfirmDeviceId(dev.deviceId);
-                          setResetConfirmNama(dev.nama);
+                          setRenameDeviceId(dev.deviceId);
+                          setRenameNamaLama(dev.nama);
+                          setRenameNamaBaru(dev.nama);
                         }}
-                        className="flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 px-3.5 py-2 rounded-lg text-xs font-bold hover:bg-red-100 active:scale-[0.97] transition-all flex-shrink-0"
+                        className="flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-3.5 py-2 rounded-lg text-xs font-bold hover:bg-blue-100 active:scale-[0.97] transition-all flex-shrink-0"
                         style={{ minHeight: '38px' }}
                       >
-                        <Trash2 size={14} strokeWidth={2.5} />
-                        Reset
+                        <Pencil size={14} strokeWidth={2.5} />
+                        Ganti Nama
                       </button>
                     </div>
                   ))}
@@ -621,31 +626,46 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* ─── RESET CONFIRMATION MODAL ─── */}
-        {resetConfirmDeviceId && (
+        {/* ─── RENAME MODAL ─── */}
+        {renameDeviceId && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4">
             <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-auto space-y-4">
               <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-                  <AlertTriangle size={32} className="text-red-600" strokeWidth={1.8} />
+                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Pencil size={32} className="text-blue-600" strokeWidth={1.8} />
                 </div>
-                <h3 className="text-xl font-black text-slate-900">Reset Perangkat</h3>
+                <h3 className="text-xl font-black text-slate-900">Ganti Nama</h3>
                 <p className="text-sm text-slate-600 font-semibold leading-relaxed">
-                  Semua data absen untuk perangkat milik <strong>{resetConfirmNama}</strong> akan <strong>dihapus permanen</strong>.
-                  Perangkat ini bisa digunakan dengan nama baru setelah direset.
+                  Nama saat ini: <strong>{renameNamaLama}</strong>
                 </p>
                 <p className="text-xs text-slate-500 font-medium">
-                  Tindakan ini tidak bisa dibatalkan. Data yang terlanjur di-export tidak terpengaruh.
+                  Masukkan nama baru untuk perangkat ini. Semua data absen tetap tersimpan.
                 </p>
+              </div>
+              <div>
+                <label htmlFor="nama-baru" className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
+                  Nama Baru
+                </label>
+                <input
+                  id="nama-baru"
+                  type="text"
+                  value={renameNamaBaru}
+                  onChange={e => setRenameNamaBaru(e.target.value)}
+                  placeholder="Ketik nama yang benar"
+                  autoFocus
+                  className="w-full px-4 py-3 text-base font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none transition-colors"
+                  style={{ minHeight: '52px' }}
+                />
               </div>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => {
-                    setResetConfirmDeviceId(null);
-                    setResetConfirmNama(null);
+                    setRenameDeviceId(null);
+                    setRenameNamaLama(null);
+                    setRenameNamaBaru('');
                   }}
-                  disabled={resetLoading}
+                  disabled={renameLoading}
                   className="flex-1 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-bold text-base hover:bg-slate-50 transition-all disabled:opacity-50"
                   style={{ minHeight: '48px' }}
                 >
@@ -653,12 +673,16 @@ export default function AdminDashboardPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleResetDevice(resetConfirmDeviceId, resetConfirmNama || '')}
-                  disabled={resetLoading}
-                  className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-base hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  onClick={() => {
+                    if (renameNamaBaru.trim()) {
+                      handleRenameDevice(renameDeviceId, renameNamaBaru.trim());
+                    }
+                  }}
+                  disabled={renameLoading || !renameNamaBaru.trim()}
+                  className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ minHeight: '48px' }}
                 >
-                  {resetLoading ? <><Loader size={16} className="animate-spin" /> Mereset...</> : 'Ya, Reset'}
+                  {renameLoading ? <><Loader size={16} className="animate-spin" /> Menyimpan...</> : 'Simpan Nama'}
                 </button>
               </div>
             </div>
