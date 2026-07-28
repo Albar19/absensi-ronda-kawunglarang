@@ -106,9 +106,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, updated: true });
     }
 
-    // ── INSERT baru ──
+    // ── INSERT baru (id auto-generate dari DB via DEFAULT gen_random_uuid()) ──
     const insertData: Record<string, unknown> = {
-      id,
       nama_warga: nama.trim(),
       dusun: dusun.trim(),
       tanggal,                        // bukti tanggal untuk user
