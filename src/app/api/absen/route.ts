@@ -3,12 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
 import { hitungJarak } from '@/lib/data';
 
-function isDevColError(e: unknown): boolean {
-  return (e as { code?: string })?.code === 'PGRST204' ||
-    (e as { message?: string })?.message?.includes('device_id') ||
-    false;
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -35,18 +29,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validasi jarak server-side (Haversine)
+    // ── HITUNG JARAK SERVER-SIDE (Haversine) & VALIDASI ──
+    let jarakFinal = 0;
     if (latitude != null && longitude != null) {
       const latNum = Number(latitude);
       const lngNum = Number(longitude);
       if (!isNaN(latNum) && !isNaN(lngNum)) {
-        const jarakServer = hitungJarak(
+        jarakFinal = hitungJarak(
           latNum, lngNum,
           CONFIG.baleDesaLat, CONFIG.baleDesaLng
         );
-        if (jarakServer > CONFIG.radiusMeter) {
+        if (jarakFinal > CONFIG.radiusMeter) {
           return NextResponse.json(
-            { error: `Lokasi Anda terlalu jauh dari Bale Desa (${jarakServer}m, maks ${CONFIG.radiusMeter}m)` },
+            {
+              error: `Lokasi Anda terlalu jauh dari Bale Desa (${jarakFinal}m, maks ${CONFIG.radiusMeter}m)`,
+              jarakServer: jarakFinal,
+              jarakClient: Number(jarakMeter) || 0,
+            },
             { status: 403 }
           );
         }
@@ -73,26 +72,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fallback untuk schema lama (kolom 'nama' bukan 'nama_warga')
-    if (!namaLain || namaLain.length === 0) {
-      const { data: fbNamaLain } = await supabase
-        .from('absen_records')
-        .select('nama')
-        .eq('warga_id', deviceId)
-        .neq('nama', namaTrimmed)
-        .limit(1);
-      if (fbNamaLain && fbNamaLain.length > 0) {
-        return NextResponse.json(
-          {
-            error: `Perangkat ini sudah terdaftar atas nama "${fbNamaLain[0].nama}". Tidak bisa absen atas nama berbeda. Hubungi Admin jika ingin mengganti nama.`,
-            code: 'DEVICE_NAME_CONFLICT',
-            registeredName: fbNamaLain[0].nama,
-          },
-          { status: 409 }
-        );
-      }
-    }
-
     // ── UPSERT: jika device_id + tanggal_ronda + jenis_absen sudah ada, UPDATE ──
     const { data: existing } = await supabase
       .from('absen_records')
@@ -107,31 +86,15 @@ export async function POST(request: Request) {
         nama_warga: nama.trim(),
         dusun: dusun.trim(),
         jam_absen: jamAbsen,
-        jarak_meter: Math.round(Number(jarakMeter) || 0),
+        jarak_meter: jarakFinal,
         latitude: Number(latitude) || 0,
         longitude: Number(longitude) || 0,
       };
 
-      let { error } = await supabase
+      const { error } = await supabase
         .from('absen_records')
         .update(updateData)
         .eq('id', existing.id);
-
-      if (isDevColError(error)) {
-        const fbData: Record<string, unknown> = {
-          nama: nama.trim(),
-          dusun: dusun.trim(),
-          jam_absen: jamAbsen,
-          jarak_meter: Math.round(Number(jarakMeter) || 0),
-          koordinat_lat: Number(latitude) || 0,
-          koordinat_lng: Number(longitude) || 0,
-        };
-        const fb = await supabase
-          .from('absen_records')
-          .update(fbData)
-          .eq('id', existing.id);
-        error = fb.error;
-      }
 
       if (error) {
         return NextResponse.json(
@@ -148,35 +111,17 @@ export async function POST(request: Request) {
       id,
       nama_warga: nama.trim(),
       dusun: dusun.trim(),
-      tanggal,
+      tanggal,                        // bukti tanggal untuk user
       tanggal_ronda: tanggal,
       jam_absen: jamAbsen,
       jenis_absen: jenisAbsen,
-      jarak_meter: Math.round(Number(jarakMeter) || 0),
+      jarak_meter: jarakFinal,        // pakai hitungan server agar sinkron
       latitude: Number(latitude) || 0,
       longitude: Number(longitude) || 0,
       device_id: deviceId,
     };
 
-    let { error } = await supabase.from('absen_records').insert(insertData);
-
-    if (isDevColError(error)) {
-      const fbData: Record<string, unknown> = {
-        id,
-        warga_id: deviceId,
-        nama: nama.trim(),
-        dusun: dusun.trim(),
-        tanggal,
-        jam_absen: jamAbsen,
-        jenis_absen: jenisAbsen,
-        jarak_meter: Math.round(Number(jarakMeter) || 0),
-        koordinat_lat: Number(latitude) || 0,
-        koordinat_lng: Number(longitude) || 0,
-        status: 'hadir',
-      };
-      const fb = await supabase.from('absen_records').insert(fbData);
-      error = fb.error;
-    }
+    const { error } = await supabase.from('absen_records').insert(insertData);
 
     if (error) {
       return NextResponse.json(

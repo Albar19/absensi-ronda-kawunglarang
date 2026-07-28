@@ -22,6 +22,7 @@ CREATE TABLE absen_records (
   dusun TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   tanggal_ronda DATE DEFAULT CURRENT_DATE,
+  tanggal DATE DEFAULT NULL,                   -- bukti tanggal absen untuk user
   jam_absen TEXT NOT NULL DEFAULT '',
   jenis_absen TEXT NOT NULL DEFAULT 'masuk',   -- 'masuk' | 'pulang'
   latitude FLOAT8 NOT NULL,
@@ -30,6 +31,10 @@ CREATE TABLE absen_records (
   device_id TEXT NOT NULL
 );
 
+-- Kolom tanggal untuk database yang sudah pernah running (alter jika tabel sudah ada)
+ALTER TABLE absen_records ADD COLUMN IF NOT EXISTS tanggal DATE;
+
 -- Index untuk query cepat
-CREATE INDEX idx_absen_tanggal_dusun  ON absen_records(tanggal_ronda, dusun);
-CREATE INDEX idx_absen_device_jenis  ON absen_records(device_id, tanggal_ronda, jenis_absen);
+CREATE INDEX IF NOT EXISTS idx_absen_tanggal_dusun ON absen_records(tanggal_ronda, dusun);
+CREATE INDEX IF NOT EXISTS idx_absen_device_jenis ON absen_records(device_id, tanggal_ronda, jenis_absen);
+CREATE INDEX IF NOT EXISTS idx_absen_tanggal ON absen_records(tanggal);

@@ -226,6 +226,15 @@ export default function HomePage() {
         setNama(err.registeredName);
         setNamaRegistered(true);
         setDeviceRegisteredName(err.registeredName);
+      } else if (err.jarakServer != null) {
+        // Server menolak karena jarak (terjadi jika data GPS berubah saat submit)
+        setPesanError(
+          `Jarak dari server: ${err.jarakServer}m (batas ${CONFIG.radiusMeter}m). ` +
+          `Jarak dari perangkat Anda: ${err.jarakClient}m. ` +
+          `Coba lagi dari lokasi yang lebih dekat ke Bale Desa.`
+        );
+        // Update jarak yang ditampilkan dengan nilai server agar sinkron
+        setJarakMeter(err.jarakServer);
       } else {
         setPesanError(err.error || 'Gagal menyimpan absen');
       }
