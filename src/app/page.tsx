@@ -16,6 +16,7 @@ import {
   simpanDataWarga,
   cekSudahAbsen,
   setSudahAbsen,
+  clearSudahAbsen,
 } from '@/lib/data';
 import HeaderBanner  from '@/components/citizen/HeaderBanner';
 import StatusCards   from '@/components/citizen/StatusCards';
@@ -261,6 +262,8 @@ export default function HomePage() {
   }, [nama, dusun, jarakMeter, koordinat, jenisAbsen]);
 
   const handleReset = useCallback(() => {
+    // Hapus flag supaya bisa absen ulang (misal perbaiki dusun)
+    clearSudahAbsen(getDeviceId(), getTanggalHariIni(), jenisAbsen);
     setFlowState('idle');
     setIsSubmitting(false);
     setStatusJam(null);
@@ -270,7 +273,7 @@ export default function HomePage() {
     setKoordinat(null);
     setPesanError('');
     setSuccessRecord(null);
-  }, []);
+  }, [jenisAbsen]);
 
   const handleEditToggle = useCallback(() => {
     // Jika device sudah terdaftar di server, tampilkan warning dulu
@@ -283,11 +286,14 @@ export default function HomePage() {
 
   const handleConfirmEditName = useCallback(() => {
     setShowEditWarning(false);
-    setShowEditHint(false);
-    // Nama registered tetap bisa diedit setelah warning, tapi submit akan ditolak server
-    // Ini untuk kasus typo — user bisa coba perbaiki, server akan tolak dengan konflik,
-    // lalu user hubungi admin untuk reset
-  }, []);
+    // Nama registered: aktifkan form biar dusun bisa diganti
+    // Nama tetap tidak bisa diedit (readOnly), tapi server akan tolak jika diubah
+    if (namaRegistered) {
+      setShowEditHint(true);
+    } else {
+      setShowEditHint(false);
+    }
+  }, [namaRegistered]);
 
   const handleCancelEditWarning = useCallback(() => {
     setShowEditWarning(false);

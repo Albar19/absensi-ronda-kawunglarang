@@ -138,6 +138,11 @@ export function cekSudahAbsen(deviceId: string, tanggal: string, jenis: JenisAbs
   return localStorage.getItem(`${SUDAH_ABSEN_PREFIX}${deviceId}_${tanggal}_${jenis}`) === 'true';
 }
 
+export function clearSudahAbsen(deviceId: string, tanggal: string, jenis: JenisAbsen): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(`${SUDAH_ABSEN_PREFIX}${deviceId}_${tanggal}_${jenis}`);
+}
+
 // ----------------------------------------------------------
 // Simpan & muat data warga (nama + dusun) ke localStorage
 // untuk auto-fill di kunjungan berikutnya
