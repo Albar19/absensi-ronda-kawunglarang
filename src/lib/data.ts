@@ -124,6 +124,21 @@ export function getDeviceId(): string {
 }
 
 // ----------------------------------------------------------
+// CEK & SET SUDAH ABSEN — cegah absen ganda di sesi yg sama
+// ----------------------------------------------------------
+const SUDAH_ABSEN_PREFIX = 'absensi_sudah_';
+
+export function setSudahAbsen(deviceId: string, tanggal: string, jenis: JenisAbsen): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(`${SUDAH_ABSEN_PREFIX}${deviceId}_${tanggal}_${jenis}`, 'true');
+}
+
+export function cekSudahAbsen(deviceId: string, tanggal: string, jenis: JenisAbsen): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(`${SUDAH_ABSEN_PREFIX}${deviceId}_${tanggal}_${jenis}`) === 'true';
+}
+
+// ----------------------------------------------------------
 // Simpan & muat data warga (nama + dusun) ke localStorage
 // untuk auto-fill di kunjungan berikutnya
 // ----------------------------------------------------------

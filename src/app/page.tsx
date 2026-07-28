@@ -14,6 +14,8 @@ import {
   getDeviceId,
   muatDataWarga,
   simpanDataWarga,
+  cekSudahAbsen,
+  setSudahAbsen,
 } from '@/lib/data';
 import HeaderBanner  from '@/components/citizen/HeaderBanner';
 import StatusCards   from '@/components/citizen/StatusCards';
@@ -112,9 +114,20 @@ export default function HomePage() {
     setJenisAbsen(sesi);
     setStatusJam(sesi); // 'masuk' or 'pulang'
 
+    // Cek localStorage apakah sudah absen untuk sesi ini
+    const deviceId = getDeviceId();
+    const today = getTanggalHariIni();
+    if (cekSudahAbsen(deviceId, today, sesi)) {
+      setStatusJarak(null);
+      setTimeout(() => {
+        setPesanError(`Anda sudah melakukan absen ${sesi === 'pulang' ? 'pulang' : 'masuk'} malam ini.`);
+        setFlowState('rejected');
+      }, 700);
+      return;
+    }
+
     // Kalau pulang, cek dulu apakah sudah absen masuk hari ini
     if (sesi === 'pulang') {
-      const deviceId = getDeviceId();
       try {
         const cekRes = await fetch(`/api/absen/cek-masuk?device_id=${encodeURIComponent(deviceId)}&tanggal=${getTanggalHariIni()}`);
         if (!cekRes.ok) {
@@ -207,6 +220,8 @@ export default function HomePage() {
         body: JSON.stringify(record),
       });
       if (res.ok) {
+        // Simpan flag sudah absen — cegah absen ganda
+        setSudahAbsen(deviceId, getTanggalHariIni(), jenisAbsen);
         // Simpan nama ke localStorage setelah sukses (first time)
         simpanDataWarga(namaTrim, dusun);
         if (!namaRegistered) {
