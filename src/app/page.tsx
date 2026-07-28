@@ -320,29 +320,29 @@ export default function HomePage() {
   const tombolMulai: React.ReactNode = sesiAktif === 'pulang' ? (
     <span className="flex flex-col items-center gap-0.5">
       <BadgeSesi warna="text-yellow-400" label="PULANG" />
-      <span className="flex items-center gap-2"><Moon size={24} /> MULAI ABSEN PULANG</span>
+      <span className="flex items-center gap-2"><Moon size={24} strokeWidth={2} /> MULAI ABSEN PULANG</span>
     </span>
   ) : sesiAktif === 'masuk' ? (
     <span className="flex flex-col items-center gap-0.5">
       <BadgeSesi warna="text-green-400" label="MASUK" />
-      <span className="flex items-center gap-2"><Moon size={24} /> MULAI ABSEN MASUK</span>
+      <span className="flex items-center gap-2"><Moon size={24} strokeWidth={2} /> MULAI ABSEN MASUK</span>
     </span>
   ) : (
     <span className="flex flex-col items-center gap-0.5">
       <BadgeSesi warna="text-red-400" label="TUTUP" />
-      <span className="flex items-center gap-2"><Lock size={24} /> ABSEN DITUTUP</span>
+      <span className="flex items-center gap-2"><Lock size={24} strokeWidth={2} /> ABSEN DITUTUP</span>
     </span>
   );
 
   const tombolSubmit: React.ReactNode = sesiAktif === 'pulang' ? (
     <span className="flex flex-col items-center gap-0.5">
       <BadgeSesi warna="text-yellow-400" label="PULANG" />
-      <span className="flex items-center gap-2"><Sunrise size={24} /> SAYA PULANG RONDA</span>
+      <span className="flex items-center gap-2"><Sunrise size={24} strokeWidth={2} /> SAYA PULANG RONDA</span>
     </span>
   ) : (
     <span className="flex flex-col items-center gap-0.5">
       <BadgeSesi warna="text-green-400" label="MASUK" />
-      <span className="flex items-center gap-2"><Moon size={24} /> SAYA HADIR RONDA</span>
+      <span className="flex items-center gap-2"><Moon size={24} strokeWidth={2} /> SAYA HADIR RONDA</span>
     </span>
   );
 
@@ -357,7 +357,7 @@ export default function HomePage() {
           <div className="px-4 sm:px-6 py-8 space-y-5">
             {/* Welcome */}
             <div className="text-center space-y-1.5">
-              <Moon size={56} className="text-slate-300 mx-auto" />
+              <Moon size={56} className="text-slate-300 mx-auto" strokeWidth={1.5} />
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Selamat Datang</h2>
               <p className="text-sm sm:text-base text-slate-500 font-medium leading-relaxed max-w-xs mx-auto">
                 {sesiAktif
@@ -367,7 +367,7 @@ export default function HomePage() {
             </div>
 
             {/* Step guide */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 space-y-3">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 space-y-3 shadow-card">
               <p className="text-xs font-black tracking-widest uppercase text-slate-400">Cara Absen — 2 Sesi</p>
 
               {/* Sesi 1: Masuk */}
@@ -453,7 +453,7 @@ export default function HomePage() {
 
         {/* ─── FORM ─── */}
         {flowState === 'form' && (
-          <><div className="px-4 sm:px-5 pb-8 space-y-4">
+          <><div className="px-4 sm:px-6 pb-8 space-y-4">
             <div className="pt-3">
               <button
                 type="button"
@@ -469,7 +469,7 @@ export default function HomePage() {
 
             {/* Sesi badge */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3">
-              {sesiAktif === 'pulang' ? <Sunrise size={24} className="text-blue-700" /> : <Moon size={24} className="text-blue-700" />}
+              {sesiAktif === 'pulang' ? <Sunrise size={24} className="text-blue-700" strokeWidth={2} /> : <Moon size={24} className="text-blue-700" strokeWidth={2} />}
               <div>
                 <p className="text-sm font-bold text-blue-900">
                   Sesi <span className="uppercase">{labelSesi}</span>
@@ -481,7 +481,7 @@ export default function HomePage() {
             {/* Device registered badge */}
             {namaRegistered && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                <Shield size={22} className="text-amber-700 flex-shrink-0 mt-0.5" />
+                <Shield size={22} className="text-amber-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-amber-900">
                     Perangkat terdaftar: {deviceRegisteredName}
@@ -496,7 +496,7 @@ export default function HomePage() {
             {/* Auto-fill hint (hanya jika belum registered) */}
             {showEditHint && !namaRegistered && (
               <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                <User size={22} className="text-green-700 flex-shrink-0 mt-0.5" />
+                <User size={22} className="text-green-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-green-900">
                     Data Anda sudah terisi otomatis.
@@ -583,7 +583,7 @@ export default function HomePage() {
                 className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98]"
                 style={{ minHeight: '52px' }}
               >
-                <Pencil size={18} /> Ubah Nama / Dusun
+                <Pencil size={18} strokeWidth={2} /> Ubah Nama / Dusun
               </button>
             )}
             {namaRegistered && (
@@ -593,7 +593,7 @@ export default function HomePage() {
                 className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98]"
                 style={{ minHeight: '52px' }}
               >
-                <Pencil size={18} /> Ubah Dusun (Nama tetap)
+                <Pencil size={18} strokeWidth={2} /> Ubah Dusun (Nama tetap)
               </button>
             )}
           </div>
@@ -601,10 +601,10 @@ export default function HomePage() {
           {/* ─── WARNING MODAL: Edit nama registered ─── */}
           {showEditWarning && (
             <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4">
-              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-auto space-y-4">
+              <div className="bg-white rounded-2xl shadow-modal p-6 w-full max-w-sm mx-auto space-y-4">
                 <div className="flex flex-col items-center text-center gap-3">
                   <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-                    <AlertTriangle size={32} className="text-red-600" strokeWidth={1.8} />
+                    <AlertTriangle size={32} className="text-red-600" strokeWidth={2} />
                   </div>
                   <h3 className="text-xl font-black text-slate-900">Peringatan!</h3>
                   <p className="text-sm text-slate-600 font-semibold leading-relaxed">

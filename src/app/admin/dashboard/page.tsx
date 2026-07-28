@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Users, Clock, MapPin, Calendar, Save, QrCode, Loader, FileDown, Smartphone, Pencil, AlertTriangle, Search } from 'lucide-react';
+import { LogOut, RefreshCw, Download, Users, Calendar, Save, QrCode, Loader, FileDown, Smartphone, Pencil, AlertTriangle, Search } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
@@ -243,7 +243,7 @@ export default function AdminDashboardPage() {
   return (
     <main className="min-h-screen bg-slate-50">
       {/* ─── NAVBAR ─── */}
-      <nav className="bg-[#1e3a8a] text-white sticky top-0 z-50 shadow-md">
+      <nav className="bg-[#1e3a8a] text-white sticky top-0 z-50 shadow-card">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-blue-200 uppercase tracking-widest">Dashboard Admin</p>
@@ -267,9 +267,9 @@ export default function AdminDashboardPage() {
           <button
             type="button"
             onClick={() => setTab('log')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
-              tab === 'log' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-            }`}
+    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+      tab === 'log' ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500 hover:text-slate-700'
+    }`}
             style={{ minHeight: '42px' }}
           >
             <Users size={16} />
@@ -278,9 +278,9 @@ export default function AdminDashboardPage() {
           <button
             type="button"
             onClick={() => setTab('jadwal')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
-              tab === 'jadwal' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-            }`}
+    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+      tab === 'jadwal' ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500 hover:text-slate-700'
+    }`}
             style={{ minHeight: '42px' }}
           >
             <Calendar size={16} />
@@ -289,9 +289,9 @@ export default function AdminDashboardPage() {
           <button
             type="button"
             onClick={() => setTab('device')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
-              tab === 'device' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-            }`}
+    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+      tab === 'device' ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500 hover:text-slate-700'
+    }`}
             style={{ minHeight: '42px' }}
           >
             <Smartphone size={16} />
@@ -316,13 +316,13 @@ export default function AdminDashboardPage() {
               <button onClick={refreshData}
                 className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.97] transition-all"
                 style={{ minHeight: '44px' }}>
-                <RefreshCw size={16} strokeWidth={2.5} />
+                <RefreshCw size={16} strokeWidth={2} />
                 <span className="hidden sm:inline">Refresh</span>
               </button>
             </div>
 
             {/* Rekapitulasi Kehadiran per Dusun */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-200">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
                   Rekapitulasi Kehadiran per Dusun — Malam Ini
@@ -366,7 +366,7 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Log Table */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-200">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
                   Log Kehadiran ({absenHariIni.length} data)
@@ -440,7 +440,7 @@ export default function AdminDashboardPage() {
                 className="inline-flex items-center gap-2 bg-white text-[#1e3a8a] border-2 border-[#1e3a8a] px-5 py-3 rounded-lg font-bold text-sm hover:bg-[#1e3a8a] hover:text-white active:scale-[0.98] transition-all"
                 style={{ minHeight: '44px' }}
               >
-                <QrCode size={18} strokeWidth={2.5} />
+                <QrCode size={18} strokeWidth={2} />
                 Download QR Code
               </a>
             </div>
@@ -451,7 +451,7 @@ export default function AdminDashboardPage() {
         {/* TAB: JADWAL RONDA                               */}
         {/* ════════════════════════════════════════════════ */}
         {tab === 'jadwal' && (
-          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <Calendar size={20} className="text-[#1e3a8a]" strokeWidth={2} />
@@ -511,8 +511,8 @@ export default function AdminDashboardPage() {
                       className="inline-flex items-center gap-2 bg-[#1e3a8a] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#1e40af] active:scale-[0.98] transition-all disabled:opacity-50"
                       style={{ minHeight: '48px' }}
                     >
-                      <Save size={18} strokeWidth={2.5} />
-                      {jadwalSaving ? <><Loader size={18} className="animate-spin" strokeWidth={2.5} /> Menyimpan...</> : jadwalDirty ? 'Simpan Jadwal' : 'Simpan Jadwal'}
+                      <Save size={18} strokeWidth={2} />
+                      {jadwalSaving ? <><Loader size={18} className="animate-spin" strokeWidth={2} /> Menyimpan...</> : jadwalDirty ? 'Simpan Jadwal' : 'Simpan Jadwal'}
                     </button>
                     <a
                       href="/api/jadwal/download"
@@ -520,7 +520,7 @@ export default function AdminDashboardPage() {
                       className="inline-flex items-center gap-2 bg-white text-slate-700 border-2 border-slate-300 px-5 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 active:scale-[0.98] transition-all"
                       style={{ minHeight: '48px' }}
                     >
-                      <FileDown size={18} strokeWidth={2.5} />
+                      <FileDown size={18} strokeWidth={2} />
                       Download Jadwal
                     </a>
                   </div>
@@ -537,7 +537,7 @@ export default function AdminDashboardPage() {
         {/* TAB: PERANGKAT (DEVICE MANAGEMENT)              */}
         {/* ════════════════════════════════════════════════ */}
         {tab === 'device' && (
-          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <Smartphone size={20} className="text-[#1e3a8a]" strokeWidth={2} />
@@ -607,7 +607,7 @@ export default function AdminDashboardPage() {
                         className="flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-3.5 py-2 rounded-lg text-xs font-bold hover:bg-blue-100 active:scale-[0.97] transition-all flex-shrink-0"
                         style={{ minHeight: '38px' }}
                       >
-                        <Pencil size={14} strokeWidth={2.5} />
+                        <Pencil size={14} strokeWidth={2} />
                         Ganti Nama
                       </button>
                     </div>
@@ -629,10 +629,10 @@ export default function AdminDashboardPage() {
         {/* ─── RENAME MODAL ─── */}
         {renameDeviceId && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4">
-            <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-auto space-y-4">
+            <div className="bg-white rounded-2xl shadow-modal p-6 w-full max-w-sm mx-auto space-y-4">
               <div className="flex flex-col items-center text-center gap-3">
                 <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Pencil size={32} className="text-blue-600" strokeWidth={1.8} />
+                  <Pencil size={32} className="text-blue-600" strokeWidth={2} />
                 </div>
                 <h3 className="text-xl font-black text-slate-900">Ganti Nama</h3>
                 <p className="text-sm text-slate-600 font-semibold leading-relaxed">

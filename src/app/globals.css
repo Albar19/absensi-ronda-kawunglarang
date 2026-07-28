@@ -1,7 +1,18 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════
-   DESIGN TOKENS
+   THEME TAILWIND v4 — custom design tokens
+═══════════════════════════════════════════════════ */
+@theme {
+  --color-navy: #1e3a8a;
+  --color-gold: #f59e0b;
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-elevated: 0 4px 12px -2px rgb(0 0 0 / 0.08);
+  --shadow-modal: 0 8px 24px -4px rgb(0 0 0 / 0.12);
+}
+
+/* ═══════════════════════════════════════════════════
+   DESIGN TOKENS (CSS custom properties)
 ═══════════════════════════════════════════════════ */
 :root {
   --navy:        #1e3a8a;

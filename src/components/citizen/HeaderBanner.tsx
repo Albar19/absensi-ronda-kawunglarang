@@ -32,7 +32,7 @@ export default function HeaderBanner() {
         <div className="flex items-center gap-3 sm:gap-4">
           {/* Emblem */}
           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white border-2 border-[#f59e0b] flex items-center justify-center flex-shrink-0 shadow-sm">
-            <Landmark size={24} className="text-[#1e3a8a]" />
+            <Landmark size={24} className="text-[#1e3a8a]" strokeWidth={2} />
           </div>
 
           {/* Title block */}

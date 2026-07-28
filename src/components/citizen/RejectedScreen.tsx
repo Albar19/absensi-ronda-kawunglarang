@@ -13,15 +13,15 @@ export default function RejectedScreen({ pesanError, onRetry }: RejectedScreenPr
   return (
     <div className="flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14 text-center">
       {/* Icon */}
-      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-red-600 flex items-center justify-center mb-6 shadow-lg ring-4 ring-red-200">
-        <XCircle size={52} className="text-white" strokeWidth={1.8} />
+      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-red-600 flex items-center justify-center mb-6 shadow-elevated ring-4 ring-red-200">
+        <XCircle size={52} className="text-white" strokeWidth={2} />
       </div>
 
       <h2 className="text-3xl sm:text-4xl font-black text-red-700 leading-tight">DITOLAK</h2>
       <p className="text-sm sm:text-base font-bold text-red-500 mt-1 mb-7">Absen tidak dapat diproses</p>
 
       {/* Error reason box */}
-      <div className="w-full max-w-sm bg-red-50 border-2 border-red-400 rounded-2xl px-5 py-5 mb-6 text-left">
+      <div className="w-full max-w-sm bg-red-50 border-2 border-red-400 rounded-2xl px-5 py-5 mb-6 text-left shadow-card">
         <p className="text-xs font-black uppercase tracking-widest text-red-400 mb-1.5">Alasan Penolakan</p>
         <p className="text-base sm:text-lg font-bold text-red-900 leading-snug">{cleanMsg}</p>
       </div>
@@ -33,7 +33,7 @@ export default function RejectedScreen({ pesanError, onRetry }: RejectedScreenPr
         className="w-full max-w-sm bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black text-lg flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
         style={{ minHeight: '60px' }}
       >
-        <RefreshCw size={20} strokeWidth={2.5} />
+        <RefreshCw size={20} strokeWidth={2} />
         COBA LAGI
       </button>
 

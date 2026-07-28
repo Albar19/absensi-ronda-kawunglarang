@@ -43,9 +43,9 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
   return (
     <div className="px-4 sm:px-5 pt-4 pb-2 space-y-3">
       {/* ── Status Jam ── */}
-      <div className={`flex items-center gap-4 rounded-xl border-2 px-4 py-3.5 transition-colors ${cardStyle(jamState)}`}>
+      <div className={`flex items-center gap-4 rounded-xl border-2 px-4 py-3.5 transition-colors shadow-card ${cardStyle(jamState)}`}>
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${dotStyle(jamState)}`}>
-          <Clock size={20} className="text-white" strokeWidth={2.5} />
+          <Clock size={20} className="text-white" strokeWidth={2} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-0.5">Status Jam</p>
@@ -66,9 +66,9 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
       </div>
 
       {/* ── Status Lokasi ── */}
-      <div className={`flex items-center gap-4 rounded-xl border-2 px-4 py-3.5 transition-colors ${cardStyle(lokasiState)}`}>
+      <div className={`flex items-center gap-4 rounded-xl border-2 px-4 py-3.5 transition-colors shadow-card ${cardStyle(lokasiState)}`}>
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${dotStyle(lokasiState)}`}>
-          <MapPin size={20} className="text-white" strokeWidth={2.5} />
+          <MapPin size={20} className="text-white" strokeWidth={2} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black tracking-widest uppercase text-slate-400 mb-0.5">Status Lokasi</p>

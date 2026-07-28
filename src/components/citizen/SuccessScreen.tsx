@@ -12,7 +12,7 @@ export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
   const labelSesi = record.jenisAbsen === 'pulang' ? 'PULANG' : 'MASUK';
   const IconSesi = record.jenisAbsen === 'pulang' ? Sunrise : Moon;
 
-  const detailItems: { Icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: string }[] = [
+  const detailItems: { Icon: React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>; label: string; value: string }[] = [
     { Icon: IconSesi,  label: 'Sesi',      value: labelSesi },
     { Icon: User,      label: 'Nama',      value: record.nama },
     { Icon: Building2, label: 'Wilayah',   value: record.dusun },
@@ -23,8 +23,8 @@ export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
   return (
     <div className="flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14 text-center">
       {/* Check icon */}
-      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-green-600 flex items-center justify-center mb-6 shadow-lg ring-4 ring-green-200">
-        <CheckCircle size={52} className="text-white" strokeWidth={1.8} />
+      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-green-600 flex items-center justify-center mb-6 shadow-elevated ring-4 ring-green-200">
+        <CheckCircle size={52} className="text-white" strokeWidth={2} />
       </div>
 
       <h2 className="text-3xl sm:text-4xl font-black text-green-700 leading-tight">
@@ -35,12 +35,12 @@ export default function SuccessScreen({ record, onBack }: SuccessScreenProps) {
       </p>
 
       {/* Detail card */}
-      <div className="w-full max-w-sm bg-white border-2 border-green-400 rounded-2xl overflow-hidden shadow-sm mb-6">
+      <div className="w-full max-w-sm bg-white border-2 border-green-400 rounded-2xl overflow-hidden shadow-card mb-6">
         {detailItems.map(({ Icon, label, value }, i, arr) => (
           <div key={label}>
             <div className="flex items-center gap-4 px-5 py-3.5">
               <div className="w-8 flex justify-center flex-shrink-0">
-                <Icon size={22} className="text-green-600" />
+                <Icon size={20} className="text-green-600" strokeWidth={2} />
               </div>
               <div className="min-w-0 text-left">
                 <p className="text-[10px] font-black uppercase tracking-widest text-green-500">{label}</p>
