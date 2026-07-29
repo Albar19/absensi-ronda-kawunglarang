@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
     setDeviceSearchLoading(true);
     setResetMessage('');
     try {
-      const res = await fetch(`/api/absen/semua`);
+      const res = await fetch('/api/absen/semua');
       if (!res.ok) {
         setResetMessage('Gagal mengambil data.');
         setDeviceSearchLoading(false);
@@ -149,39 +149,52 @@ export default function AdminDashboardPage() {
       }
       const allData: AbsenRecord[] = await res.json();
 
-      // Filter: nama atau device_id mengandung query
+      // ── Step 1: Record terbaru (pertama) per deviceId ──
+      // Data dari API sudah diurutkan newest-first, record pertama adalah yang terbaru
+      const latestPerDevice = new Map<string, AbsenRecord>();
+      allData.forEach(r => {
+        if (!latestPerDevice.has(r.deviceId)) {
+          latestPerDevice.set(r.deviceId, r);
+        }
+      });
+
+      // ── Step 2: Cari semua deviceId yang cocok ──
+      // Filter di SEMUA record (termasuk nama lama setelah rename) agar tetap ketemu
       const qLower = q.toLowerCase();
-      const matched = new Map<string, { nama: string; deviceId: string; dusun: string; count: number }>();
+      const matchedDeviceIds = new Set<string>();
       allData.forEach(r => {
         if (
           r.nama.toLowerCase().includes(qLower) ||
           r.deviceId.toLowerCase().includes(qLower)
         ) {
-          const key = r.deviceId;
-          if (!matched.has(key)) {
-            matched.set(key, { nama: r.nama, deviceId: r.deviceId, dusun: r.dusun, count: 0 });
-          }
-          const entry = matched.get(key)!;
-          entry.count++;
-          // Update nama ke yang terbaru
-          if (allData.indexOf(r) < allData.findIndex(x => x.deviceId === key)) {
-            // this is an earlier record, skip
-          }
-          // Use the latest name for display
-          const existingIdx = allData.findIndex(x => x.deviceId === key && x.nama === r.nama);
-          if (existingIdx >= 0) {
-            entry.nama = r.nama;
-            entry.dusun = r.dusun;
-          }
+          matchedDeviceIds.add(r.deviceId);
         }
       });
 
-      // Urutkan: yang cocok nama dulu
-      const results = Array.from(matched.values()).sort((a, b) => {
-        const aName = a.nama.toLowerCase().includes(qLower) ? 0 : 1;
-        const bName = b.nama.toLowerCase().includes(qLower) ? 0 : 1;
-        return aName - bName;
-      });
+      // ── Step 3: Build hasil akhir ──
+      // Tampilkan nama & dusun dari record terbaru, hitung record yang cocok
+      const results = Array.from(matchedDeviceIds)
+        .map(deviceId => {
+          const latest = latestPerDevice.get(deviceId)!;
+          const count = allData.filter(
+            rec => rec.deviceId === deviceId && (
+              rec.nama.toLowerCase().includes(qLower) ||
+              rec.deviceId.toLowerCase().includes(qLower)
+            )
+          ).length;
+          return {
+            nama: latest.nama,
+            deviceId: latest.deviceId,
+            dusun: latest.dusun,
+            count,
+          };
+        })
+        // Urutkan: yang cocok nama dulu
+        .sort((a, b) => {
+          const aName = a.nama.toLowerCase().includes(qLower) ? 0 : 1;
+          const bName = b.nama.toLowerCase().includes(qLower) ? 0 : 1;
+          return aName - bName;
+        });
 
       setDeviceResults(results);
       if (results.length === 0) {

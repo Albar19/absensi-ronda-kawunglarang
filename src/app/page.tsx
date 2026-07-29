@@ -280,13 +280,16 @@ export default function HomePage() {
   }, [mulaiCek]);
 
   const handleEditToggle = useCallback(() => {
-    // Jika device sudah terdaftar di server, tampilkan warning dulu
     if (namaRegistered) {
-      setShowEditWarning(true);
+      if (!showEditHint) {
+        setShowEditWarning(true);
+      } else {
+        setShowEditHint(false);
+      }
     } else {
       setShowEditHint(false);
     }
-  }, [namaRegistered]);
+  }, [namaRegistered, showEditHint]);
 
   const handleConfirmEditName = useCallback(() => {
     setShowEditWarning(false);
@@ -610,7 +613,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={handleEditToggle}
-                className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98]"
+                className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 style={{ minHeight: '52px' }}
               >
                 <Pencil size={18} strokeWidth={2} /> Ubah Nama / Dusun
@@ -620,7 +623,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={handleEditToggle}
-                className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98]"
+                className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 style={{ minHeight: '52px' }}
               >
                 <Pencil size={18} strokeWidth={2} /> Ubah Dusun (Nama tetap)
@@ -628,21 +631,20 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* ─── WARNING MODAL: Edit nama registered ─── */}
+          {/* ─── MODAL KONFIRMASI: Ubah Dusun (nama registered) ─── */}
           {showEditWarning && (
             <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4">
               <div className="bg-white rounded-2xl shadow-modal p-6 w-full max-w-sm mx-auto space-y-4">
                 <div className="flex flex-col items-center text-center gap-3">
-                  <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-                    <AlertTriangle size={32} className="text-red-600" strokeWidth={2} />
+                  <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
+                    <Pencil size={32} className="text-blue-600" strokeWidth={2} />
                   </div>
-                  <h3 className="text-xl font-black text-slate-900">Peringatan!</h3>
+                  <h3 className="text-xl font-black text-slate-900">Ubah Dusun?</h3>
                   <p className="text-sm text-slate-600 font-semibold leading-relaxed">
-                    Perangkat ini sudah terdaftar atas nama <strong>{deviceRegisteredName}</strong>.
-                    Mengganti nama dapat dianggap sebagai <strong>titip absen</strong> dan melanggar aturan.
+                    Perangkat ini terdaftar atas nama <strong>{deviceRegisteredName}</strong>.
                   </p>
                   <p className="text-xs text-slate-500 font-medium">
-                    Jika Anda ingin mengganti nama karena salah ketik, hubungi Admin untuk reset perangkat Anda.
+                    Nama tidak bisa diganti (1 perangkat = 1 warga). Hanya <strong>dusun</strong> yang akan diubah. Data absen sebelumnya tetap tersimpan.
                   </p>
                 </div>
                 <div className="flex gap-3 pt-2">
@@ -652,15 +654,15 @@ export default function HomePage() {
                     className="flex-1 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-bold text-base hover:bg-slate-50 active:scale-[0.98] transition-all"
                     style={{ minHeight: '48px' }}
                   >
-                    Kembali
+                    Batal
                   </button>
                   <button
                     type="button"
                     onClick={handleConfirmEditName}
-                    className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold text-base hover:bg-red-700 active:scale-[0.98] transition-all"
+                    className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 active:scale-[0.98] transition-all"
                     style={{ minHeight: '48px' }}
                   >
-                    Tetap Ganti Nama
+                    Ya, Ubah Dusun
                   </button>
                 </div>
               </div>
