@@ -15,12 +15,12 @@ const fiturList = [
   {
     icon: Clock,
     title: 'Jam Absen Otomatis',
-    desc: 'Absen masuk 20:00–23:39 WIB, absen pulang 23:40–01:00 WIB.',
+    desc: 'Absen masuk 20:00–23:40 WIB, absen pulang 23:40–01:00 WIB.',
   },
   {
     icon: ShieldCheck,
     title: '1 Perangkat = 1 Warga',
-    desc: 'Setiap perangkat hanya bisa digunakan oleh 1 nama. Mencegah titip absen. Hubungi Admin jika salah ketik.',
+    desc: 'Setiap perangkat hanya bisa digunakan oleh 1 nama. Mencegah titip absen. Dusun bisa diubah langsung. Hubungi Admin jika ada kesalahan nama.',
   },
   {
     icon: Smartphone,
@@ -30,7 +30,7 @@ const fiturList = [
   {
     icon: FileSpreadsheet,
     title: 'Export Excel',
-    desc: 'Download rekap absensi per bulan dalam format .xlsx.',
+    desc: 'Download rekap hadir lengkap per bulan dalam format .xlsx dengan tampilan profesional.',
   },
   {
     icon: Download,
@@ -60,7 +60,7 @@ const techStack = [
   { label: 'Tailwind CSS', desc: 'Utility-first styling' },
   { label: 'Supabase', desc: 'PostgreSQL database' },
   { label: 'Lucide React', desc: 'Icon library' },
-  { label: 'SheetJS', desc: 'Export Excel' },
+  { label: 'ExcelJS', desc: 'Export Excel dengan styling' },
   { label: 'Vercel', desc: 'Hosting & deploy' },
 ];
 
