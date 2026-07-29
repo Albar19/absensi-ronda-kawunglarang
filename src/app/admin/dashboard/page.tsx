@@ -2,13 +2,18 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Users, Calendar, Save, QrCode, Loader, FileDown, Smartphone, Pencil, Search } from 'lucide-react';
+import { LogOut, RefreshCw, Download, Users, Calendar, Save, QrCode, Loader, FileDown, Smartphone, Pencil, Search, Trophy, ChevronDown, CheckCircle, XCircle } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import ExportButton from '@/components/admin/ExportButton';
 
-type Tab = 'log' | 'jadwal' | 'device';
+type Tab = 'log' | 'jadwal' | 'device' | 'warga';
+
+const BULAN_INDONESIA = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
 
 const HARI_LABEL: Record<string, string> = {
   senin: 'Senin',
@@ -45,6 +50,53 @@ export default function AdminDashboardPage() {
   const [renameNamaBaru, setRenameNamaBaru] = useState('');
   const [renameLoading, setRenameLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
+
+  // ── Bulan filter ──
+  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+  const [periodFilter, setPeriodFilter] = useState<'today' | string>('today');
+  const [monthlyData, setMonthlyData] = useState<AbsenRecord[]>([]);
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
+
+  // ── Rekap Warga ──
+  const [wargaSearch, setWargaSearch] = useState('');
+  const [wargaSelected, setWargaSelected] = useState<string | null>(null);
+  const [allDataCache, setAllDataCache] = useState<AbsenRecord[]>([]);
+  const [wargaDetailMonth, setWargaDetailMonth] = useState<string>('');
+
+  async function loadAvailableMonths() {
+    try {
+      const res = await fetch('/api/absen/semua');
+      if (!res.ok) return;
+      const data: AbsenRecord[] = await res.json();
+      setAllDataCache(data);
+      const months = new Set<string>();
+      data.forEach(r => months.add(r.tanggal.slice(0, 7)));
+      const sorted = Array.from(months).sort((a, b) => b.localeCompare(a));
+      setAvailableMonths(sorted);
+      if (sorted.length > 0) setWargaDetailMonth(sorted[0]);
+    } catch { /* silent */ }
+  }
+
+  async function handlePeriodChange(value: string) {
+    setPeriodFilter(value);
+    if (value === 'today') {
+      setMonthlyData([]);
+    } else {
+      setMonthlyLoading(true);
+      try {
+        const res = await fetch('/api/absen/semua');
+        if (res.ok) {
+          const all: AbsenRecord[] = await res.json();
+          setMonthlyData(all.filter(r => r.tanggal.startsWith(value)));
+        }
+      } catch { /* silent */ }
+      setMonthlyLoading(false);
+    }
+  }
+
+  // ── Data yang ditampilkan (hari ini atau bulan terfilter) ──
+  const displayData = periodFilter === 'today' ? absenHariIni : monthlyData;
+  const displayPulang = useMemo(() => displayData.filter(r => r.jenisAbsen === 'pulang'), [displayData]);
 
   const refreshData = useCallback(async () => {
     try {
@@ -89,6 +141,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     refreshData();
+    loadAvailableMonths();
     const interval = setInterval(refreshData, 30000);
     return () => clearInterval(interval);
   }, [refreshData]);
@@ -101,6 +154,9 @@ export default function AdminDashboardPage() {
     if (tab === 'device') {
       setDeviceSearch('');
       loadAllDevices();
+    }
+    if (tab === 'warga' && allDataCache.length === 0) {
+      loadAvailableMonths();
     }
   }, [tab]);
 
@@ -279,24 +335,24 @@ export default function AdminDashboardPage() {
     setRenameNamaBaru('');
   }
 
-  // ── Hanya absen pulang yang dihitung (pulang = sudah masuk & lengkap) ──
-  const absenPulang = useMemo(() => absenHariIni.filter(r => r.jenisAbsen === 'pulang'), [absenHariIni]);
-
-  // ── Dusun leaderboard ──
+  // ── Dusun leaderboard (adaptif: hari ini atau bulan terfilter) ──
   const dusunLeaderboard = useMemo(() => {
     const counts = new Map<string, number>();
-    absenPulang.forEach(r => {
+    displayPulang.forEach(r => {
       counts.set(r.dusun, (counts.get(r.dusun) || 0) + 1);
     });
     const dusunOrder = CONFIG.dusunList;
     return dusunOrder
       .map(d => ({ dusun: d, count: counts.get(d) || 0 }))
       .sort((a, b) => b.count - a.count);
-  }, [absenPulang]);
+  }, [displayPulang]);
 
-  const totalHadir = absenPulang.length;
+  const totalHadir = displayPulang.length;
   const tanggalLabel = formatTanggalIndo(getTanggalHariIni());
   const maxCount = Math.max(...dusunLeaderboard.map(d => d.count), 1);
+  const periodeLabel = periodFilter === 'today'
+    ? null
+    : `${BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} ${periodFilter.split('-')[0]}`;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -355,6 +411,17 @@ export default function AdminDashboardPage() {
             <Smartphone size={16} />
             Perangkat
           </button>
+          <button
+            type="button"
+            onClick={() => setTab('warga')}
+    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+      tab === 'warga' ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500 hover:text-slate-700'
+    }`}
+            style={{ minHeight: '42px' }}
+          >
+            <Trophy size={16} />
+            Rekap Warga
+          </button>
         </div>
 
         {/* ════════════════════════════════════════════════ */}
@@ -362,35 +429,59 @@ export default function AdminDashboardPage() {
         {/* ════════════════════════════════════════════════ */}
         {tab === 'log' && (
           <>
-            {/* Date + Refresh */}
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="min-w-0">
-                <h2 className="text-lg font-black text-slate-900 truncate">{tanggalLabel}</h2>
-                <p className="text-xs text-slate-500 font-medium">
-                  Total absen: <strong>{absenHariIni.length}</strong> · Hadir lengkap: <strong className="text-green-700">{totalHadir}</strong> orang
-                  {lastRefresh && <span className="ml-2">· Data: {lastRefresh}</span>}
+            {/* Header: title + filter bulan + refresh */}
+            <div className="flex items-start justify-between flex-wrap gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-lg font-black text-slate-900 truncate">
+                    {periodFilter === 'today' ? tanggalLabel : 'Rekap Bulanan'}
+                  </h2>
+                  {/* Dropdown filter bulan */}
+                  <div className="relative">
+                    <select
+                      value={periodFilter === 'today' ? 'today' : periodFilter}
+                      onChange={e => handlePeriodChange(e.target.value)}
+                      className="appearance-none bg-white border-2 border-slate-300 rounded-xl px-4 py-2 pr-10 text-sm font-bold text-slate-700 focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
+                      style={{ minHeight: '40px' }}
+                    >
+                      <option value="today">Hari Ini</option>
+                      {availableMonths.map(m => {
+                        const [thn, bln] = m.split('-');
+                        return <option key={m} value={m}>{BULAN_INDONESIA[parseInt(bln)-1]} {thn}</option>;
+                      })}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 font-medium mt-1">
+                  Total absen: <strong>{displayData.length}</strong> · Hadir lengkap: <strong className="text-green-700">{totalHadir}</strong> orang
+                  {periodFilter === 'today' && lastRefresh && <span className="ml-2">· Data: {lastRefresh}</span>}
                 </p>
               </div>
-              <button onClick={refreshData}
-                className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.97] transition-all"
-                style={{ minHeight: '44px' }}>
-                <RefreshCw size={16} strokeWidth={2} />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
+              {periodFilter === 'today' && (
+                <button onClick={refreshData}
+                  className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.97] transition-all flex-shrink-0"
+                  style={{ minHeight: '44px' }}>
+                  <RefreshCw size={16} strokeWidth={2} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+              )}
             </div>
 
             {/* Rekapitulasi Kehadiran per Dusun */}
             <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-200">
+              <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                  Rekapitulasi Kehadiran per Dusun — Malam Ini
+                  Rekapitulasi Kehadiran per Dusun — {periodFilter === 'today' ? 'Malam Ini' : `${BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} ${periodFilter.split('-')[0]}`}
                 </h3>
               </div>
 
-              {loading ? (
+              {(periodFilter === 'today' && loading) || monthlyLoading ? (
                 <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">Memuat data...</div>
               ) : dusunLeaderboard.length === 0 || totalHadir === 0 ? (
-                <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">Belum ada data absen malam ini.</div>
+                <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">
+                  {periodFilter === 'today' ? 'Belum ada data absen malam ini.' : 'Tidak ada data absen untuk periode ini.'}
+                </div>
               ) : (
                 <div className="px-5 py-4 space-y-4">
                   {dusunLeaderboard.map((item, idx) => {
@@ -425,20 +516,25 @@ export default function AdminDashboardPage() {
 
             {/* Log Table */}
             <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-200">
+              <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                  Log Kehadiran ({absenHariIni.length} data)
+                  Log Kehadiran ({displayData.length} data)
                 </h3>
+                {periodFilter !== 'today' && (
+                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                    {BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} {periodFilter.split('-')[0]}
+                  </span>
+                )}
               </div>
 
-              {absenHariIni.length === 0 ? (
+              {displayData.length === 0 ? (
                 <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">
-                  {loading ? 'Memuat data...' : 'Belum ada absen malam ini.'}
+                  {periodFilter === 'today' ? (loading ? 'Memuat data...' : 'Belum ada absen malam ini.') : 'Tidak ada data untuk periode ini.'}
                 </div>
               ) : (
                 <>
                   <div className="sm:hidden divide-y divide-slate-100">
-                    {absenHariIni.map((r, i) => (
+                    {displayData.map((r, i) => (
                       <div key={r.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
                         <span className="w-7 h-7 rounded-full bg-slate-100 text-slate-500 text-xs font-black flex items-center justify-center flex-shrink-0 tabular-nums">{i + 1}</span>
                         <div className="flex-1 min-w-0">
@@ -447,6 +543,9 @@ export default function AdminDashboardPage() {
                             {r.dusun}
                             <span className="ml-2 text-slate-400">· {r.jamAbsen} WIB · ±{r.jarakMeter}m</span>
                           </p>
+                          {periodFilter !== 'today' && (
+                            <p className="text-[10px] text-slate-400 font-medium">{formatTanggalIndo(r.tanggal)}</p>
+                          )}
                           <span className={`inline-block mt-1 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
                             r.jenisAbsen === 'masuk' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
                           }`}>{r.jenisAbsen === 'masuk' ? 'MASUK' : 'PULANG'}</span>
@@ -459,17 +558,20 @@ export default function AdminDashboardPage() {
                     <table className="w-full border-collapse text-sm">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
-                          {['No', 'Nama', 'Dusun', 'Jam Absen', 'Jenis', 'Jarak (m)'].map(h => (
+                          {['No', 'Nama', 'Dusun', ...(periodFilter !== 'today' ? ['Tanggal'] : []), 'Jam Absen', 'Jenis', 'Jarak (m)'].map(h => (
                             <th key={h} className="text-left px-4 py-3 font-black text-slate-500 text-xs uppercase tracking-wider whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {absenHariIni.map((r, i) => (
+                        {displayData.map((r, i) => (
                           <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                             <td className="px-4 py-3 text-slate-400 font-semibold tabular-nums">{i + 1}</td>
                             <td className="px-4 py-3 font-bold text-slate-900">{r.nama}</td>
                             <td className="px-4 py-3 text-slate-600 font-semibold whitespace-nowrap">{r.dusun}</td>
+                            {periodFilter !== 'today' && (
+                              <td className="px-4 py-3 text-slate-500 font-semibold whitespace-nowrap text-xs">{formatTanggalIndo(r.tanggal)}</td>
+                            )}
                             <td className="px-4 py-3 tabular-nums font-semibold text-slate-700 whitespace-nowrap">{r.jamAbsen}</td>
                             <td className="px-4 py-3">
                               <span className={`inline-block text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
@@ -484,7 +586,7 @@ export default function AdminDashboardPage() {
                   </div>
 
                   <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-xs font-semibold text-slate-400">
-                    Menampilkan {absenHariIni.length} data absensi ({totalHadir} hadir lengkap)
+                    Menampilkan {displayData.length} data absensi ({totalHadir} hadir lengkap)
                   </div>
                 </>
               )}
@@ -680,6 +782,221 @@ export default function AdminDashboardPage() {
                   Belum ada data absen. Perangkat akan muncul setelah ada warga yang melakukan absen.
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ════════════════════════════════════════════════ */}
+        {/* TAB: REKAP WARGA                                */}
+        {/* ════════════════════════════════════════════════ */}
+        {tab === 'warga' && (
+          <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Trophy size={20} className="text-[#1e3a8a]" strokeWidth={2} />
+                <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
+                  Rekap Warga
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 font-medium">
+                Ranking kehadiran warga dan riwayat absen per individu.
+              </p>
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+              {/* Dropdown bulan + search */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <select
+                    value={wargaDetailMonth}
+                    onChange={e => { setWargaDetailMonth(e.target.value); setWargaSelected(null); }}
+                    className="appearance-none bg-white border-2 border-slate-300 rounded-xl px-4 py-3 pr-10 text-sm font-bold text-slate-700 focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
+                    style={{ minHeight: '46px' }}
+                  >
+                    {availableMonths.map(m => {
+                      const [thn, bln] = m.split('-');
+                      return <option key={m} value={m}>{BULAN_INDONESIA[parseInt(bln)-1]} {thn}</option>;
+                    })}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={wargaSearch}
+                    onChange={e => { setWargaSearch(e.target.value); setWargaSelected(null); }}
+                    placeholder="Cari nama warga..."
+                    className="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                    style={{ minHeight: '46px' }}
+                  />
+                </div>
+              </div>
+
+              {/* Data bulan ini */}
+              {(() => {
+                // Filter data by selected month + search
+                const dataBulan = allDataCache.filter(r => r.tanggal.startsWith(wargaDetailMonth));
+                const q = wargaSearch.trim().toLowerCase();
+
+                // Group by nama, hitung hadir lengkap (pulang)
+                const wargaMap = new Map<string, { nama: string; dusun: string; count: number; records: AbsenRecord[] }>();
+                dataBulan.forEach(r => {
+                  const key = r.nama.toLowerCase();
+                  if (!wargaMap.has(key)) {
+                    wargaMap.set(key, { nama: r.nama, dusun: r.dusun, count: 0, records: [] });
+                  }
+                  const entry = wargaMap.get(key)!;
+                  entry.records.push(r);
+                  if (r.jenisAbsen === 'pulang') entry.count++;
+                });
+
+                let wargaList = Array.from(wargaMap.values());
+                if (q) {
+                  wargaList = wargaList.filter(w => w.nama.toLowerCase().includes(q));
+                }
+                wargaList.sort((a, b) => b.count - a.count);
+
+                const wargaTerpilih = wargaSelected
+                  ? wargaList.find(w => w.nama.toLowerCase() === wargaSelected.toLowerCase())
+                  : null;
+
+                // Detail record warga terpilih: group by tanggal
+                const detailGrouped = wargaTerpilih
+                  ? (() => {
+                      const group = new Map<string, { tanggal: string; masuk?: AbsenRecord; pulang?: AbsenRecord }>();
+                      wargaTerpilih.records.forEach(r => {
+                        if (!group.has(r.tanggal)) {
+                          group.set(r.tanggal, { tanggal: r.tanggal });
+                        }
+                        const g = group.get(r.tanggal)!;
+                        if (r.jenisAbsen === 'masuk') g.masuk = r;
+                        if (r.jenisAbsen === 'pulang') g.pulang = r;
+                      });
+                      return Array.from(group.values()).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+                    })()
+                  : null;
+
+                return (
+                  <>
+                    {/* Leaderboard */}
+                    {wargaList.length > 0 && !wargaTerpilih && (
+                      <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+                        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                          <p className="text-xs font-black text-slate-500 uppercase tracking-wider">
+                            Ranking Kehadiran — {BULAN_INDONESIA[parseInt(wargaDetailMonth.split('-')[1])-1]} {wargaDetailMonth.split('-')[0]}
+                          </p>
+                        </div>
+                        {wargaList.map((w, idx) => {
+                          const barPct = wargaList.length > 0 ? Math.round((w.count / wargaList[0].count) * 100) : 0;
+                          return (
+                            <div
+                              key={w.nama}
+                              onClick={() => setWargaSelected(w.nama)}
+                              className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors"
+                            >
+                              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${
+                                idx === 0 ? 'bg-yellow-100 text-yellow-700' :
+                                idx === 1 ? 'bg-slate-200 text-slate-600' :
+                                idx === 2 ? 'bg-orange-100 text-orange-700' :
+                                'bg-slate-100 text-slate-500'
+                              }`}>
+                                {idx + 1}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-slate-900 truncate">{w.nama}</p>
+                                <p className="text-xs text-slate-500 font-medium">{w.dusun}</p>
+                              </div>
+                              <div className="flex items-center gap-3 flex-shrink-0">
+                                <div className="w-24 sm:w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-[#1e3a8a] rounded-full" style={{ width: `${barPct}%` }} />
+                                </div>
+                                <p className="text-sm font-black text-slate-900 tabular-nums w-10 text-right">{w.count}x</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Detail warga terpilih */}
+                    {wargaTerpilih && detailGrouped && (
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h4 className="text-base font-black text-slate-900">{wargaTerpilih.nama}</h4>
+                            <p className="text-xs text-slate-500 font-medium">
+                              {wargaTerpilih.dusun} · Total hadir lengkap: <strong className="text-green-700">{wargaTerpilih.count}x</strong>
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setWargaSelected(null)}
+                            className="text-sm font-bold text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
+                          >
+                            Kembali
+                          </button>
+                        </div>
+
+                        <div className="border border-slate-200 rounded-xl overflow-hidden">
+                          <table className="w-full border-collapse text-sm">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="text-left px-4 py-2.5 font-black text-slate-500 text-xs uppercase tracking-wider">Tanggal</th>
+                                <th className="text-center px-4 py-2.5 font-black text-slate-500 text-xs uppercase tracking-wider">Masuk</th>
+                                <th className="text-center px-4 py-2.5 font-black text-slate-500 text-xs uppercase tracking-wider">Pulang</th>
+                                <th className="text-center px-4 py-2.5 font-black text-slate-500 text-xs uppercase tracking-wider">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {detailGrouped.map(g => (
+                                <tr key={g.tanggal} className="hover:bg-slate-50 transition-colors">
+                                  <td className="px-4 py-3 font-semibold text-slate-700 whitespace-nowrap text-xs">
+                                    {formatTanggalIndo(g.tanggal)}
+                                  </td>
+                                  <td className="px-4 py-3 text-center tabular-nums font-semibold text-slate-700">
+                                    {g.masuk ? g.masuk.jamAbsen : <span className="text-slate-300">—</span>}
+                                  </td>
+                                  <td className="px-4 py-3 text-center tabular-nums font-semibold text-slate-700">
+                                    {g.pulang ? g.pulang.jamAbsen : <span className="text-slate-300">—</span>}
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    {g.pulang ? (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                                        <CheckCircle size={12} /> Lengkap
+                                      </span>
+                                    ) : g.masuk ? (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">
+                                        <XCircle size={12} /> Pulang
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                                        —
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <p className="text-xs text-slate-400 font-medium mt-2">
+                          ✅ Lengkap = Masuk + Pulang di malam yang sama ·
+                          ⬜ Pulang = Masuk doang (belum absen pulang)
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Empty state */}
+                    {wargaList.length === 0 && (
+                      <div className="text-center py-8 text-slate-400 text-sm font-semibold">
+                        <Trophy size={40} className="mx-auto mb-3 text-slate-300" strokeWidth={1.5} />
+                        {q ? 'Tidak ada warga dengan nama tersebut.' : 'Belum ada data absen untuk bulan ini.'}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
