@@ -97,6 +97,13 @@ export default function AdminDashboardPage() {
     loadJadwal();
   }, [loadJadwal]);
 
+  useEffect(() => {
+    if (tab === 'device') {
+      setDeviceSearch('');
+      loadAllDevices();
+    }
+  }, [tab]);
+
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/admin');
@@ -131,11 +138,53 @@ export default function AdminDashboardPage() {
     setJadwalSaving(false);
   }
 
-  // ── Device management ──
+  // ── Load all devices (tanpa filter) ──
+  async function loadAllDevices() {
+    setDeviceSearchLoading(true);
+    setResetMessage('');
+    try {
+      const res = await fetch('/api/absen/semua');
+      if (!res.ok) {
+        setResetMessage('Gagal mengambil data.');
+        setDeviceSearchLoading(false);
+        return;
+      }
+      const allData: AbsenRecord[] = await res.json();
+
+      // Record terbaru per deviceId
+      const latestPerDevice = new Map<string, AbsenRecord>();
+      allData.forEach(r => {
+        if (!latestPerDevice.has(r.deviceId)) {
+          latestPerDevice.set(r.deviceId, r);
+        }
+      });
+
+      // Tampilkan semua perangkat, urut berdasarkan jumlah absen
+      const results = Array.from(latestPerDevice.entries())
+        .map(([deviceId, latest]) => ({
+          nama: latest.nama,
+          deviceId: latest.deviceId,
+          dusun: latest.dusun,
+          count: allData.filter(rec => rec.deviceId === deviceId).length,
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      setDeviceResults(results);
+      if (results.length === 0) {
+        setResetMessage('Belum ada data absen.');
+      }
+    } catch {
+      setResetMessage('Gagal mengambil data.');
+    }
+    setDeviceSearchLoading(false);
+  }
+
+  // ── Device management: cari perangkat ──
   async function handleCariDevice() {
     const q = deviceSearch.trim();
     if (!q || q.length < 2) {
-      setResetMessage('Ketik minimal 2 karakter (nama atau device ID).');
+      // Query terlalu pendek — tampilkan semua
+      await loadAllDevices();
       return;
     }
     setDeviceSearchLoading(true);
@@ -150,7 +199,6 @@ export default function AdminDashboardPage() {
       const allData: AbsenRecord[] = await res.json();
 
       // ── Step 1: Record terbaru (pertama) per deviceId ──
-      // Data dari API sudah diurutkan newest-first, record pertama adalah yang terbaru
       const latestPerDevice = new Map<string, AbsenRecord>();
       allData.forEach(r => {
         if (!latestPerDevice.has(r.deviceId)) {
@@ -159,7 +207,6 @@ export default function AdminDashboardPage() {
       });
 
       // ── Step 2: Cari semua deviceId yang cocok ──
-      // Filter di SEMUA record (termasuk nama lama setelah rename) agar tetap ketemu
       const qLower = q.toLowerCase();
       const matchedDeviceIds = new Set<string>();
       allData.forEach(r => {
@@ -172,7 +219,6 @@ export default function AdminDashboardPage() {
       });
 
       // ── Step 3: Build hasil akhir ──
-      // Tampilkan nama & dusun dari record terbaru, hitung record yang cocok
       const results = Array.from(matchedDeviceIds)
         .map(deviceId => {
           const latest = latestPerDevice.get(deviceId)!;
@@ -189,7 +235,6 @@ export default function AdminDashboardPage() {
             count,
           };
         })
-        // Urutkan: yang cocok nama dulu
         .sort((a, b) => {
           const aName = a.nama.toLowerCase().includes(qLower) ? 0 : 1;
           const bName = b.nama.toLowerCase().includes(qLower) ? 0 : 1;
@@ -559,7 +604,7 @@ export default function AdminDashboardPage() {
                 </h3>
               </div>
               <p className="text-xs text-slate-500 mt-1 font-medium">
-                Cari perangkat untuk mengganti nama warga. 1 perangkat = 1 warga. Data absen tetap tersimpan.
+                Semua perangkat terdaftar tampil otomatis. Cari berdasarkan nama atau ID untuk filter. 1 perangkat = 1 warga.
               </p>
             </div>
 
@@ -632,7 +677,7 @@ export default function AdminDashboardPage() {
               {deviceResults.length === 0 && !deviceSearchLoading && !resetMessage && (
                 <div className="text-center py-8 text-slate-400 text-sm font-semibold">
                   <Smartphone size={40} className="mx-auto mb-3 text-slate-300" strokeWidth={1.5} />
-                  Cari nama warga untuk melihat perangkat terdaftar.
+                  Belum ada data absen. Perangkat akan muncul setelah ada warga yang melakukan absen.
                 </div>
               )}
             </div>
