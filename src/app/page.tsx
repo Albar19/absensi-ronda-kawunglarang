@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Moon, Sunrise, Lock, User, Pencil, Loader, AlertTriangle, Shield, CheckCircle } from 'lucide-react';
+import { Moon, Sunrise, Lock, User, Pencil, Loader, Shield, CheckCircle } from 'lucide-react';
 import { FlowState, AbsenRecord } from '@/lib/types';
 import { CONFIG, type JenisAbsen } from '@/lib/config';
 import {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Users, Calendar, Save, QrCode, Loader, FileDown, Smartphone, Pencil, AlertTriangle, Search } from 'lucide-react';
+import { LogOut, RefreshCw, Download, Users, Calendar, Save, QrCode, Loader, FileDown, Smartphone, Pencil, Search } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
