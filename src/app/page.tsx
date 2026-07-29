@@ -71,17 +71,17 @@ export default function HomePage() {
             setDusun(saved?.dusun || '');
             setNamaRegistered(true);
             setDeviceRegisteredName(devData.nama);
-            // Nama registered — tidak ada tombol edit nama, hanya dusun bisa diganti
+            // Nama registered — form readOnly, dusun bisa diedit via modal
             return;
           }
         }
       } catch { /* silent */ }
 
       // 3. Fallback ke localStorage (device belum terdaftar)
+      //    Form mulai dalam keadaan terkunci. Klik "Ubah Nama / Dusun" untuk membuka.
       if (saved) {
         setNama(saved.nama);
         setDusun(saved.dusun);
-        setShowEditHint(true);
       }
     };
     init();
@@ -281,13 +281,15 @@ export default function HomePage() {
 
   const handleEditToggle = useCallback(() => {
     if (namaRegistered) {
+      // Toggle: locked → modal → unlock dusun → locked
       if (!showEditHint) {
         setShowEditWarning(true);
       } else {
         setShowEditHint(false);
       }
     } else {
-      setShowEditHint(false);
+      // Toggle buka/kunci form
+      setShowEditHint(prev => !prev);
     }
   }, [namaRegistered, showEditHint]);
 
@@ -526,8 +528,8 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Auto-fill hint (hanya jika belum registered) */}
-            {showEditHint && !namaRegistered && (
+            {/* Auto-fill hint — tampil saat form terkunci */}
+            {!showEditHint && !namaRegistered && (
               <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-3">
                 <User size={22} className="text-green-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
                 <div className="min-w-0 flex-1">
@@ -608,15 +610,15 @@ export default function HomePage() {
               )}
             </button>
 
-            {/* Tombol sekunder: Ubah Nama / Dusun */}
-            {showEditHint && !namaRegistered && (
+            {/* Tombol sekunder */}
+            {!namaRegistered && (
               <button
                 type="button"
                 onClick={handleEditToggle}
                 className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 style={{ minHeight: '52px' }}
               >
-                <Pencil size={18} strokeWidth={2} /> Ubah Nama / Dusun
+                <Pencil size={18} strokeWidth={2} /> {showEditHint ? 'Selesai' : 'Ubah Nama / Dusun'}
               </button>
             )}
             {namaRegistered && (
@@ -626,7 +628,7 @@ export default function HomePage() {
                 className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 style={{ minHeight: '52px' }}
               >
-                <Pencil size={18} strokeWidth={2} /> Ubah Dusun (Nama tetap)
+                <Pencil size={18} strokeWidth={2} /> {showEditHint ? 'Selesai' : 'Ubah Dusun (Nama tetap)'}
               </button>
             )}
           </div>
