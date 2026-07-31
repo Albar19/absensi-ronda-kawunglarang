@@ -78,8 +78,8 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
             <>
               <p className="text-lg font-black text-green-700 leading-tight">BALE DESA</p>
               <p className="text-xs font-semibold text-green-600 mt-0.5">
-                Jarak anda: ±{jarakMeter} m
-                {akurasiMeter != null && ` · Akurasi GPS: ±${akurasiMeter} m`}
+                Jarak dari Bale Desa: ±{jarakMeter} m
+                {akurasiMeter != null && ` · Akurasi sinyal GPS: ±${akurasiMeter} m (makin kecil makin akurat)`}
               </p>
             </>
           ) : statusJarak === 'error' ? (

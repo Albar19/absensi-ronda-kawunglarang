@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Moon, Sunrise, Lock, User, Pencil, Loader, Shield, CheckCircle } from 'lucide-react';
+import { Moon, Sunrise, Lock, User, Pencil, Loader, Shield, CheckCircle, MapPin } from 'lucide-react';
 import { FlowState, AbsenRecord } from '@/lib/types';
 import { CONFIG, type JenisAbsen } from '@/lib/config';
 import {
@@ -434,6 +434,17 @@ export default function HomePage() {
               <p className="text-xs font-semibold text-slate-400 leading-relaxed pt-1 border-t border-slate-200">
                 Hadir dihitung hanya jika melakukan <strong className="text-slate-600">MASUK + PULANG</strong> di malam yang sama.
               </p>
+            </div>
+
+            {/* Tips izin GPS — pilih Izinkan + Lokasi Akurat */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+              <MapPin size={20} className="text-amber-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
+              <div className="text-xs font-semibold text-amber-800 leading-relaxed">
+                <p className="font-black text-amber-900 mb-0.5">Tips Izin Lokasi</p>
+                Saat HP meminta izin lokasi, pilih <strong>IZINKAN</strong>, lalu pilih{' '}
+                <strong>LOKASI AKURAT / PRECISE</strong> — jangan pilih "Perkiraan / Approximate"
+                agar absen tidak ditolak karena jarak.
+              </div>
             </div>
 
             {/* CTA */}
