@@ -28,6 +28,7 @@ const HARI_LABEL: Record<string, string> = {
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('log');
+  const [authChecked, setAuthChecked] = useState(false);
 
   // ── Log absen ──
   const [absenHariIni, setAbsenHariIni] = useState<AbsenRecord[]>([]);
@@ -139,16 +140,36 @@ export default function AdminDashboardPage() {
     setJadwalLoading(false);
   }, []);
 
+  // ── Auth check: dashboard hanya bisa diakses admin yang sudah login ──
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) {
+          router.replace('/admin');
+          return;
+        }
+        if (!cancelled) setAuthChecked(true);
+      } catch {
+        router.replace('/admin');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [router]);
+
+  useEffect(() => {
+    if (!authChecked) return;
     refreshData();
     loadAvailableMonths();
     const interval = setInterval(refreshData, 30000);
     return () => clearInterval(interval);
-  }, [refreshData]);
+  }, [refreshData, authChecked]);
 
   useEffect(() => {
+    if (!authChecked) return;
     loadJadwal();
-  }, [loadJadwal]);
+  }, [loadJadwal, authChecked]);
 
   useEffect(() => {
     if (tab === 'device') {
@@ -356,6 +377,13 @@ export default function AdminDashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-50">
+      {!authChecked ? (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-slate-500">
+          <Loader size={32} className="animate-spin" />
+          <p className="text-sm font-bold">Memeriksa sesi admin…</p>
+        </div>
+      ) : (
+        <>
       {/* ─── NAVBAR ─── */}
       <nav className="bg-[#1e3a8a] text-white sticky top-0 z-50 shadow-card">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
@@ -1068,6 +1096,8 @@ export default function AdminDashboardPage() {
           Sistem Absensi Ronda — KKN 46 Kawunglarang UNIKU
         </p>
       </div>
+        </>
+      )}
     </main>
   );
 }

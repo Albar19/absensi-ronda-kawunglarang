@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { isAdminRequest } from '@/lib/api-auth';
 
 function mapRecord(r: Record<string, unknown>) {
   return {
@@ -17,6 +18,11 @@ function mapRecord(r: Record<string, unknown>) {
 }
 
 export async function GET() {
+  // ── Auth check: data lengkap hanya untuk admin ──
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   let data: Record<string, unknown>[] | null = null;
 
   const result = await supabase

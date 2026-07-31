@@ -3,9 +3,14 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
+import { isAdminRequest } from '@/lib/api-auth';
 
-// GET /api/jadwal — ambil semua jadwal (7 hari)
+// GET /api/jadwal — ambil semua jadwal (7 hari, admin-only)
 export async function GET() {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { data, error } = await supabase
     .from('jadwal_ronda')
     .select('id, hari, petugas')

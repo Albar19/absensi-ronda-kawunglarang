@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { isAdminRequest } from '@/lib/api-auth';
 
 function getTanggalHariIni(): string {
   return new Date().toISOString().split('T')[0];
@@ -21,6 +22,11 @@ function mapRecord(r: Record<string, unknown>) {
 }
 
 export async function GET() {
+  // ── Auth check: data lengkap hanya untuk admin ──
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const today = getTanggalHariIni();
   let data: Record<string, unknown>[] | null = null;
 

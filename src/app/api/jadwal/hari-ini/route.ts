@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
+import { isAdminRequest } from '@/lib/api-auth';
 
 const HARI_INDONESIA = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
 
@@ -8,8 +9,12 @@ function getHariIni(): string {
   return HARI_INDONESIA[new Date().getDay()];
 }
 
-// GET /api/jadwal/hari-ini — ambil jadwal untuk hari ini
+// GET /api/jadwal/hari-ini — ambil jadwal untuk hari ini (admin-only)
 export async function GET() {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const hariIni = getHariIni();
 
   const { data, error } = await supabase

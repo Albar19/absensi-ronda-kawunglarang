@@ -49,16 +49,21 @@ export async function POST(request: Request) {
 
     // Validasi dari environment variable
     const adminUser = process.env.ADMIN_USERNAME || 'admin';
-    const adminPass = process.env.ADMIN_PASSWORD || 'kawunglarang2026';
     const adminHash = process.env.ADMIN_PASSWORD_HASH;
+
+    // Keamanan: WAJIB bcrypt hash. Tanpa hash, login ditolak.
+    // Jangan pernah bandingkan password plaintext (cek .env.local / Vercel: ADMIN_PASSWORD_HASH)
+    if (!adminHash) {
+      console.error('[POST /api/auth/login] ADMIN_PASSWORD_HASH belum dikonfigurasi di environment variable.');
+      return NextResponse.json(
+        { error: 'Autentikasi belum dikonfigurasi. Hubungi admin.' },
+        { status: 500 }
+      );
+    }
 
     let passwordValid = false;
     if (username === adminUser) {
-      if (adminHash) {
-        passwordValid = await bcrypt.compare(password, adminHash);
-      } else {
-        passwordValid = password === adminPass;
-      }
+      passwordValid = await bcrypt.compare(password, adminHash);
     }
 
     if (!passwordValid) {

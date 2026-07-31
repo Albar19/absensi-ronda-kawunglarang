@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
+import { isAdminRequest } from '@/lib/api-auth';
 import type { JadwalRonda } from '@/lib/types';
 
 const HARI_LABEL: Record<string, string> = {
@@ -13,8 +14,12 @@ const HARI_LABEL: Record<string, string> = {
   minggu: 'Minggu',
 };
 
-// GET /api/jadwal/download — download jadwal sebagai file Excel
+// GET /api/jadwal/download — download jadwal sebagai file Excel (admin-only)
 export async function GET() {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { data, error } = await supabase
       .from('jadwal_ronda')
