@@ -128,9 +128,13 @@ cd absensi-ronda-kawunglarang
 npm install
 
 # 3. Setup environment variables
-# Buat file .env.local dengan credential Supabase Anda:
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
+# Buat file .env.local dengan credential Supabase Anda (contoh ada di .env.local):
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=xxx          # service_role key (server-only, JANGAN bocorkan)
+JWT_SECRET=xxx                          # secret untuk token admin (sembarang string acak)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_HASH=xxx                 # bcrypt hash password admin (lihat cara buat di bawah)
+NEXT_PUBLIC_BASE_URL=https://xxx        # URL produksi untuk QR code (opsional, fallback ke domain saat dibuka)
 
 # 4. Setup database
 # Jalankan SQL migration di folder supabase/ secara berurutan:
@@ -142,6 +146,13 @@ npm run dev
 ```
 
 Buka [http://localhost:3000](http://localhost:3000).
+
+> **Membuat hash password admin (bcrypt):**
+> ```bash
+> node -e "const b=require('bcryptjs');const r=require('readline').createInterface({input:process.stdin,output:process.stdout});r.question('Password: ',p=>{console.log('ADMIN_PASSWORD_HASH='+b.hashSync(p,10));r.close()})"
+> ```
+> Salin hasilnya ke `.env.local` (dev) dan ke Vercel (produksi).
+> **Catatan di `.env.local`:** tanda `$` di hash harus di-escape menjadi `\$` (di Vercel pakai nilai asli tanpa escape).
 
 ---
 
@@ -158,8 +169,12 @@ vercel --prod
 ```
 
 Set environment variables di dashboard Vercel:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `JWT_SECRET`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD_HASH`
+- `NEXT_PUBLIC_BASE_URL` (opsional, untuk QR code)
 
 ### Deploy Manual
 ```bash
@@ -285,11 +300,12 @@ export const CONFIG = {
 
 ### Catatan penting
 
-- **Database:** Semua operasi database melalui Supabase client (`src/lib/supabase.ts`)
-- **Auth admin:** Menggunakan cookie `admin_token` dengan JWT sederhana (via `src/app/api/auth/`)
+- **Database:** Semua operasi database melalui Supabase client (`src/lib/supabase.ts`) memakai `SUPABASE_SERVICE_ROLE_KEY` (server-only, tidak pernah dipakai di client).
+- **Auth admin:** Menggunakan cookie `admin_token` dengan JWT sederhana (via `src/app/api/auth/`). Login WAJIB `ADMIN_PASSWORD_HASH` (bcrypt) — password plaintext tidak didukung. Tanpa env ini, login ditolak.
+- **Validasi absen:** Jam sesi & tanggal ronda dihitung **server-side (WIB)**, GPS divalidasi 2x (client + server Haversine 150m), dan 1 device hanya boleh 1 nama.
+- **Endpoint admin:** `/api/absen/semua`, `/api/absen/hari-ini`, `/api/jadwal*` butuh cookie admin (401 tanpa login).
 - **Device ID:** Menggunakan localStorage — 1 device hanya bisa 1 nama (anti-titip absen). Hubungi admin jika reset diperlukan.
-- **Validasi GPS:** Dilakukan 2x (client-side + server-side) untuk keamanan
-- **Jam absen:** Menggunakan waktu client — pastikan zona waktu sudah sesuai (WIB)
+- **Jam absen:** Server memakai waktu server WIB (UTC+7), bukan waktu client. Pastikan tabel `jadwal_ronda` sudah dibuat via `supabase/migration_jadwal.sql` di Supabase dashboard.
 
 ### Kontak
 
