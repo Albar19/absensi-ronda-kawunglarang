@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import QRCode from 'qrcode';
+import { isAdminRequest } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
+  // ── Auth check: download QR hanya untuk admin yang sudah login ──
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
 

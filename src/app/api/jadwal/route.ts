@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { verifyToken } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
 import { isAdminRequest } from '@/lib/api-auth';
@@ -46,13 +44,7 @@ export async function GET() {
 // PUT /api/jadwal — simpan semua jadwal (upsert 7 baris, admin-only)
 export async function PUT(request: Request) {
   // ── Auth check ──
-  const cookieStore = await cookies();
-  const tokenCookie = cookieStore.get('admin_token')?.value;
-  if (!tokenCookie) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const payload = await verifyToken(tokenCookie);
-  if (!payload) {
+  if (!(await isAdminRequest())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

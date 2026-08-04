@@ -201,7 +201,7 @@ src/
 │   ├── kontak/
 │   │   └── page.tsx           # Halaman kontak
 │   └── api/
-│       ├── absen/             # POST absen + GET (hari-ini, semua, cek-masuk, daftar-nama, reset)
+│       ├── absen/             # POST absen + GET (hari-ini, semua, cek-masuk, daftar-nama)
 │       ├── auth/              # Login/logout admin (cookie JWT)
 │       ├── jadwal/            # GET/PUT jadwal ronda + hari-ini + download
 │       └── qr/                # GET QR Code (PNG)

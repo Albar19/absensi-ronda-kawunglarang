@@ -8,5 +8,5 @@ export async function isAdminRequest(): Promise<boolean> {
   const token = cookieStore.get('admin_token')?.value;
   if (!token) return false;
   const payload = await verifyToken(token);
-  return payload !== null;
+  return payload !== null && payload.role === 'admin';
 }
