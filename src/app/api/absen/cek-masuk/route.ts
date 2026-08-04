@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+// GET /api/absen/cek-masuk?device_id=xxx&tanggal=YYYY-MM-DD
+// Mengembalikan daftar orang yang sudah absen masuk dari perangkat ini hari ini
+// (nama + dusun). Dipakai saat sesi pulang untuk menampilkan checklist.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const deviceId = searchParams.get('device_id');
@@ -13,39 +16,62 @@ export async function GET(request: Request) {
     );
   }
 
-  // Cek apakah ada absen masuk untuk device ini hari ini
   const { data, error } = await supabase
     .from('absen_records')
-    .select('id')
+    .select('nama_warga, dusun')
     .eq('device_id', deviceId)
     .eq('tanggal_ronda', tanggal)
-    .eq('jenis_absen', 'masuk')
-    .maybeSingle();
+    .eq('jenis_absen', 'masuk');
 
   if (error) {
     // Fallback ke kolom 'tanggal' jika 'tanggal_ronda' belum ada
     if (error.code === 'PGRST204' || error.message?.includes('tanggal_ronda') || error.message?.includes('jenis_absen')) {
       const fb = await supabase
         .from('absen_records')
-        .select('id')
+        .select('nama, dusun')
         .eq('warga_id', deviceId)
         .eq('tanggal', tanggal)
-        .eq('jenis_absen', 'masuk')
-        .maybeSingle();
+        .eq('jenis_absen', 'masuk');
       if (fb.error) {
         return NextResponse.json({ error: 'Gagal memeriksa absen masuk' }, { status: 500 });
       }
-      if (!fb.data) {
-        return NextResponse.json({ error: 'Anda belum absen masuk malam ini.' }, { status: 404 });
+      const people = dedupPeople((fb.data ?? []).map((r: Record<string, unknown>) => ({
+        nama: String(r.nama ?? '').trim(),
+        dusun: String(r.dusun ?? '').trim(),
+      })));
+      if (people.length === 0) {
+        return NextResponse.json(
+          { error: 'Belum ada absen masuk dari perangkat ini malam ini.' },
+          { status: 404 }
+        );
       }
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, people });
     }
     return NextResponse.json({ error: 'Gagal memeriksa absen masuk' }, { status: 500 });
   }
 
-  if (!data) {
-    return NextResponse.json({ error: 'Anda belum absen masuk malam ini.' }, { status: 404 });
+  const people = dedupPeople((data ?? []).map(r => ({
+    nama: String(r.nama_warga ?? '').trim(),
+    dusun: String(r.dusun ?? '').trim(),
+  })));
+
+  if (people.length === 0) {
+    return NextResponse.json(
+      { error: 'Belum ada absen masuk dari perangkat ini malam ini.' },
+      { status: 404 }
+    );
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, people });
+}
+
+// Dedup berdasarkan kombinasi nama + dusun (identitas = nama + dusun)
+function dedupPeople(rows: { nama: string; dusun: string }[]) {
+  const seen = new Map<string, { nama: string; dusun: string }>();
+  rows.forEach(r => {
+    if (!r.nama || !r.dusun) return;
+    const key = `${r.nama.toLowerCase()}|${r.dusun.toLowerCase()}`;
+    if (!seen.has(key)) seen.set(key, r);
+  });
+  return Array.from(seen.values());
 }

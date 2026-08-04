@@ -8,17 +8,17 @@ export const CONFIG = {
 
   radiusMeter: 150,
 
-  // Sesi Masuk: 20:00 - 23:40 WIB
+  // Sesi Masuk: 20:00 - 22:00 WIB
   jamBukaMasuk: 20,
   menitBukaMasuk: 0,
-  jamTutupMasuk: 23,
-  menitTutupMasuk: 40,
+  jamTutupMasuk: 22,
+  menitTutupMasuk: 0,
 
-  // Sesi Pulang: 23:40 - 01:00 WIB (melewati tengah malam)
+  // Sesi Pulang: 23:00 - 23:59 WIB
   jamBukaPulang: 23,
-  menitBukaPulang: 40,
-  jamTutupPulang: 1,
-  menitTutupPulang: 0,
+  menitBukaPulang: 0,
+  jamTutupPulang: 23,
+  menitTutupPulang: 59,
 
   // Daftar dusun
   dusunList: ['Dusun Bungbulang', 'Dusun Cibangkong', 'Dusun Desa', 'Dusun Gudang', 'Dusun Cibuluh', 'Dusun Cihaurgeulis'],

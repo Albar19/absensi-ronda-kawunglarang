@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Download, Users, Calendar, Save, QrCode, Loader, FileDown, Smartphone, Pencil, Search, Trophy, ChevronDown, CheckCircle, XCircle } from 'lucide-react';
+import { LogOut, RefreshCw, Users, Calendar, Save, QrCode, Loader, FileDown, Search, Trophy, ChevronDown, CheckCircle, XCircle } from 'lucide-react';
 import { AbsenRecord, JadwalRonda } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import ExportButton from '@/components/admin/ExportButton';
 
-type Tab = 'log' | 'jadwal' | 'device' | 'warga';
+type Tab = 'log' | 'jadwal' | 'warga';
 
 const BULAN_INDONESIA = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -41,16 +41,6 @@ export default function AdminDashboardPage() {
   const [jadwalSaving, setJadwalSaving] = useState(false);
   const [jadwalMessage, setJadwalMessage] = useState('');
   const [jadwalDirty, setJadwalDirty] = useState(false);
-
-  // ── Device management ──
-  const [deviceSearch, setDeviceSearch] = useState('');
-  const [deviceResults, setDeviceResults] = useState<{ nama: string; deviceId: string; dusun: string; count: number }[]>([]);
-  const [deviceSearchLoading, setDeviceSearchLoading] = useState(false);
-  const [renameDeviceId, setRenameDeviceId] = useState<string | null>(null);
-  const [renameNamaLama, setRenameNamaLama] = useState<string | null>(null);
-  const [renameNamaBaru, setRenameNamaBaru] = useState('');
-  const [renameLoading, setRenameLoading] = useState(false);
-  const [resetMessage, setResetMessage] = useState('');
 
   // ── Bulan filter ──
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
@@ -160,26 +150,26 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (!authChecked) return;
-    refreshData();
-    loadAvailableMonths();
+    void (async () => {
+      await refreshData();
+      await loadAvailableMonths();
+    })();
     const interval = setInterval(refreshData, 30000);
     return () => clearInterval(interval);
   }, [refreshData, authChecked]);
 
   useEffect(() => {
     if (!authChecked) return;
-    loadJadwal();
+    const t = setTimeout(() => { void loadJadwal(); }, 0);
+    return () => clearTimeout(t);
   }, [loadJadwal, authChecked]);
 
   useEffect(() => {
-    if (tab === 'device') {
-      setDeviceSearch('');
-      loadAllDevices();
-    }
     if (tab === 'warga' && allDataCache.length === 0) {
-      loadAvailableMonths();
+      const t = setTimeout(() => { void loadAvailableMonths(); }, 0);
+      return () => clearTimeout(t);
     }
-  }, [tab]);
+  }, [tab, allDataCache.length]);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -215,147 +205,6 @@ export default function AdminDashboardPage() {
     setJadwalSaving(false);
   }
 
-  // ── Load all devices (tanpa filter) ──
-  async function loadAllDevices() {
-    setDeviceSearchLoading(true);
-    setResetMessage('');
-    try {
-      const res = await fetch('/api/absen/semua');
-      if (!res.ok) {
-        setResetMessage('Gagal mengambil data.');
-        setDeviceSearchLoading(false);
-        return;
-      }
-      const allData: AbsenRecord[] = await res.json();
-
-      // Record terbaru per deviceId
-      const latestPerDevice = new Map<string, AbsenRecord>();
-      allData.forEach(r => {
-        if (!latestPerDevice.has(r.deviceId)) {
-          latestPerDevice.set(r.deviceId, r);
-        }
-      });
-
-      // Tampilkan semua perangkat, urut berdasarkan jumlah absen
-      const results = Array.from(latestPerDevice.entries())
-        .map(([deviceId, latest]) => ({
-          nama: latest.nama,
-          deviceId: latest.deviceId,
-          dusun: latest.dusun,
-          count: allData.filter(rec => rec.deviceId === deviceId).length,
-        }))
-        .sort((a, b) => b.count - a.count);
-
-      setDeviceResults(results);
-      if (results.length === 0) {
-        setResetMessage('Belum ada data absen.');
-      }
-    } catch {
-      setResetMessage('Gagal mengambil data.');
-    }
-    setDeviceSearchLoading(false);
-  }
-
-  // ── Device management: cari perangkat ──
-  async function handleCariDevice() {
-    const q = deviceSearch.trim();
-    if (!q || q.length < 2) {
-      // Query terlalu pendek — tampilkan semua
-      await loadAllDevices();
-      return;
-    }
-    setDeviceSearchLoading(true);
-    setResetMessage('');
-    try {
-      const res = await fetch('/api/absen/semua');
-      if (!res.ok) {
-        setResetMessage('Gagal mengambil data.');
-        setDeviceSearchLoading(false);
-        return;
-      }
-      const allData: AbsenRecord[] = await res.json();
-
-      // ── Step 1: Record terbaru (pertama) per deviceId ──
-      const latestPerDevice = new Map<string, AbsenRecord>();
-      allData.forEach(r => {
-        if (!latestPerDevice.has(r.deviceId)) {
-          latestPerDevice.set(r.deviceId, r);
-        }
-      });
-
-      // ── Step 2: Cari semua deviceId yang cocok ──
-      const qLower = q.toLowerCase();
-      const matchedDeviceIds = new Set<string>();
-      allData.forEach(r => {
-        if (
-          r.nama.toLowerCase().includes(qLower) ||
-          r.deviceId.toLowerCase().includes(qLower)
-        ) {
-          matchedDeviceIds.add(r.deviceId);
-        }
-      });
-
-      // ── Step 3: Build hasil akhir ──
-      const results = Array.from(matchedDeviceIds)
-        .map(deviceId => {
-          const latest = latestPerDevice.get(deviceId)!;
-          const count = allData.filter(
-            rec => rec.deviceId === deviceId && (
-              rec.nama.toLowerCase().includes(qLower) ||
-              rec.deviceId.toLowerCase().includes(qLower)
-            )
-          ).length;
-          return {
-            nama: latest.nama,
-            deviceId: latest.deviceId,
-            dusun: latest.dusun,
-            count,
-          };
-        })
-        .sort((a, b) => {
-          const aName = a.nama.toLowerCase().includes(qLower) ? 0 : 1;
-          const bName = b.nama.toLowerCase().includes(qLower) ? 0 : 1;
-          return aName - bName;
-        });
-
-      setDeviceResults(results);
-      if (results.length === 0) {
-        setResetMessage('Tidak ditemukan perangkat dengan kata kunci tersebut.');
-      }
-    } catch {
-      setResetMessage('Gagal mencari data.');
-    }
-    setDeviceSearchLoading(false);
-  }
-
-  async function handleRenameDevice(deviceId: string, namaBaru: string) {
-    setRenameLoading(true);
-    setResetMessage('');
-    try {
-      const res = await fetch('/api/absen/reset-nama', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: deviceId, nama_baru: namaBaru }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setResetMessage(data.message || 'Nama berhasil diganti.');
-        // Update nama di hasil pencarian
-        setDeviceResults(prev => prev.map(d =>
-          d.deviceId === deviceId ? { ...d, nama: namaBaru } : d
-        ));
-      } else {
-        setResetMessage(data.error || 'Gagal mengganti nama.');
-      }
-    } catch {
-      setResetMessage('Gagal terhubung ke server.');
-    }
-    setRenameLoading(false);
-    setRenameDeviceId(null);
-    setRenameNamaLama(null);
-    setRenameNamaBaru('');
-  }
-
   // ── Dusun leaderboard (adaptif: hari ini atau bulan terfilter) ──
   const dusunLeaderboard = useMemo(() => {
     const counts = new Map<string, number>();
@@ -371,9 +220,6 @@ export default function AdminDashboardPage() {
   const totalHadir = displayPulang.length;
   const tanggalLabel = formatTanggalIndo(getTanggalHariIni());
   const maxCount = Math.max(...dusunLeaderboard.map(d => d.count), 1);
-  const periodeLabel = periodFilter === 'today'
-    ? null
-    : `${BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} ${periodFilter.split('-')[0]}`;
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -427,17 +273,6 @@ export default function AdminDashboardPage() {
           >
             <Calendar size={16} />
             Jadwal Ronda
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('device')}
-    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
-      tab === 'device' ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500 hover:text-slate-700'
-    }`}
-            style={{ minHeight: '42px' }}
-          >
-            <Smartphone size={16} />
-            Perangkat
           </button>
           <button
             type="button"
@@ -724,97 +559,6 @@ export default function AdminDashboardPage() {
         {/* ════════════════════════════════════════════════ */}
         {/* TAB: PERANGKAT (DEVICE MANAGEMENT)              */}
         {/* ════════════════════════════════════════════════ */}
-        {tab === 'device' && (
-          <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <Smartphone size={20} className="text-[#1e3a8a]" strokeWidth={2} />
-                <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                  Manajemen Perangkat
-                </h3>
-              </div>
-              <p className="text-xs text-slate-500 mt-1 font-medium">
-                Semua perangkat terdaftar tampil otomatis. Cari berdasarkan nama atau ID untuk filter. 1 perangkat = 1 warga.
-              </p>
-            </div>
-
-            <div className="px-5 py-4 space-y-4">
-              {/* Search */}
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={deviceSearch}
-                    onChange={e => setDeviceSearch(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleCariDevice(); }}
-                    placeholder="Cari nama warga atau ID perangkat..."
-                    className="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
-                    style={{ minHeight: '46px' }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCariDevice}
-                  disabled={deviceSearchLoading}
-                  className="bg-[#1e3a8a] text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-[#1e40af] active:scale-[0.98] transition-all disabled:opacity-50"
-                  style={{ minHeight: '46px', whiteSpace: 'nowrap' }}
-                >
-                  {deviceSearchLoading ? <Loader size={16} className="animate-spin" /> : 'Cari'}
-                </button>
-              </div>
-
-              {/* Message */}
-              {resetMessage && (
-                <p className={`text-sm font-bold ${resetMessage.includes('berhasil') || resetMessage.includes('ditemukan') ? 'text-green-700' : 'text-red-700'}`}>
-                  {resetMessage}
-                </p>
-              )}
-
-              {/* Results */}
-              {deviceResults.length > 0 && (
-                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-                  {deviceResults.map(dev => (
-                    <div key={dev.deviceId} className="flex items-center justify-between gap-3 px-4 py-3.5 hover:bg-slate-50">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-black text-slate-900 truncate">{dev.nama}</p>
-                        <p className="text-xs text-slate-500 font-semibold truncate">
-                          {dev.dusun} · {dev.count} absen
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono truncate mt-0.5">
-                          ID: {dev.deviceId.slice(0, 24)}…
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRenameDeviceId(dev.deviceId);
-                          setRenameNamaLama(dev.nama);
-                          setRenameNamaBaru(dev.nama);
-                        }}
-                        className="flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-3.5 py-2 rounded-lg text-xs font-bold hover:bg-blue-100 active:scale-[0.97] transition-all flex-shrink-0"
-                        style={{ minHeight: '38px' }}
-                      >
-                        <Pencil size={14} strokeWidth={2} />
-                        Ganti Nama
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Empty state */}
-              {deviceResults.length === 0 && !deviceSearchLoading && !resetMessage && (
-                <div className="text-center py-8 text-slate-400 text-sm font-semibold">
-                  <Smartphone size={40} className="mx-auto mb-3 text-slate-300" strokeWidth={1.5} />
-                  Belum ada data absen. Perangkat akan muncul setelah ada warga yang melakukan absen.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ════════════════════════════════════════════════ */}
         {/* TAB: REKAP WARGA                                */}
         {/* ════════════════════════════════════════════════ */}
         {tab === 'warga' && (
@@ -1025,69 +769,6 @@ export default function AdminDashboardPage() {
                   </>
                 );
               })()}
-            </div>
-          </div>
-        )}
-
-        {/* ─── RENAME MODAL ─── */}
-        {renameDeviceId && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4">
-            <div className="bg-white rounded-2xl shadow-modal p-6 w-full max-w-sm mx-auto space-y-4">
-              <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Pencil size={32} className="text-blue-600" strokeWidth={2} />
-                </div>
-                <h3 className="text-xl font-black text-slate-900">Ganti Nama</h3>
-                <p className="text-sm text-slate-600 font-semibold leading-relaxed">
-                  Nama saat ini: <strong>{renameNamaLama}</strong>
-                </p>
-                <p className="text-xs text-slate-500 font-medium">
-                  Masukkan nama baru untuk perangkat ini. Semua data absen tetap tersimpan.
-                </p>
-              </div>
-              <div>
-                <label htmlFor="nama-baru" className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
-                  Nama Baru
-                </label>
-                <input
-                  id="nama-baru"
-                  type="text"
-                  value={renameNamaBaru}
-                  onChange={e => setRenameNamaBaru(e.target.value)}
-                  placeholder="Ketik nama yang benar"
-                  autoFocus
-                  className="w-full px-4 py-3 text-base font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none transition-colors"
-                  style={{ minHeight: '52px' }}
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRenameDeviceId(null);
-                    setRenameNamaLama(null);
-                    setRenameNamaBaru('');
-                  }}
-                  disabled={renameLoading}
-                  className="flex-1 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-bold text-base hover:bg-slate-50 transition-all disabled:opacity-50"
-                  style={{ minHeight: '48px' }}
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (renameNamaBaru.trim()) {
-                      handleRenameDevice(renameDeviceId, renameNamaBaru.trim());
-                    }
-                  }}
-                  disabled={renameLoading || !renameNamaBaru.trim()}
-                  className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                  style={{ minHeight: '48px' }}
-                >
-                  {renameLoading ? <><Loader size={16} className="animate-spin" /> Menyimpan...</> : 'Simpan Nama'}
-                </button>
-              </div>
             </div>
           </div>
         )}

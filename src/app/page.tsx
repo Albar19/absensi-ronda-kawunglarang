@@ -1,27 +1,42 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Moon, Sunrise, Lock, User, Pencil, Loader, Shield, CheckCircle, MapPin } from 'lucide-react';
+import { Moon, Sunrise, Lock, User, Shield, Loader, CheckCircle, MapPin, Plus, Trash2 } from 'lucide-react';
 import { FlowState, AbsenRecord } from '@/lib/types';
 import { CONFIG, type JenisAbsen } from '@/lib/config';
 import {
   hitungJarak,
   cekJamStatus,
-  getJenisAbsenSaatIni,
   formatJamSesi,
   generateId,
   getTanggalHariIni,
   getDeviceId,
   muatDataWarga,
   simpanDataWarga,
-  cekSudahAbsen,
-  setSudahAbsen,
-  clearSudahAbsen,
 } from '@/lib/data';
 import HeaderBanner  from '@/components/citizen/HeaderBanner';
 import StatusCards   from '@/components/citizen/StatusCards';
 import RejectedScreen from '@/components/citizen/RejectedScreen';
 import SuccessScreen  from '@/components/citizen/SuccessScreen';
+
+interface OrangRow {
+  nama: string;
+  dusun: string;
+}
+
+function BadgeSesi({ warna, label }: { warna: string; label: string }) {
+  return (
+    <span className={`flex items-center gap-1.5 text-sm font-bold ${warna}`}>
+      <span className="w-2 h-2 rounded-full bg-current" />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+// Identitas absen = nama + dusun. Key unik untuk checklist pulang.
+function keyOrang({ nama, dusun }: { nama: string; dusun: string }) {
+  return `${nama.trim().toLowerCase()}|${dusun.trim().toLowerCase()}`;
+}
 
 export default function HomePage() {
   const [flowState,      setFlowState]      = useState<FlowState>('idle');
@@ -32,26 +47,24 @@ export default function HomePage() {
   const [akurasi,        setAkurasi]        = useState<number|null>(null);
   const [koordinat,      setKoordinat]      = useState<{lat:number;lng:number}|null>(null);
   const [pesanError,     setPesanError]     = useState('');
-  const [successRecord,  setSuccessRecord]  = useState<AbsenRecord|null>(null);
   const [jenisAbsen,     setJenisAbsen]     = useState<JenisAbsen>('masuk');
 
-  // Form state
-  const [nama, setNama] = useState('');
-  const [dusun, setDusun] = useState('');
-  const [showEditHint, setShowEditHint] = useState(false);
-  const [namaRegistered, setNamaRegistered] = useState(false); // apakah nama sudah terdaftar di server
-  const [deviceRegisteredName, setDeviceRegisteredName] = useState<string | null>(null);
-  const [showEditWarning, setShowEditWarning] = useState(false);
+  // Form state — multi nama (sesi masuk)
+  const [rows, setRows] = useState<OrangRow[]>([{ nama: '', dusun: '' }]);
   const [namaList, setNamaList] = useState<string[]>([]);
   const namaInputRef = useRef<HTMLInputElement>(null);
 
-  // Load saved warga data + check device registration + fetch name list on mount
+  // Sesi pulang — checklist nama yang sudah absen masuk dari perangkat ini
+  const [pulangPeople, setPulangPeople] = useState<{ nama: string; dusun: string }[]>([]);
+  const [checkedNames, setCheckedNames] = useState<Set<string>>(new Set());
+
+  // Sukses — kumpulan record (multi nama)
+  const [successRecords, setSuccessRecords] = useState<AbsenRecord[]>([]);
+
+  // Load daftar nama untuk autocomplete + data warga tersimpan
   useEffect(() => {
     const init = async () => {
-      // Muat localStorage dulu sebagai base
-      const saved = muatDataWarga();
-
-      // 1. Fetch daftar nama untuk autocomplete
+      // Fetch daftar nama untuk autocomplete
       try {
         const namaRes = await fetch('/api/absen/daftar-nama');
         if (namaRes.ok) {
@@ -60,34 +73,17 @@ export default function HomePage() {
         }
       } catch { /* silent */ }
 
-      // 2. Cek apakah device sudah terdaftar di server (nama override localStorage)
-      const deviceId = getDeviceId();
-      try {
-        const devRes = await fetch(`/api/absen/cek-device?device_id=${encodeURIComponent(deviceId)}`);
-        if (devRes.ok) {
-          const devData = await devRes.json();
-          if (devData.registered && devData.nama) {
-            setNama(devData.nama);
-            setDusun(saved?.dusun || '');
-            setNamaRegistered(true);
-            setDeviceRegisteredName(devData.nama);
-            // Nama registered — form readOnly, dusun bisa diedit via modal
-            return;
-          }
-        }
-      } catch { /* silent */ }
-
-      // 3. Fallback ke localStorage (device belum terdaftar)
-      //    Form mulai dalam keadaan terkunci. Klik "Ubah Nama / Dusun" untuk membuka.
+      // Isi baris pertama dari localStorage jika ada
+      const saved = muatDataWarga();
       if (saved) {
-        setNama(saved.nama);
-        setDusun(saved.dusun);
+        setRows([{ nama: saved.nama, dusun: saved.dusun }]);
       }
     };
     init();
   }, []);
 
-  const mulaiCek = useCallback(async () => {
+  const mulaiCek = useCallback(async (jenis: JenisAbsen) => {
+    setJenisAbsen(jenis);
     setFlowState('checking');
     setStatusJam(null);
     setStatusJarak('loading');
@@ -101,45 +97,41 @@ export default function HomePage() {
       setStatusJarak(null);
       setTimeout(() => {
         if (jamStatus === 'belum-buka') {
-          setPesanError('Absen belum dibuka. Sesi masuk pukul 20:00 - 23:40 WIB, sesi pulang pukul 23:40 - 01:00 WIB.');
+          setPesanError('Absen belum dibuka. Sesi masuk pukul 20:00 - 22:00 WIB, sesi pulang pukul 23:00 - 23:59 WIB.');
         } else {
-          setPesanError('Waktu absen sudah ditutup. Absen hanya tersedia pukul 20:00 - 01:00 WIB.');
+          setPesanError('Waktu absen sudah ditutup. Absen masuk 20:00 - 22:00 WIB, pulang 23:00 - 23:59 WIB.');
         }
         setFlowState('rejected');
       }, 700);
       return;
     }
 
-    // Tentukan sesi
-    const sesi = getJenisAbsenSaatIni();
-    setJenisAbsen(sesi);
-    setStatusJam(sesi); // 'masuk' or 'pulang'
-
-    // Cek localStorage apakah sudah absen untuk sesi ini
-    const deviceId = getDeviceId();
-    const today = getTanggalHariIni();
-    if (cekSudahAbsen(deviceId, today, sesi)) {
-      setStatusJarak(null);
-      setTimeout(() => {
-        setPesanError(`Anda sudah melakukan absen ${sesi === 'pulang' ? 'pulang' : 'masuk'} malam ini.`);
-        setFlowState('rejected');
-      }, 700);
-      return;
-    }
-
-    // Kalau pulang, cek dulu apakah sudah absen masuk hari ini
-    if (sesi === 'pulang') {
+    // Sesi pulang: ambil daftar orang yang sudah absen masuk dari perangkat ini
+    if (jenis === 'pulang') {
       try {
+        const deviceId = getDeviceId();
         const cekRes = await fetch(`/api/absen/cek-masuk?device_id=${encodeURIComponent(deviceId)}&tanggal=${getTanggalHariIni()}`);
         if (!cekRes.ok) {
           const cekData = await cekRes.json();
           setStatusJarak(null);
           setTimeout(() => {
-            setPesanError(cekData.error || 'Anda belum absen masuk malam ini. Hubungi admin jika ada kendala.');
+            setPesanError(cekData.error || 'Belum ada absen masuk dari perangkat ini. Hubungi admin jika ada kendala.');
             setFlowState('rejected');
           }, 700);
           return;
         }
+        const cekData = await cekRes.json();
+        const people: { nama: string; dusun: string }[] = cekData.people || [];
+        if (people.length === 0) {
+          setStatusJarak(null);
+          setTimeout(() => {
+            setPesanError('Belum ada absen masuk dari perangkat ini malam ini.');
+            setFlowState('rejected');
+          }, 700);
+          return;
+        }
+        setPulangPeople(people);
+        setCheckedNames(new Set(people.map(p => keyOrang(p))));
       } catch {
         setStatusJarak(null);
         setTimeout(() => {
@@ -148,6 +140,10 @@ export default function HomePage() {
         }, 700);
         return;
       }
+    } else {
+      // Sesi masuk: mulai dengan 1 baris kosong
+      const saved = muatDataWarga();
+      setRows(saved ? [{ nama: saved.nama, dusun: saved.dusun }] : [{ nama: '', dusun: '' }]);
     }
 
     if (!navigator.geolocation) {
@@ -190,10 +186,14 @@ export default function HomePage() {
     );
   }, []);
 
-  const handleSubmitAbsen = useCallback(async () => {
-    const namaTrim = nama.trim();
-    if (!namaTrim || !dusun) {
-      setPesanError('Nama dan Dusun harus diisi.');
+  // ── Sesi MASUK: submit semua baris nama ──
+  const handleSubmitMasuk = useCallback(async () => {
+    const validRows = rows
+      .map(r => ({ nama: r.nama.trim(), dusun: r.dusun.trim() }))
+      .filter(r => r.nama.length > 0 && r.dusun.length > 0);
+
+    if (validRows.length === 0) {
+      setPesanError('Isi minimal satu nama dan pilih dusun.');
       setFlowState('rejected');
       return;
     }
@@ -201,65 +201,109 @@ export default function HomePage() {
     setIsSubmitting(true);
     const now = new Date();
     const deviceId = getDeviceId();
-    const record: AbsenRecord = {
-      id: generateId(),
-      nama: namaTrim,
-      dusun,
-      tanggal: getTanggalHariIni(),
-      jamAbsen: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`,
-      jenisAbsen,
-      latitude: koordinat?.lat ?? 0,
-      longitude: koordinat?.lng ?? 0,
-      jarakMeter: jarakMeter ?? 0,
-      deviceId,
-    };
+    const jamAbsen = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const tanggal = getTanggalHariIni();
+    const submitted: AbsenRecord[] = [];
 
-    try {
-      const res = await fetch('/api/absen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(record),
-      });
-      if (res.ok) {
-        // Simpan flag sudah absen — cegah absen ganda
-        setSudahAbsen(deviceId, getTanggalHariIni(), jenisAbsen);
-        // Simpan nama ke localStorage setelah sukses (first time)
-        simpanDataWarga(namaTrim, dusun);
-        if (!namaRegistered) {
-          // Nama baru terdaftar — lock untuk selanjutnya
-          setNamaRegistered(true);
-          setDeviceRegisteredName(namaTrim);
+    for (const row of validRows) {
+      const record: AbsenRecord = {
+        id: generateId(),
+        nama: row.nama,
+        dusun: row.dusun,
+        tanggal,
+        jamAbsen,
+        jenisAbsen: 'masuk',
+        latitude: koordinat?.lat ?? 0,
+        longitude: koordinat?.lng ?? 0,
+        jarakMeter: jarakMeter ?? 0,
+        deviceId,
+      };
+
+      try {
+        const res = await fetch('/api/absen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          setPesanError(err.error || `Gagal menyimpan absen atas nama ${row.nama}`);
+          setIsSubmitting(false);
+          setFlowState('rejected');
+          return;
         }
-        setSuccessRecord(record);
-        setTimeout(() => { setIsSubmitting(false); setFlowState('success'); }, 300);
+        submitted.push(record);
+        // Simpan nama terakhir ke localStorage untuk autofill berikutnya
+        simpanDataWarga(row.nama, row.dusun);
+      } catch {
+        setPesanError('Gagal terhubung ke server');
+        setIsSubmitting(false);
+        setFlowState('rejected');
         return;
       }
-      const err = await res.json();
-      // Handle konflik nama device (titip absen)
-      if (err.code === 'DEVICE_NAME_CONFLICT' && err.registeredName) {
-        setPesanError(`Perangkat ini sudah terdaftar atas nama "${err.registeredName}". Tidak bisa absen atas nama berbeda. Hubungi Admin jika Anda ingin mengganti nama.`);
-        // Update form dengan nama terdaftar
-        setNama(err.registeredName);
-        setNamaRegistered(true);
-        setDeviceRegisteredName(err.registeredName);
-      } else if (err.jarakServer != null) {
-        // Server menolak karena jarak (terjadi jika data GPS berubah saat submit)
-        setPesanError(
-          `Jarak dari server: ${err.jarakServer}m (batas ${CONFIG.radiusMeter}m). ` +
-          `Jarak dari perangkat Anda: ${err.jarakClient}m. ` +
-          `Coba lagi dari lokasi yang lebih dekat ke Bale Desa.`
-        );
-        // Update jarak yang ditampilkan dengan nilai server agar sinkron
-        setJarakMeter(err.jarakServer);
-      } else {
-        setPesanError(err.error || 'Gagal menyimpan absen');
-      }
-    } catch {
-      setPesanError('Gagal terhubung ke server');
     }
+
+    setSuccessRecords(submitted);
     setIsSubmitting(false);
-    setFlowState('rejected');
-  }, [nama, dusun, jarakMeter, koordinat, jenisAbsen]);
+    setFlowState('success');
+  }, [rows, koordinat, jarakMeter]);
+
+  // ── Sesi PULANG: submit semua nama yang dicentang ──
+  const handleSubmitPulang = useCallback(async () => {
+    const selected = pulangPeople.filter(p => checkedNames.has(keyOrang(p)));
+    if (selected.length === 0) {
+      setPesanError('Pilih minimal satu nama yang absen pulang.');
+      setFlowState('rejected');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const now = new Date();
+    const deviceId = getDeviceId();
+    const jamAbsen = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const tanggal = getTanggalHariIni();
+    const submitted: AbsenRecord[] = [];
+
+    for (const p of selected) {
+      const record: AbsenRecord = {
+        id: generateId(),
+        nama: p.nama,
+        dusun: p.dusun,
+        tanggal,
+        jamAbsen,
+        jenisAbsen: 'pulang',
+        latitude: koordinat?.lat ?? 0,
+        longitude: koordinat?.lng ?? 0,
+        jarakMeter: jarakMeter ?? 0,
+        deviceId,
+      };
+
+      try {
+        const res = await fetch('/api/absen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          setPesanError(err.error || `Gagal menyimpan absen pulang atas nama ${p.nama}`);
+          setIsSubmitting(false);
+          setFlowState('rejected');
+          return;
+        }
+        submitted.push(record);
+      } catch {
+        setPesanError('Gagal terhubung ke server');
+        setIsSubmitting(false);
+        setFlowState('rejected');
+        return;
+      }
+    }
+
+    setSuccessRecords(submitted);
+    setIsSubmitting(false);
+    setFlowState('success');
+  }, [pulangPeople, checkedNames, koordinat, jarakMeter]);
 
   const handleReset = useCallback(() => {
     setFlowState('idle');
@@ -270,45 +314,36 @@ export default function HomePage() {
     setAkurasi(null);
     setKoordinat(null);
     setPesanError('');
-    setSuccessRecord(null);
+    setSuccessRecords([]);
+    setPulangPeople([]);
+    setCheckedNames(new Set());
   }, []);
 
-  const handlePerbaikiData = useCallback(() => {
-    const sesi = getJenisAbsenSaatIni();
-    clearSudahAbsen(getDeviceId(), getTanggalHariIni(), sesi);
-    mulaiCek();
-  }, [mulaiCek]);
-
-  const handleEditToggle = useCallback(() => {
-    if (namaRegistered) {
-      // Toggle: locked → modal → unlock dusun → locked
-      if (!showEditHint) {
-        setShowEditWarning(true);
-      } else {
-        setShowEditHint(false);
-      }
-    } else {
-      // Toggle buka/kunci form
-      setShowEditHint(prev => !prev);
-    }
-  }, [namaRegistered, showEditHint]);
-
-  const handleConfirmEditName = useCallback(() => {
-    setShowEditWarning(false);
-    // Nama registered: aktifkan form biar dusun bisa diganti
-    // Nama tetap tidak bisa diedit (readOnly), tapi server akan tolak jika diubah
-    if (namaRegistered) {
-      setShowEditHint(true);
-    } else {
-      setShowEditHint(false);
-    }
-  }, [namaRegistered]);
-
-  const handleCancelEditWarning = useCallback(() => {
-    setShowEditWarning(false);
+  const tambahRow = useCallback(() => {
+    setRows(prev => [...prev, { nama: '', dusun: '' }]);
+    setTimeout(() => namaInputRef.current?.focus(), 50);
   }, []);
 
-  const isFormValid = nama.trim().length > 0 && dusun.length > 0;
+  const hapusRow = useCallback((idx: number) => {
+    setRows(prev => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
+  }, []);
+
+  const ubahRow = useCallback((idx: number, field: keyof OrangRow, value: string) => {
+    setRows(prev => prev.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
+  }, []);
+
+  const toggleChecked = useCallback((key: string) => {
+    setCheckedNames(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const isFormValid = jenisAbsen === 'pulang'
+    ? checkedNames.size > 0
+    : rows.some(r => r.nama.trim().length > 0 && r.dusun.trim().length > 0);
 
   // ── Adaptive labels ──
   const jamStatus = cekJamStatus();
@@ -316,28 +351,8 @@ export default function HomePage() {
   const labelSesi = sesiAktif === 'pulang' ? 'PULANG' : 'MASUK';
   const labelSesiLower = sesiAktif === 'pulang' ? 'pulang' : 'masuk';
   const jamSesiStr = sesiAktif ? formatJamSesi(sesiAktif) : '';
-  const sudahAbsen = sesiAktif ? cekSudahAbsen(getDeviceId(), getTanggalHariIni(), sesiAktif) : false;
 
-  function BadgeSesi({ warna, label }: { warna: string; label: string }) {
-    return (
-      <span className={`flex items-center gap-1.5 text-sm font-bold ${warna}`}>
-        <span className="w-2 h-2 rounded-full bg-current" />
-        <span>{label}</span>
-      </span>
-    );
-  }
-
-  const tombolMulai: React.ReactNode = sudahAbsen && sesiAktif === 'pulang' ? (
-    <span className="flex flex-col items-center gap-0.5">
-      <BadgeSesi warna="text-yellow-400" label="PULANG" />
-      <span className="flex items-center gap-2"><CheckCircle size={24} strokeWidth={2} /> SUDAH ABSEN PULANG</span>
-    </span>
-  ) : sudahAbsen && sesiAktif === 'masuk' ? (
-    <span className="flex flex-col items-center gap-0.5">
-      <BadgeSesi warna="text-green-400" label="MASUK" />
-      <span className="flex items-center gap-2"><CheckCircle size={24} strokeWidth={2} /> SUDAH ABSEN MASUK</span>
-    </span>
-  ) : sesiAktif === 'pulang' ? (
+  const tombolMulai: React.ReactNode = sesiAktif === 'pulang' ? (
     <span className="flex flex-col items-center gap-0.5">
       <BadgeSesi warna="text-yellow-400" label="PULANG" />
       <span className="flex items-center gap-2"><Moon size={24} strokeWidth={2} /> MULAI ABSEN PULANG</span>
@@ -354,15 +369,15 @@ export default function HomePage() {
     </span>
   );
 
-  const tombolSubmit: React.ReactNode = sesiAktif === 'pulang' ? (
+  const tombolSubmit: React.ReactNode = jenisAbsen === 'pulang' ? (
     <span className="flex flex-col items-center gap-0.5">
       <BadgeSesi warna="text-yellow-400" label="PULANG" />
-      <span className="flex items-center gap-2"><Sunrise size={24} strokeWidth={2} /> SAYA PULANG RONDA</span>
+      <span className="flex items-center gap-2"><Sunrise size={24} strokeWidth={2} /> SAYA PULANG RONDA ({checkedNames.size} org)</span>
     </span>
   ) : (
     <span className="flex flex-col items-center gap-0.5">
       <BadgeSesi warna="text-green-400" label="MASUK" />
-      <span className="flex items-center gap-2"><Moon size={24} strokeWidth={2} /> SAYA HADIR RONDA</span>
+      <span className="flex items-center gap-2"><Moon size={24} strokeWidth={2} /> SAYA HADIR RONDA ({rows.filter(r => r.nama.trim() && r.dusun).length} org)</span>
     </span>
   );
 
@@ -392,12 +407,13 @@ export default function HomePage() {
 
               {/* Sesi 1: Masuk */}
               <div>
-                <p className="text-xs font-black text-green-700 uppercase tracking-wider mb-1.5">Sesi 1: Absen Masuk (20:00 — 23:40 WIB)</p>
+                <p className="text-xs font-black text-green-700 uppercase tracking-wider mb-1.5">Sesi 1: Absen Masuk (20:00 — 22:00 WIB)</p>
                 <ol className="space-y-1.5">
                   {[
                     'Tekan tombol MULAI ABSEN MASUK',
                     'Izinkan akses lokasi GPS',
                     'Isi Nama dan pilih Dusun',
+                    'Gunakan "Tambah Nama" jika ada peserta lain di perangkat ini',
                     'Tekan SAYA HADIR RONDA',
                   ].map((step, i) => (
                     <li key={i} className="flex items-start gap-2.5">
@@ -412,12 +428,12 @@ export default function HomePage() {
 
               {/* Sesi 2: Pulang */}
               <div>
-                <p className="text-xs font-black text-yellow-700 uppercase tracking-wider mb-1.5">Sesi 2: Absen Pulang (23:40 — 01:00 WIB)</p>
+                <p className="text-xs font-black text-yellow-700 uppercase tracking-wider mb-1.5">Sesi 2: Absen Pulang (23:00 — 23:59 WIB)</p>
                 <ol className="space-y-1.5">
                   {[
                     'Tekan tombol MULAI ABSEN PULANG',
-                    'Sistem cek — wajib sudah absen masuk',
-                    'Izinkan akses lokasi GPS',
+                    'Sistem menampilkan semua nama yang sudah absen masuk dari perangkat ini',
+                    'Hilangkan centang jika ada yang pulang lebih awal',
                     'Tekan SAYA PULANG RONDA',
                   ].map((step, i) => (
                     <li key={i} className="flex items-start gap-2.5">
@@ -436,13 +452,13 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Tips izin GPS — pilih Izinkan + Lokasi Akurat */}
+            {/* Tips izin GPS */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
               <MapPin size={20} className="text-amber-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
               <div className="text-xs font-semibold text-amber-800 leading-relaxed">
                 <p className="font-black text-amber-900 mb-0.5">Tips Izin Lokasi</p>
                 Saat HP meminta izin lokasi, pilih <strong>IZINKAN</strong>, lalu pilih{' '}
-                <strong>LOKASI AKURAT / PRECISE</strong> — jangan pilih "Perkiraan / Approximate"
+                <strong>LOKASI AKURAT / PRECISE</strong> — jangan pilih &quot;Perkiraan / Approximate&quot;
                 agar absen tidak ditolak karena jarak.
               </div>
             </div>
@@ -450,28 +466,13 @@ export default function HomePage() {
             {/* CTA */}
             <button
               type="button"
-              onClick={sudahAbsen ? undefined : mulaiCek}
-              disabled={!sesiAktif || sudahAbsen}
-              className={`w-full text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide active:scale-[0.98] transition-all shadow-sm disabled:opacity-80 disabled:cursor-not-allowed ${
-                sudahAbsen ? 'bg-green-600' : 'bg-[#1e3a8a] hover:bg-[#1e40af]'
-              }`}
+              onClick={sesiAktif ? () => mulaiCek(sesiAktif) : undefined}
+              disabled={!sesiAktif}
+              className={`w-full text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide active:scale-[0.98] transition-all shadow-sm disabled:opacity-80 disabled:cursor-not-allowed bg-[#1e3a8a] hover:bg-[#1e40af]`}
               style={{ minHeight: '68px' }}
             >
               {tombolMulai}
             </button>
-
-            {/* Perbaiki data — hanya jika sudah absen */}
-            {sudahAbsen && (
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={handlePerbaikiData}
-                  className="text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors underline underline-offset-2 flex items-center gap-1.5"
-                >
-                  <Pencil size={14} strokeWidth={2} /> Perbaiki Nama / Dusun
-                </button>
-              </div>
-            )}
 
             <div className="text-center pt-2 border-t border-slate-100">
               <a href="/admin" className="text-xs text-slate-400 underline hover:text-slate-600 transition-colors">
@@ -499,7 +500,7 @@ export default function HomePage() {
 
         {/* ─── FORM ─── */}
         {flowState === 'form' && (
-          <><div className="px-4 sm:px-6 pb-8 space-y-4">
+          <div className="px-4 sm:px-6 pb-8 space-y-4">
             <div className="pt-3">
               <button
                 type="button"
@@ -515,7 +516,7 @@ export default function HomePage() {
 
             {/* Sesi badge */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3">
-              {sesiAktif === 'pulang' ? <Sunrise size={24} className="text-blue-700" strokeWidth={2} /> : <Moon size={24} className="text-blue-700" strokeWidth={2} />}
+              {jenisAbsen === 'pulang' ? <Sunrise size={24} className="text-blue-700" strokeWidth={2} /> : <Moon size={24} className="text-blue-700" strokeWidth={2} />}
               <div>
                 <p className="text-sm font-bold text-blue-900">
                   Sesi <span className="uppercase">{labelSesi}</span>
@@ -524,168 +525,170 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Device registered badge */}
-            {namaRegistered && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                <Shield size={22} className="text-amber-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-amber-900">
-                    Perangkat terdaftar: {deviceRegisteredName}
-                  </p>
-                  <p className="text-xs text-amber-700 mt-0.5">
-                    Nama tidak bisa diganti (1 perangkat = 1 warga). Hubungi Admin jika ada kesalahan nama.
-                  </p>
+            {jenisAbsen === 'pulang' ? (
+              /* ══════════ FORM PULANG — CHECKLIST ══════════ */
+              <>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                  <Shield size={22} className="text-amber-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-amber-900">
+                      Nama yang sudah absen masuk ({pulangPeople.length} org)
+                    </p>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      Hilangkan centang untuk yang <strong>pulang lebih awal</strong>. Nama yang tetap tercentang tercatat HADIR lengkap.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {/* Auto-fill hint — tampil saat form terkunci */}
-            {!showEditHint && !namaRegistered && (
-              <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                <User size={22} className="text-green-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-green-900">
-                    Data Anda sudah terisi otomatis.
-                  </p>
-                  <p className="text-xs text-green-700 mt-0.5">
-                      Jika nama atau dusun salah, klik <strong>"Ubah Nama / Dusun"</strong> di bawah.
-                  </p>
+                <div className="divide-y divide-slate-100 border-2 border-slate-200 rounded-xl overflow-hidden">
+                  {pulangPeople.map(p => {
+                    const k = keyOrang(p);
+                    return (
+                      <label key={k} className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={checkedNames.has(k)}
+                          onChange={() => toggleChecked(k)}
+                          className="w-5 h-5 accent-blue-700 flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-slate-900 truncate">{p.nama}</p>
+                          <p className="text-xs text-slate-500 font-semibold">{p.dusun}</p>
+                        </div>
+                        {checkedNames.has(k) ? (
+                          <CheckCircle size={18} className="text-green-600 flex-shrink-0" strokeWidth={2} />
+                        ) : (
+                          <span className="text-[10px] font-black text-slate-400 uppercase flex-shrink-0">pulang awal</span>
+                        )}
+                      </label>
+                    );
+                  })}
                 </div>
-              </div>
-            )}
 
-            {/* Form fields */}
-            <div className="space-y-3">
-              <div>
-                <label htmlFor="nama" className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
-                  Nama Lengkap
-                </label>
-                <input
-                  id="nama"
-                  ref={namaInputRef}
-                  type="text"
-                  inputMode="text"
-                  autoComplete="name"
-                  placeholder={namaRegistered ? deviceRegisteredName || 'Nama terdaftar' : 'Ketik nama lengkap Anda'}
-                  value={nama}
-                  onChange={e => setNama(e.target.value)}
-                  readOnly={namaRegistered || (!showEditHint && !!muatDataWarga())}
-                  list="daftar-nama-list"
-                  className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors read-only:bg-slate-50 read-only:text-slate-500"
-                  style={{ minHeight: '56px' }}
-                />
-                {/* Datalist autocomplete */}
-                {namaList.length > 0 && (
-                  <datalist id="daftar-nama-list">
-                    {namaList.map(n => (
-                      <option key={n} value={n} />
-                    ))}
-                  </datalist>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="dusun" className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
-                  Pilih Dusun
-                </label>
-                <select
-                  id="dusun"
-                  value={dusun}
-                  onChange={e => setDusun(e.target.value)}
-                  disabled={!showEditHint && !!muatDataWarga()}
-                  className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-[#1e3a8a] focus:outline-none transition-colors disabled:bg-slate-50 disabled:text-slate-500"
-                  style={{ minHeight: '56px' }}
+                <button
+                  type="button"
+                  onClick={handleSubmitPulang}
+                  disabled={!isFormValid || isSubmitting}
+                  className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  style={{ minHeight: '68px' }}
                 >
-                  <option value="">-- Pilih Dusun --</option>
-                  {CONFIG.dusunList.map(d => (
-                    <option key={d} value={d}>{d}</option>
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader size={22} className="animate-spin" /> Menyimpan…
+                    </span>
+                  ) : (
+                    tombolSubmit
+                  )}
+                </button>
+              </>
+            ) : (
+              /* ══════════ FORM MASUK — MULTI NAMA ══════════ */
+              <>
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                  <User size={22} className="text-green-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-green-900">
+                      Isi data peserta ronda
+                    </p>
+                    <p className="text-xs text-green-700 mt-0.5">
+                      Satu perangkat bisa dipakai banyak orang. Tekan <strong>&quot;+ Tambah Nama&quot;</strong> untuk menambahkan peserta lain.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Daftar baris nama */}
+                <div className="space-y-3">
+                  {rows.map((row, idx) => (
+                    <div key={idx} className="border-2 border-slate-200 rounded-xl p-3 space-y-3 relative">
+                      {rows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => hapusRow(idx)}
+                          className="absolute -top-2.5 -right-2.5 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-card hover:bg-red-600 active:scale-95 transition-all"
+                          aria-label="Hapus nama"
+                        >
+                          <Trash2 size={14} strokeWidth={2.5} />
+                        </button>
+                      )}
+                      <div>
+                        <label className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
+                          Nama Lengkap {rows.length > 1 ? `#${idx + 1}` : ''}
+                        </label>
+                        <input
+                          ref={idx === 0 ? namaInputRef : undefined}
+                          type="text"
+                          inputMode="text"
+                          autoComplete="name"
+                          placeholder="Ketik nama lengkap"
+                          value={row.nama}
+                          onChange={e => ubahRow(idx, 'nama', e.target.value)}
+                          list="daftar-nama-list"
+                          className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                          style={{ minHeight: '56px' }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
+                          Pilih Dusun
+                        </label>
+                        <select
+                          value={row.dusun}
+                          onChange={e => ubahRow(idx, 'dusun', e.target.value)}
+                          className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                          style={{ minHeight: '56px' }}
+                        >
+                          <option value="">-- Pilih Dusun --</option>
+                          {CONFIG.dusunList.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   ))}
-                </select>
-              </div>
-            </div>
 
-            {/* Tombol utama: adaptif */}
-            <button
-              type="button"
-              onClick={handleSubmitAbsen}
-              disabled={!isFormValid || isSubmitting}
-              className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-              style={{ minHeight: '68px' }}
-            >
-              {isSubmitting ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader size={22} className="animate-spin" /> Menyimpan…
-                </span>
-              ) : (
-                tombolSubmit
-              )}
-            </button>
+                  {namaList.length > 0 && (
+                    <datalist id="daftar-nama-list">
+                      {namaList.map(n => (
+                        <option key={n} value={n} />
+                      ))}
+                    </datalist>
+                  )}
 
-            {/* Tombol sekunder */}
-            {!namaRegistered && (
-              <button
-                type="button"
-                onClick={handleEditToggle}
-                className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                style={{ minHeight: '52px' }}
-              >
-                <Pencil size={18} strokeWidth={2} /> {showEditHint ? 'Selesai' : 'Ubah Nama / Dusun'}
-              </button>
-            )}
-            {namaRegistered && (
-              <button
-                type="button"
-                onClick={handleEditToggle}
-                className="w-full bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 rounded-xl font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                style={{ minHeight: '52px' }}
-              >
-                <Pencil size={18} strokeWidth={2} /> {showEditHint ? 'Selesai' : 'Ubah Dusun (Nama tetap)'}
-              </button>
+                  {/* Tombol tambah nama */}
+                  <button
+                    type="button"
+                    onClick={tambahRow}
+                    className="w-full bg-white hover:bg-slate-50 text-[#1e3a8a] border-2 border-dashed border-[#1e3a8a]/40 rounded-xl font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                    style={{ minHeight: '52px' }}
+                  >
+                    <Plus size={18} strokeWidth={2.5} /> Tambah Nama
+                  </button>
+                </div>
+
+                {/* Tombol submit */}
+                <button
+                  type="button"
+                  onClick={handleSubmitMasuk}
+                  disabled={!isFormValid || isSubmitting}
+                  className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  style={{ minHeight: '68px' }}
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader size={22} className="animate-spin" /> Menyimpan…
+                    </span>
+                  ) : (
+                    tombolSubmit
+                  )}
+                </button>
+              </>
             )}
           </div>
-
-          {/* ─── MODAL KONFIRMASI: Ubah Dusun (nama registered) ─── */}
-          {showEditWarning && (
-            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4">
-              <div className="bg-white rounded-2xl shadow-modal p-6 w-full max-w-sm mx-auto space-y-4">
-                <div className="flex flex-col items-center text-center gap-3">
-                  <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Pencil size={32} className="text-blue-600" strokeWidth={2} />
-                  </div>
-                  <h3 className="text-xl font-black text-slate-900">Ubah Dusun?</h3>
-                  <p className="text-sm text-slate-600 font-semibold leading-relaxed">
-                    Perangkat ini terdaftar atas nama <strong>{deviceRegisteredName}</strong>.
-                  </p>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Nama tidak bisa diganti (1 perangkat = 1 warga). Hanya <strong>dusun</strong> yang akan diubah. Data absen sebelumnya tetap tersimpan.
-                  </p>
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={handleCancelEditWarning}
-                    className="flex-1 py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-bold text-base hover:bg-slate-50 active:scale-[0.98] transition-all"
-                    style={{ minHeight: '48px' }}
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleConfirmEditName}
-                    className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 active:scale-[0.98] transition-all"
-                    style={{ minHeight: '48px' }}
-                  >
-                    Ya, Ubah Dusun
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}</>
         )}
 
         {/* ─── SUCCESS ─── */}
-        {flowState === 'success' && successRecord && (
-          <SuccessScreen record={successRecord} onBack={handleReset} onPerbaikiData={handlePerbaikiData} />
+        {flowState === 'success' && successRecords.length > 0 && (
+          <SuccessScreen records={successRecords} onBack={handleReset} onTambahNama={jenisAbsen === 'masuk' ? () => { setSuccessRecords([]); setRows(prev => [...prev, { nama: '', dusun: '' }]); setFlowState('form'); } : undefined} />
         )}
 
       </div>

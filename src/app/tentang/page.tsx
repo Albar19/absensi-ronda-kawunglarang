@@ -15,12 +15,12 @@ const fiturList = [
   {
     icon: Clock,
     title: 'Jam Absen Otomatis',
-    desc: 'Absen masuk 20:00–23:40 WIB, absen pulang 23:40–01:00 WIB.',
+    desc: 'Absen masuk 20:00–22:00 WIB, absen pulang 23:00–23:59 WIB.',
   },
   {
     icon: ShieldCheck,
-    title: '1 Perangkat = 1 Warga',
-    desc: 'Setiap perangkat hanya bisa digunakan oleh 1 nama. Mencegah titip absen. Dusun bisa diubah langsung. Hubungi Admin jika ada kesalahan nama.',
+    title: '1 Perangkat Bisa Banyak Warga',
+    desc: 'Karena keterbatasan perangkat, satu HP bisa dipakai untuk absen beberapa warga. Ada fitur "Tambah Nama" saat absen masuk.',
   },
   {
     icon: Smartphone,

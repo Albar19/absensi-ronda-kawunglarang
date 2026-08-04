@@ -54,7 +54,7 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
           ) : statusJam === 'tutup' ? (
             <>
               <p className="text-lg font-black text-red-700 leading-tight">DITUTUP</p>
-              <p className="text-xs font-semibold text-red-600 mt-0.5">Sesi masuk 20:00–23:40 · Sesi pulang 23:40–01:00</p>
+              <p className="text-xs font-semibold text-red-600 mt-0.5">Sesi masuk 20:00–22:00 · Sesi pulang 23:00–23:59</p>
             </>
           ) : (
             <>

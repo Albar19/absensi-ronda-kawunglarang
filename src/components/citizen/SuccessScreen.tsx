@@ -1,25 +1,18 @@
 'use client';
 
-import { CheckCircle, Moon, Sunrise, User, Building2, Clock, MapPin, Pencil } from 'lucide-react';
+import { CheckCircle, Moon, Sunrise, User, Building2, Clock, MapPin, Plus } from 'lucide-react';
 import { AbsenRecord } from '@/lib/types';
 
 interface SuccessScreenProps {
-  record: AbsenRecord;
+  records: AbsenRecord[];
   onBack: () => void;
-  onPerbaikiData: () => void;
+  onTambahNama?: () => void;
 }
 
-export default function SuccessScreen({ record, onBack, onPerbaikiData }: SuccessScreenProps) {
-  const labelSesi = record.jenisAbsen === 'pulang' ? 'PULANG' : 'MASUK';
-  const IconSesi = record.jenisAbsen === 'pulang' ? Sunrise : Moon;
-
-  const detailItems: { Icon: React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>; label: string; value: string }[] = [
-    { Icon: IconSesi,  label: 'Sesi',      value: labelSesi },
-    { Icon: User,      label: 'Nama',      value: record.nama },
-    { Icon: Building2, label: 'Wilayah',   value: record.dusun },
-    { Icon: Clock,     label: 'Jam Absen', value: `${record.jamAbsen} WIB` },
-    { Icon: MapPin,    label: 'Jarak',     value: `± ${record.jarakMeter} meter` },
-  ];
+export default function SuccessScreen({ records, onBack, onTambahNama }: SuccessScreenProps) {
+  const jenisAbsen = records[0]?.jenisAbsen ?? 'masuk';
+  const labelSesi = jenisAbsen === 'pulang' ? 'PULANG' : 'MASUK';
+  const IconSesi = jenisAbsen === 'pulang' ? Sunrise : Moon;
 
   return (
     <div className="flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14 text-center">
@@ -32,29 +25,60 @@ export default function SuccessScreen({ record, onBack, onPerbaikiData }: Succes
         BERHASIL ABSEN!
       </h2>
       <p className="text-sm sm:text-base text-green-600 font-semibold mt-1 mb-7">
-        Kehadiran Anda telah tercatat malam ini
+        {records.length > 1
+          ? `${records.length} orang berhasil tercatat ${jenisAbsen === 'pulang' ? 'pulang' : 'masuk'} malam ini`
+          : `Kehadiran ${records[0].nama} telah tercatat malam ini`}
       </p>
 
-      {/* Detail card */}
+      {/* Daftar nama */}
       <div className="w-full max-w-sm bg-white border-2 border-green-400 rounded-2xl overflow-hidden shadow-card mb-6">
-        {detailItems.map(({ Icon, label, value }, i, arr) => (
-          <div key={label}>
-            <div className="flex items-center gap-4 px-5 py-3.5">
+        {/* Header ringkasan */}
+        <div className="flex items-center gap-4 px-5 py-3.5 border-b border-green-100">
+          <div className="w-8 flex justify-center flex-shrink-0">
+            <IconSesi size={20} className="text-green-600" strokeWidth={2} />
+          </div>
+          <div className="min-w-0 text-left">
+            <p className="text-[10px] font-black uppercase tracking-widest text-green-500">Sesi {labelSesi}</p>
+            <p className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">
+              {records.length} peserta tercatat
+            </p>
+          </div>
+        </div>
+
+        {/* Detail tiap orang */}
+        {records.map((r, i) => (
+          <div key={`${r.nama}-${i}`} className="px-5 py-3.5">
+            <div className="flex items-center gap-4">
               <div className="w-8 flex justify-center flex-shrink-0">
-                <Icon size={20} className="text-green-600" strokeWidth={2} />
+                <User size={20} className="text-green-600" strokeWidth={2} />
               </div>
-              <div className="min-w-0 text-left">
-                <p className="text-[10px] font-black uppercase tracking-widest text-green-500">{label}</p>
-                <p className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">{value}</p>
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">{r.nama}</p>
+                <p className="text-xs font-semibold text-slate-500 flex items-center gap-1 flex-wrap">
+                  <span className="inline-flex items-center gap-1"><Building2 size={12} /> {r.dusun}</span>
+                  <span className="inline-flex items-center gap-1"><Clock size={12} /> {r.jamAbsen} WIB</span>
+                  <span className="inline-flex items-center gap-1"><MapPin size={12} /> ±{r.jarakMeter}m</span>
+                </p>
               </div>
             </div>
-            {i < arr.length - 1 && <div className="h-px bg-green-100 mx-5" />}
+            {i < records.length - 1 && <div className="h-px bg-green-100 mx-8 mt-3.5" />}
           </div>
         ))}
       </div>
 
       {/* Action buttons */}
       <div className="w-full max-w-sm space-y-3">
+        {onTambahNama && jenisAbsen === 'masuk' && (
+          <button
+            type="button"
+            onClick={onTambahNama}
+            className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-base active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            style={{ minHeight: '54px' }}
+          >
+            <Plus size={20} strokeWidth={2.5} /> Tambah Nama Lainnya
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onBack}
@@ -62,15 +86,6 @@ export default function SuccessScreen({ record, onBack, onPerbaikiData }: Succes
           style={{ minHeight: '54px' }}
         >
           Kembali ke Halaman Utama
-        </button>
-
-        <button
-          type="button"
-          onClick={onPerbaikiData}
-          className="w-full bg-white hover:bg-slate-50 text-slate-500 border-2 border-slate-200 rounded-xl font-bold text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-          style={{ minHeight: '46px' }}
-        >
-          <Pencil size={16} strokeWidth={2} /> Perbaiki Nama / Dusun
         </button>
       </div>
     </div>

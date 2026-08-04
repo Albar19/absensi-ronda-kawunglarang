@@ -25,8 +25,8 @@ export function hitungJarak(
 
 // ----------------------------------------------------------
 // VALIDASI JAM ABSEN - 2 sesi
-//   Masuk : 20:00 - 23:40 WIB
-//   Pulang: 23:40 - 01:00 WIB (melewati tengah malam)
+//   Masuk : 20:00 - 22:00 WIB
+//   Pulang: 23:00 - 23:59 WIB
 // ----------------------------------------------------------
 export type JamStatus = 'masuk' | 'pulang' | 'belum-buka' | 'ditutup';
 
@@ -36,19 +36,20 @@ function totalMenitSekarang(): number {
 }
 
 const MASUK_MULAI = CONFIG.jamBukaMasuk * 60 + CONFIG.menitBukaMasuk;       // 1200
-const MASUK_SELESAI = CONFIG.jamTutupMasuk * 60 + CONFIG.menitTutupMasuk;   // 1420
-const PULANG_MULAI = CONFIG.jamBukaPulang * 60 + CONFIG.menitBukaPulang;     // 1420
-const PULANG_SELESAI = CONFIG.jamTutupPulang * 60 + CONFIG.menitTutupPulang; // 60
+const MASUK_SELESAI = CONFIG.jamTutupMasuk * 60 + CONFIG.menitTutupMasuk;   // 1320
+const PULANG_MULAI = CONFIG.jamBukaPulang * 60 + CONFIG.menitBukaPulang;     // 1380
+const PULANG_SELESAI = CONFIG.jamTutupPulang * 60 + CONFIG.menitTutupPulang; // 1439
 
 export function cekJamStatus(): JamStatus {
   const t = totalMenitSekarang();
 
-  // Sesi pulang: 23:40 - 01:00 (melewati tengah malam)
-  if (t >= PULANG_MULAI || t < PULANG_SELESAI) return 'pulang';
-  // Sesi masuk: 20:00 - 23:40
+  // Sesi pulang: 23:00 - 23:59 WIB
+  if (t >= PULANG_MULAI && t <= PULANG_SELESAI) return 'pulang';
+  // Sesi masuk: 20:00 - 22:00 WIB
   if (t >= MASUK_MULAI && t < MASUK_SELESAI) return 'masuk';
-  // Di luar jam (01:00 - 19:59)
+  // Sebelum sesi masuk (00:00 - 19:59)
   if (t < MASUK_MULAI) return 'belum-buka';
+  // Jeda antar sesi / selesai (22:00 - 22:59)
   return 'ditutup';
 }
 
@@ -121,26 +122,6 @@ export function getDeviceId(): string {
     localStorage.setItem(DEVICE_KEY, deviceId);
   }
   return deviceId;
-}
-
-// ----------------------------------------------------------
-// CEK & SET SUDAH ABSEN — cegah absen ganda di sesi yg sama
-// ----------------------------------------------------------
-const SUDAH_ABSEN_PREFIX = 'absensi_sudah_';
-
-export function setSudahAbsen(deviceId: string, tanggal: string, jenis: JenisAbsen): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(`${SUDAH_ABSEN_PREFIX}${deviceId}_${tanggal}_${jenis}`, 'true');
-}
-
-export function cekSudahAbsen(deviceId: string, tanggal: string, jenis: JenisAbsen): boolean {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem(`${SUDAH_ABSEN_PREFIX}${deviceId}_${tanggal}_${jenis}`) === 'true';
-}
-
-export function clearSudahAbsen(deviceId: string, tanggal: string, jenis: JenisAbsen): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(`${SUDAH_ABSEN_PREFIX}${deviceId}_${tanggal}_${jenis}`);
 }
 
 // ----------------------------------------------------------

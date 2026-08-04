@@ -24,9 +24,9 @@ function rateLimit(ip: string): boolean {
 const WIB_OFFSET = 7 * 60 * 60 * 1000;
 
 const MASUK_MULAI = CONFIG.jamBukaMasuk * 60 + CONFIG.menitBukaMasuk;      // 1200 (20:00)
-const MASUK_SELESAI = CONFIG.jamTutupMasuk * 60 + CONFIG.menitTutupMasuk;  // 1420 (23:40)
-const PULANG_MULAI = CONFIG.jamBukaPulang * 60 + CONFIG.menitBukaPulang;    // 1420 (23:40)
-const PULANG_SELESAI = CONFIG.jamTutupPulang * 60 + CONFIG.menitTutupPulang; // 60  (01:00)
+const MASUK_SELESAI = CONFIG.jamTutupMasuk * 60 + CONFIG.menitTutupMasuk;  // 1320 (22:00)
+const PULANG_MULAI = CONFIG.jamBukaPulang * 60 + CONFIG.menitBukaPulang;    // 1380 (23:00)
+const PULANG_SELESAI = CONFIG.jamTutupPulang * 60 + CONFIG.menitTutupPulang; // 1439 (23:59)
 
 // Toleransi batas sesi (menit) — mencegah penolakan saat proses GPS/form melewati jam tutup
 const GRACE_MENIT = 5;
@@ -84,32 +84,25 @@ export async function POST(request: Request) {
     }
 
     // ── VALIDASI JAM SERVER-SIDE (waktu server WIB, bukan client) ──
-    const { wib, menit: wibMenit, jamAbsenServer, tanggalWib } = getWibNow();
+    const { menit: wibMenit, jamAbsenServer, tanggalWib } = getWibNow();
 
     let tanggalRonda: string;
     if (jenisAbsen === 'masuk') {
       if (wibMenit < MASUK_MULAI || wibMenit >= MASUK_SELESAI + GRACE_MENIT) {
         return NextResponse.json(
-          { error: 'Absen masuk hanya tersedia pukul 20:00 - 23:40 WIB.' },
+          { error: 'Absen masuk hanya tersedia pukul 20:00 - 22:00 WIB.' },
           { status: 403 }
         );
       }
       tanggalRonda = tanggalWib;
     } else {
-      const dalamSesiPulang = wibMenit >= PULANG_MULAI || wibMenit < PULANG_SELESAI + GRACE_MENIT;
-      if (!dalamSesiPulang) {
+      if (wibMenit < PULANG_MULAI || wibMenit > PULANG_SELESAI + GRACE_MENIT) {
         return NextResponse.json(
-          { error: 'Absen pulang hanya tersedia pukul 23:40 - 01:00 WIB.' },
+          { error: 'Absen pulang hanya tersedia pukul 23:00 - 23:59 WIB.' },
           { status: 403 }
         );
       }
-      // Lewat tengah malam (00:00 - 01:05 WIB) → tanggal ronda = kemarin (WIB)
-      if (wibMenit < PULANG_SELESAI + GRACE_MENIT) {
-        const kemarin = new Date(wib.getTime() - 24 * 60 * 60 * 1000);
-        tanggalRonda = kemarin.toISOString().split('T')[0];
-      } else {
-        tanggalRonda = tanggalWib;
-      }
+      tanggalRonda = tanggalWib;
     }
 
     // ── VALIDASI GPS WAJIB (server-side Haversine) ──
@@ -143,31 +136,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── VALIDASI: 1 device hanya boleh 1 nama (cegah titip absen) ──
-    const { data: namaLain } = await supabase
-      .from('absen_records')
-      .select('nama_warga')
-      .eq('device_id', deviceId)
-      .neq('nama_warga', namaTrimmed)
-      .limit(1);
-
-    if (namaLain && namaLain.length > 0) {
-      return NextResponse.json(
-        {
-          error: `Perangkat ini sudah terdaftar atas nama "${namaLain[0].nama_warga}". Tidak bisa absen atas nama berbeda. Hubungi Admin jika ingin mengganti nama.`,
-          code: 'DEVICE_NAME_CONFLICT',
-          registeredName: namaLain[0].nama_warga,
-        },
-        { status: 409 }
-      );
-    }
-
     // ── Absen pulang wajib sudah absen masuk di malam yang sama ──
     if (jenisAbsen === 'pulang') {
       const { data: sudahMasuk } = await supabase
         .from('absen_records')
         .select('id')
-        .eq('device_id', deviceId)
+        .eq('nama_warga', namaTrimmed)
+        .eq('dusun', dusunTrimmed)
         .eq('tanggal_ronda', tanggalRonda)
         .eq('jenis_absen', 'masuk')
         .maybeSingle();
@@ -180,11 +155,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── UPSERT: jika device_id + tanggal_ronda + jenis_absen sudah ada, UPDATE ──
+    // ── UPSERT: jika nama_warga + dusun + tanggal_ronda + jenis_absen sudah ada, UPDATE ──
     const { data: existing } = await supabase
       .from('absen_records')
       .select('id')
-      .eq('device_id', deviceId)
+      .eq('nama_warga', namaTrimmed)
+      .eq('dusun', dusunTrimmed)
       .eq('tanggal_ronda', tanggalRonda)
       .eq('jenis_absen', jenisAbsen)
       .maybeSingle();

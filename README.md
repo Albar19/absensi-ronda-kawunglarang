@@ -26,15 +26,15 @@ Sistem absensi ronda malam berbasis web untuk **Desa Kawunglarang**, dikembangka
 
 | Fitur | Deskripsi |
 |-------|-----------|
-| **Absen Masuk** | Warga buka halaman, cek GPS (radius 150m dari Bale Desa), absen masuk (20:00–23:40 WIB) |
-| **Absen Pulang** | Warga absen pulang (23:40–01:00 WIB) — wajib sudah absen masuk malam ini |
-| **1 Device = 1 Nama** | Setiap perangkat hanya bisa digunakan oleh 1 nama. Mencegah titip absen. |
+| **Absen Masuk** | Warga buka halaman, cek GPS (radius 150m dari Bale Desa), absen masuk (20:00–22:00 WIB) |
+| **Absen Pulang** | Warga absen pulang (23:00–23:59 WIB) — wajib sudah absen masuk malam ini |
+| **1 Perangkat Bisa Banyak Warga** | Karena keterbatasan perangkat, satu HP bisa dipakai absen banyak warga. Ada fitur "Tambah Nama" saat absen masuk. |
+| **Checklist Absen Pulang** | Saat sesi pulang, semua nama yang sudah absen masuk dari perangkat tampil dengan centang. Nama yang pulang lebih awal bisa di-uncheck. |
 | **Autocomplete Nama** | Saat ketik nama, otomatis muncul saran dari nama yang pernah absen sebelumnya. |
 | **Jadwal Ronda Mingguan** | Admin atur petugas ronda per hari (Senin–Minggu) via dropdown di dashboard |
 | **Dashboard Admin** | Log kehadiran real-time + leaderboard progress bar per dusun |
 | **Export Excel** | Export rekap per dusun + detail absensi per bulan ke file `.xlsx` |
 | **QR Code** | Download QR Code (biru #1e3a8a) untuk ditempel di Bale Desa |
-| **Reset Perangkat** | Admin bisa reset binding nama perangkat jika warga salah ketik nama. |
 
 Perhitungan kehadiran: hanya **absen pulang** yang dihitung sebagai hadir lengkap (masuk + pulang = 1).
 
@@ -89,19 +89,20 @@ Index: `idx_absen_device_jenis` pada `(device_id, tanggal_ronda, jenis_absen)`
 
 ## Alur Absen
 
-### Sesi Masuk (20:00 – 23:40 WIB)
+### Sesi Masuk (20:00 – 22:00 WIB)
 1. Warga buka halaman absen (scan QR atau buka URL)
 2. Sistem cek jam — jika dalam sesi masuk, tombol aktif
 3. Sistem cek GPS — harus dalam radius **150m** dari Bale Desa
-4. Warga isi Nama dan pilih Dusun
-5. Data tersimpan dengan `jenis_absen: 'masuk'`
+4. Warga isi Nama dan pilih Dusun. Jika ada peserta lain di perangkat yang sama, tekan **"Tambah Nama"**
+5. Data tersimpan dengan `jenis_absen: 'masuk'` untuk setiap nama
 
-### Sesi Pulang (23:40 – 01:00 WIB — melewati tengah malam)
+### Sesi Pulang (23:00 – 23:59 WIB)
 1. Warga buka halaman yang sama
 2. Sistem cek jam — otomatis mendeteksi sesi pulang
-3. Sistem verifikasi apakah sudah absen masuk hari ini — jika belum, absen ditolak
-4. Sistem cek GPS — harus dalam radius **150m** dari Bale Desa
-5. Data tersimpan dengan `jenis_absen: 'pulang'`
+3. Sistem menampilkan semua nama yang sudah absen masuk dari perangkat ini
+4. Hilangkan centang pada nama yang **pulang lebih awal**, lalu tekan SAYA PULANG RONDA
+5. Sistem cek GPS — harus dalam radius **150m** dari Bale Desa
+6. Data tersimpan dengan `jenis_absen: 'pulang'` untuk setiap nama yang dicentang
 
 ### Perhitungan Kehadiran
 - **Hadir lengkap** = warga melakukan absen **masuk + pulang** di malam yang sama
@@ -200,7 +201,7 @@ src/
 │   ├── kontak/
 │   │   └── page.tsx           # Halaman kontak
 │   └── api/
-│       ├── absen/             # POST absen + GET (hari-ini, semua, cek-masuk, cek-device, daftar-nama, reset-nama, reset)
+│       ├── absen/             # POST absen + GET (hari-ini, semua, cek-masuk, daftar-nama, reset)
 │       ├── auth/              # Login/logout admin (cookie JWT)
 │       ├── jadwal/            # GET/PUT jadwal ronda + hari-ini + download
 │       └── qr/                # GET QR Code (PNG)
@@ -241,17 +242,17 @@ export const CONFIG = {
   // Radius maksimal dari Bale Desa (meter)
   radiusMeter: 150,
 
-  // Sesi Masuk: 20:00 - 23:40 WIB
+  // Sesi Masuk: 20:00 - 22:00 WIB
   jamBukaMasuk: 20,
   menitBukaMasuk: 0,
-  jamTutupMasuk: 23,
-  menitTutupMasuk: 40,
+  jamTutupMasuk: 22,
+  menitTutupMasuk: 0,
 
-  // Sesi Pulang: 23:40 - 01:00 WIB (melewati tengah malam)
+  // Sesi Pulang: 23:00 - 23:59 WIB
   jamBukaPulang: 23,
-  menitBukaPulang: 40,
-  jamTutupPulang: 1,
-  menitTutupPulang: 0,
+  menitBukaPulang: 0,
+  jamTutupPulang: 23,
+  menitTutupPulang: 59,
 
   // 6 dusun
   dusunList: [
@@ -302,9 +303,9 @@ export const CONFIG = {
 
 - **Database:** Semua operasi database melalui Supabase client (`src/lib/supabase.ts`) memakai `SUPABASE_SERVICE_ROLE_KEY` (server-only, tidak pernah dipakai di client).
 - **Auth admin:** Menggunakan cookie `admin_token` dengan JWT sederhana (via `src/app/api/auth/`). Login WAJIB `ADMIN_PASSWORD_HASH` (bcrypt) — password plaintext tidak didukung. Tanpa env ini, login ditolak.
-- **Validasi absen:** Jam sesi & tanggal ronda dihitung **server-side (WIB)**, GPS divalidasi 2x (client + server Haversine 150m), dan 1 device hanya boleh 1 nama.
+- **Validasi absen:** Jam sesi & tanggal ronda dihitung **server-side (WIB)**, GPS divalidasi 2x (client + server Haversine 150m).
 - **Endpoint admin:** `/api/absen/semua`, `/api/absen/hari-ini`, `/api/jadwal*` butuh cookie admin (401 tanpa login).
-- **Device ID:** Menggunakan localStorage — 1 device hanya bisa 1 nama (anti-titip absen). Hubungi admin jika reset diperlukan.
+- **Multi-nama per perangkat:** Karena keterbatasan perangkat, 1 HP bisa dipakai absen banyak warga. Saat sesi masuk ada tombol "Tambah Nama"; saat sesi pulang muncul checklist semua nama yang sudah absen masuk dari perangkat (yang pulang lebih awal bisa di-uncheck). Identitas absen berdasarkan **nama + dusun** (bukan device), sehingga dua orang dengan nama sama tapi dusun berbeda tetap dianggap berbeda.
 - **Jam absen:** Server memakai waktu server WIB (UTC+7), bukan waktu client. Pastikan tabel `jadwal_ronda` sudah dibuat via `supabase/migration_jadwal.sql` di Supabase dashboard.
 
 ### Kontak
