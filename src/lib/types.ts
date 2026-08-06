@@ -22,6 +22,15 @@ export interface JadwalRonda {
   petugas: string;    // nama dusun atau 'Perangkat Desa'
 }
 
+export interface Warga {
+  id: string;
+  nama: string;
+  dusun: string;
+  terdaftar: boolean; // true = disetujui admin, muncul di autocomplete
+  aktif: boolean;     // false = soft delete / disembunyikan
+  created_at: string;
+}
+
 export type FlowState =
   | 'idle'
   | 'checking'

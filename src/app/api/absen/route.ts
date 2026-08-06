@@ -213,6 +213,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Auto-register nama ke master warga (non-blocking). Nama baru masuk
+    // antrean verifikasi admin (terdaftar=false) sampai disetujui.
+    await supabase
+      .from('warga')
+      .upsert(
+        { nama: namaTrimmed, dusun: dusunTrimmed },
+        { onConflict: 'nama,dusun', ignoreDuplicates: true }
+      );
+
     return NextResponse.json({ success: true, updated: false });
   } catch {
     return NextResponse.json(

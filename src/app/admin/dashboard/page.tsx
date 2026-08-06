@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Users, Calendar, Save, QrCode, Loader, FileDown, Search, Trophy, ChevronDown, CheckCircle, XCircle } from 'lucide-react';
-import { AbsenRecord, JadwalRonda } from '@/lib/types';
+import { LogOut, RefreshCw, Users, Calendar, Save, QrCode, Loader, FileDown, Search, ChevronDown, Plus, Trash2, UserCheck, UserX, Pencil, ClipboardList } from 'lucide-react';
+import { AbsenRecord, JadwalRonda, Warga } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import ExportButton from '@/components/admin/ExportButton';
@@ -50,21 +50,27 @@ export default function AdminDashboardPage() {
 
   // ── Rekap Warga ──
   const [wargaSearch, setWargaSearch] = useState('');
-  const [wargaSelected, setWargaSelected] = useState<string | null>(null);
-  const [allDataCache, setAllDataCache] = useState<AbsenRecord[]>([]);
-  const [wargaDetailMonth, setWargaDetailMonth] = useState<string>('');
+  const [wargaList, setWargaList] = useState<Warga[]>([]);
+  const [wargaLoading, setWargaLoading] = useState(false);
+  const [wargaFilter, setWargaFilter] = useState<'belum' | 'terdaftar' | 'semua'>('belum');
+  const [wargaDusun, setWargaDusun] = useState('');
+  const [wargaMessage, setWargaMessage] = useState('');
+  const [wargaError, setWargaError] = useState('');
+  const [namaBaru, setNamaBaru] = useState('');
+  const [dusunBaru, setDusunBaru] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editNama, setEditNama] = useState('');
+  const [editDusun, setEditDusun] = useState('');
 
   async function loadAvailableMonths() {
     try {
       const res = await fetch('/api/absen/semua');
       if (!res.ok) return;
       const data: AbsenRecord[] = await res.json();
-      setAllDataCache(data);
       const months = new Set<string>();
       data.forEach(r => months.add(r.tanggal.slice(0, 7)));
       const sorted = Array.from(months).sort((a, b) => b.localeCompare(a));
       setAvailableMonths(sorted);
-      if (sorted.length > 0) setWargaDetailMonth(sorted[0]);
     } catch { /* silent */ }
   }
 
@@ -164,12 +170,137 @@ export default function AdminDashboardPage() {
     return () => clearTimeout(t);
   }, [loadJadwal, authChecked]);
 
+  const loadWarga = useCallback(async () => {
+    setWargaLoading(true);
+    try {
+      const params = new URLSearchParams({ status: wargaFilter });
+      if (wargaDusun) params.set('dusun', wargaDusun);
+      const res = await fetch(`/api/warga?${params.toString()}`);
+      if (res.ok) {
+        const data: Warga[] = await res.json();
+        setWargaList(data);
+        setWargaMessage('');
+      } else {
+        const err = await res.json();
+        setWargaError(err.error || 'Gagal memuat daftar warga');
+      }
+    } catch {
+      setWargaError('Gagal terhubung ke server');
+    }
+    setWargaLoading(false);
+  }, [wargaFilter, wargaDusun]);
+
   useEffect(() => {
-    if (tab === 'warga' && allDataCache.length === 0) {
-      const t = setTimeout(() => { void loadAvailableMonths(); }, 0);
+    if (tab === 'warga') {
+      const t = setTimeout(() => { void loadWarga(); }, 0);
       return () => clearTimeout(t);
     }
-  }, [tab, allDataCache.length]);
+  }, [tab, wargaFilter, wargaDusun, loadWarga]);
+
+  async function handleTambahWarga() {
+    const nama = namaBaru.trim();
+    const dusun = dusunBaru.trim();
+    if (!nama || !dusun) {
+      setWargaError('Nama dan dusun wajib diisi.');
+      setWargaMessage('');
+      return;
+    }
+    setWargaLoading(true);
+    setWargaError('');
+    setWargaMessage('');
+    try {
+      const res = await fetch('/api/warga', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nama, dusun }),
+      });
+      if (res.ok) {
+        setNamaBaru('');
+        setDusunBaru('');
+        setWargaMessage(`"${nama}" ditambahkan ke warga terdaftar.`);
+        await loadWarga();
+      } else {
+        const err = await res.json();
+        setWargaError(err.error || 'Gagal menambahkan warga');
+      }
+    } catch {
+      setWargaError('Gagal terhubung ke server');
+    }
+    setWargaLoading(false);
+  }
+
+  async function handleTerimaWarga(w: Warga) {
+    const res = await fetch('/api/warga', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: w.id, terdaftar: true, aktif: true }),
+    });
+    if (res.ok) {
+      setWargaMessage(`"${w.nama}" diterima sebagai warga terdaftar.`);
+      await loadWarga();
+    } else {
+      const err = await res.json();
+      setWargaError(err.error || 'Gagal menyetujui warga');
+    }
+  }
+
+  async function handleToggleAktif(w: Warga) {
+    const res = await fetch('/api/warga', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: w.id, aktif: !w.aktif }),
+    });
+    if (res.ok) {
+      setWargaMessage(w.aktif ? `"${w.nama}" dinonaktifkan.` : `"${w.nama}" diaktifkan kembali.`);
+      await loadWarga();
+    } else {
+      const err = await res.json();
+      setWargaError(err.error || 'Gagal mengubah status warga');
+    }
+  }
+
+  function mulaiEdit(w: Warga) {
+    setEditingId(w.id);
+    setEditNama(w.nama);
+    setEditDusun(w.dusun);
+    setWargaMessage('');
+    setWargaError('');
+  }
+
+  async function handleSimpanEdit(w: Warga) {
+    const nama = editNama.trim();
+    const dusun = editDusun.trim();
+    if (!nama || !dusun) {
+      setWargaError('Nama dan dusun wajib diisi.');
+      return;
+    }
+    const res = await fetch('/api/warga', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: w.id, nama, dusun }),
+    });
+    if (res.ok) {
+      setEditingId(null);
+      setWargaMessage(`Data "${w.nama}" diperbarui.`);
+      await loadWarga();
+    } else {
+      const err = await res.json();
+      setWargaError(err.error || 'Gagal menyimpan perubahan');
+    }
+  }
+
+  async function handleHapusWarga(w: Warga) {
+    const konfirmasi = confirm(`Hapus "${w.nama}" dari daftar? (Data absen tidak dihapus)`);
+    if (!konfirmasi) return;
+    const res = await fetch(`/api/warga?id=${encodeURIComponent(w.id)}`, { method: 'DELETE' });
+    if (res.ok) {
+      setWargaMessage(`"${w.nama}" dihapus dari daftar.`);
+      await loadWarga();
+    } else {
+      const err = await res.json();
+      setWargaError(err.error || 'Gagal menghapus warga');
+    }
+  }
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -260,7 +391,7 @@ export default function AdminDashboardPage() {
     }`}
             style={{ minHeight: '42px' }}
           >
-            <Users size={16} />
+            <ClipboardList size={16} />
             Log Kehadiran
           </button>
           <button
@@ -282,8 +413,8 @@ export default function AdminDashboardPage() {
     }`}
             style={{ minHeight: '42px' }}
           >
-            <Trophy size={16} />
-            Rekap Warga
+            <Users size={16} />
+            Daftar Warga
           </button>
         </div>
 
@@ -557,216 +688,257 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ════════════════════════════════════════════════ */}
-        {/* TAB: PERANGKAT (DEVICE MANAGEMENT)              */}
-        {/* ════════════════════════════════════════════════ */}
-        {/* TAB: REKAP WARGA                                */}
+        {/* TAB: DAFTAR WARGA (MASTER LIST)                 */}
         {/* ════════════════════════════════════════════════ */}
         {tab === 'warga' && (
-          <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <Trophy size={20} className="text-[#1e3a8a]" strokeWidth={2} />
-                <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                  Rekap Warga
-                </h3>
+          <div className="space-y-4">
+            {/* ── Tambah manual ── */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <Users size={20} className="text-[#1e3a8a]" strokeWidth={2} />
+                  <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
+                    Daftar Warga
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-1 font-medium">
+                  Nama yang diketik manual oleh warga masuk antrean verifikasi. Setujui untuk
+                  menonaktifkan nama iseng; warga terdaftar muncul di autocomplete form absen.
+                </p>
               </div>
-              <p className="text-xs text-slate-500 mt-1 font-medium">
-                Ranking kehadiran warga dan riwayat absen per individu.
-              </p>
-            </div>
 
-            <div className="px-5 py-4 space-y-4">
-              {/* Dropdown bulan + search */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="relative">
-                  <select
-                    value={wargaDetailMonth}
-                    onChange={e => { setWargaDetailMonth(e.target.value); setWargaSelected(null); }}
-                    className="appearance-none bg-white border-2 border-slate-300 rounded-xl px-4 py-3 pr-10 text-sm font-bold text-slate-700 focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
+              <div className="px-5 py-4">
+                <form
+                  onSubmit={e => { e.preventDefault(); void handleTambahWarga(); }}
+                  className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <input
+                      type="text"
+                      value={namaBaru}
+                      onChange={e => setNamaBaru(e.target.value)}
+                      placeholder="Nama lengkap warga"
+                      className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                      style={{ minHeight: '46px' }}
+                    />
+                  </div>
+                  <div className="relative sm:w-56">
+                    <select
+                      value={dusunBaru}
+                      onChange={e => setDusunBaru(e.target.value)}
+                      className="appearance-none w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 pr-10 text-sm font-bold text-slate-700 focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
+                      style={{ minHeight: '46px' }}
+                    >
+                      <option value="">-- Pilih Dusun --</option>
+                      {CONFIG.dusunList.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 bg-[#1e3a8a] text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-[#1e40af] active:scale-[0.98] transition-all flex-shrink-0"
                     style={{ minHeight: '46px' }}
                   >
-                    {availableMonths.map(m => {
-                      const [thn, bln] = m.split('-');
-                      return <option key={m} value={m}>{BULAN_INDONESIA[parseInt(bln)-1]} {thn}</option>;
-                    })}
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <Plus size={18} strokeWidth={2.5} />
+                    Tambah
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* ── Filter + list ── */}
+            <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200 space-y-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(['belum', 'terdaftar', 'semua'] as const).map(f => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => { setWargaFilter(f); setWargaMessage(''); setWargaError(''); }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
+                        wargaFilter === f
+                          ? 'bg-[#1e3a8a] text-white shadow-card'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      }`}
+                      style={{ minHeight: '32px' }}
+                    >
+                      {f === 'belum' ? 'Belum Terdaftar' : f === 'terdaftar' ? 'Terdaftar' : 'Semua'}
+                    </button>
+                  ))}
+                  <div className="relative sm:w-52">
+                    <select
+                      value={wargaDusun}
+                      onChange={e => { setWargaDusun(e.target.value); setWargaMessage(''); setWargaError(''); }}
+                      className="appearance-none w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-slate-700 focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
+                      style={{ minHeight: '40px' }}
+                    >
+                      <option value="">Semua Dusun</option>
+                      {CONFIG.dusunList.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
-                <div className="relative flex-1 min-w-[200px]">
+                <div className="relative">
                   <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={wargaSearch}
-                    onChange={e => { setWargaSearch(e.target.value); setWargaSelected(null); }}
-                    placeholder="Cari nama warga..."
-                    className="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
-                    style={{ minHeight: '46px' }}
+                    onChange={e => setWargaSearch(e.target.value)}
+                    placeholder="Cari nama..."
+                    className="w-full pl-10 pr-4 py-2.5 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                    style={{ minHeight: '42px' }}
                   />
                 </div>
+                {wargaMessage && (
+                  <p className="text-sm font-bold text-green-700">{wargaMessage}</p>
+                )}
+                {wargaError && (
+                  <p className="text-sm font-bold text-red-700">{wargaError}</p>
+                )}
               </div>
 
-              {/* Data bulan ini */}
-              {(() => {
-                // Filter data by selected month + search
-                const dataBulan = allDataCache.filter(r => r.tanggal.startsWith(wargaDetailMonth));
+              {wargaLoading ? (
+                <div className="px-5 py-10 text-center text-slate-400 text-sm font-semibold">
+                  <Loader size={24} className="animate-spin mx-auto mb-2" />
+                  Memuat daftar warga...
+                </div>
+              ) : (() => {
                 const q = wargaSearch.trim().toLowerCase();
+                const list = q
+                  ? wargaList.filter(w => w.nama.toLowerCase().includes(q))
+                  : wargaList;
 
-                // Group by nama, hitung hadir lengkap (pulang)
-                const wargaMap = new Map<string, { nama: string; dusun: string; count: number; records: AbsenRecord[] }>();
-                dataBulan.forEach(r => {
-                  const key = r.nama.toLowerCase();
-                  if (!wargaMap.has(key)) {
-                    wargaMap.set(key, { nama: r.nama, dusun: r.dusun, count: 0, records: [] });
-                  }
-                  const entry = wargaMap.get(key)!;
-                  entry.records.push(r);
-                  if (r.jenisAbsen === 'pulang') entry.count++;
-                });
-
-                let wargaList = Array.from(wargaMap.values());
-                if (q) {
-                  wargaList = wargaList.filter(w => w.nama.toLowerCase().includes(q));
+                if (list.length === 0) {
+                  return (
+                    <div className="px-5 py-10 text-center text-slate-400 text-sm font-semibold">
+                      {wargaFilter === 'belum'
+                        ? 'Tidak ada nama yang menunggu verifikasi.'
+                        : wargaFilter === 'terdaftar'
+                          ? 'Belum ada warga terdaftar.'
+                          : 'Daftar warga kosong.'}
+                    </div>
+                  );
                 }
-                wargaList.sort((a, b) => b.count - a.count);
-
-                const wargaTerpilih = wargaSelected
-                  ? wargaList.find(w => w.nama.toLowerCase() === wargaSelected.toLowerCase())
-                  : null;
-
-                // Detail record warga terpilih: group by tanggal
-                const detailGrouped = wargaTerpilih
-                  ? (() => {
-                      const group = new Map<string, { tanggal: string; masuk?: AbsenRecord; pulang?: AbsenRecord }>();
-                      wargaTerpilih.records.forEach(r => {
-                        if (!group.has(r.tanggal)) {
-                          group.set(r.tanggal, { tanggal: r.tanggal });
-                        }
-                        const g = group.get(r.tanggal)!;
-                        if (r.jenisAbsen === 'masuk') g.masuk = r;
-                        if (r.jenisAbsen === 'pulang') g.pulang = r;
-                      });
-                      return Array.from(group.values()).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
-                    })()
-                  : null;
 
                 return (
-                  <>
-                    {/* Leaderboard */}
-                    {wargaList.length > 0 && !wargaTerpilih && (
-                      <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-                        <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-                          <p className="text-xs font-black text-slate-500 uppercase tracking-wider">
-                            Ranking Kehadiran — {BULAN_INDONESIA[parseInt(wargaDetailMonth.split('-')[1])-1]} {wargaDetailMonth.split('-')[0]}
-                          </p>
-                        </div>
-                        {wargaList.map((w, idx) => {
-                          const barPct = wargaList.length > 0 ? Math.round((w.count / wargaList[0].count) * 100) : 0;
-                          return (
-                            <div
-                              key={w.nama}
-                              onClick={() => setWargaSelected(w.nama)}
-                              className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors"
+                  <div className="divide-y divide-slate-100">
+                    {list.map(w => (
+                      <div key={w.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+                        {editingId === w.id ? (
+                          <>
+                            <input
+                              type="text"
+                              value={editNama}
+                              onChange={e => setEditNama(e.target.value)}
+                              className="flex-1 min-w-0 px-3 py-2 border-2 border-slate-300 rounded-xl text-sm font-semibold focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                              style={{ minHeight: '40px' }}
+                            />
+                            <select
+                              value={editDusun}
+                              onChange={e => setEditDusun(e.target.value)}
+                              className="appearance-none w-40 px-3 py-2 border-2 border-slate-300 rounded-xl text-sm font-semibold bg-white focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
+                              style={{ minHeight: '40px' }}
                             >
-                              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${
-                                idx === 0 ? 'bg-yellow-100 text-yellow-700' :
-                                idx === 1 ? 'bg-slate-200 text-slate-600' :
-                                idx === 2 ? 'bg-orange-100 text-orange-700' :
-                                'bg-slate-100 text-slate-500'
-                              }`}>
-                                {idx + 1}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-slate-900 truncate">{w.nama}</p>
-                                <p className="text-xs text-slate-500 font-medium">{w.dusun}</p>
-                              </div>
-                              <div className="flex items-center gap-3 flex-shrink-0">
-                                <div className="w-24 sm:w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className="h-full bg-[#1e3a8a] rounded-full" style={{ width: `${barPct}%` }} />
-                                </div>
-                                <p className="text-sm font-black text-slate-900 tabular-nums w-10 text-right">{w.count}x</p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Detail warga terpilih */}
-                    {wargaTerpilih && detailGrouped && (
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <h4 className="text-base font-black text-slate-900">{wargaTerpilih.nama}</h4>
-                            <p className="text-xs text-slate-500 font-medium">
-                              {wargaTerpilih.dusun} · Total hadir lengkap: <strong className="text-green-700">{wargaTerpilih.count}x</strong>
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => setWargaSelected(null)}
-                            className="text-sm font-bold text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
-                          >
-                            Kembali
-                          </button>
-                        </div>
-
-                        <div className="border border-slate-200 rounded-xl overflow-hidden">
-                          <table className="w-full border-collapse text-sm">
-                            <thead>
-                              <tr className="bg-slate-50 border-b border-slate-200">
-                                <th className="text-left px-4 py-2.5 font-black text-slate-500 text-xs uppercase tracking-wider">Tanggal</th>
-                                <th className="text-center px-4 py-2.5 font-black text-slate-500 text-xs uppercase tracking-wider">Masuk</th>
-                                <th className="text-center px-4 py-2.5 font-black text-slate-500 text-xs uppercase tracking-wider">Pulang</th>
-                                <th className="text-center px-4 py-2.5 font-black text-slate-500 text-xs uppercase tracking-wider">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {detailGrouped.map(g => (
-                                <tr key={g.tanggal} className="hover:bg-slate-50 transition-colors">
-                                  <td className="px-4 py-3 font-semibold text-slate-700 whitespace-nowrap text-xs">
-                                    {formatTanggalIndo(g.tanggal)}
-                                  </td>
-                                  <td className="px-4 py-3 text-center tabular-nums font-semibold text-slate-700">
-                                    {g.masuk ? g.masuk.jamAbsen : <span className="text-slate-300">—</span>}
-                                  </td>
-                                  <td className="px-4 py-3 text-center tabular-nums font-semibold text-slate-700">
-                                    {g.pulang ? g.pulang.jamAbsen : <span className="text-slate-300">—</span>}
-                                  </td>
-                                  <td className="px-4 py-3 text-center">
-                                    {g.pulang ? (
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                                        <CheckCircle size={12} /> Lengkap
-                                      </span>
-                                    ) : g.masuk ? (
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">
-                                        <XCircle size={12} /> Pulang
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                                        —
-                                      </span>
-                                    )}
-                                  </td>
-                                </tr>
+                              {CONFIG.dusunList.map(d => (
+                                <option key={d} value={d}>{d}</option>
                               ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        <p className="text-xs text-slate-400 font-medium mt-2">
-                          ✅ Lengkap = Masuk + Pulang di malam yang sama ·
-                          ⬜ Pulang = Masuk doang (belum absen pulang)
-                        </p>
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => void handleSimpanEdit(w)}
+                              className="text-xs font-black bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 active:scale-95 transition-all"
+                              style={{ minHeight: '40px' }}
+                            >
+                              Simpan
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(null)}
+                              className="text-xs font-black bg-slate-200 text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-300 active:scale-95 transition-all"
+                              style={{ minHeight: '40px' }}
+                            >
+                              Batal
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className={`text-sm font-bold truncate ${w.aktif ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
+                                  {w.nama}
+                                </p>
+                                {!w.terdaftar ? (
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                    Belum Terdaftar
+                                  </span>
+                                ) : w.aktif ? (
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
+                                    Terdaftar
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                    Nonaktif
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 font-semibold mt-0.5">{w.dusun}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {!w.terdaftar && (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleTerimaWarga(w)}
+                                  title="Terima sebagai warga terdaftar"
+                                  className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-black hover:bg-green-700 active:scale-95 transition-all"
+                                  style={{ minHeight: '40px' }}
+                                >
+                                  <UserCheck size={15} />
+                                  <span className="hidden sm:inline">Terima</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => mulaiEdit(w)}
+                                title="Edit"
+                                className="flex items-center justify-center bg-slate-100 text-slate-600 p-2.5 rounded-lg hover:bg-slate-200 active:scale-95 transition-all"
+                                style={{ width: '40px', height: '40px' }}
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              {w.terdaftar && (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleToggleAktif(w)}
+                                  title={w.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+                                  className={`flex items-center justify-center p-2.5 rounded-lg active:scale-95 transition-all ${
+                                    w.aktif
+                                      ? 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                                      : 'bg-green-50 text-green-600 hover:bg-green-100'
+                                  }`}
+                                  style={{ width: '40px', height: '40px' }}
+                                >
+                                  {w.aktif ? <UserX size={15} /> : <UserCheck size={15} />}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => void handleHapusWarga(w)}
+                                title="Hapus"
+                                className="flex items-center justify-center bg-red-50 text-red-600 p-2.5 rounded-lg hover:bg-red-100 active:scale-95 transition-all"
+                                style={{ width: '40px', height: '40px' }}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    )}
-
-                    {/* Empty state */}
-                    {wargaList.length === 0 && (
-                      <div className="text-center py-8 text-slate-400 text-sm font-semibold">
-                        <Trophy size={40} className="mx-auto mb-3 text-slate-300" strokeWidth={1.5} />
-                        {q ? 'Tidak ada warga dengan nama tersebut.' : 'Belum ada data absen untuk bulan ini.'}
-                      </div>
-                    )}
-                  </>
+                    ))}
+                  </div>
                 );
               })()}
             </div>
