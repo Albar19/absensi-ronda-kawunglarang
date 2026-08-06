@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { isAdminRequest } from '@/lib/api-auth';
 
 function getTanggalHariIni(): string {
-  return new Date().toISOString().split('T')[0];
+  // WIB (UTC+7) agar sinkron dengan tanggal_ronda di record absen
+  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split('T')[0];
 }
 
 function mapRecord(r: Record<string, unknown>) {

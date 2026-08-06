@@ -2,23 +2,11 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
 import { hitungJarak } from '@/lib/data';
+import { rateLimit } from '@/lib/rate-limit';
 
-// ── Rate limiter absen (in-memory) — cegah spam/falsifikasi record ──
-const absenAttempts = new Map<string, { count: number; resetAt: number }>();
+// Batas pengiriman absen per IP (persisten di Supabase, aman untuk serverless)
 const ABSEN_MAX = 60;
 const ABSEN_WINDOW_MS = 15 * 60 * 1000;
-
-function rateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = absenAttempts.get(ip);
-  if (!entry || now > entry.resetAt) {
-    absenAttempts.set(ip, { count: 1, resetAt: now + ABSEN_WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= ABSEN_MAX) return false;
-  entry.count++;
-  return true;
-}
 
 // ── Waktu server dalam WIB (UTC+7) ──
 const WIB_OFFSET = 7 * 60 * 60 * 1000;
@@ -43,7 +31,7 @@ export async function POST(request: Request) {
   try {
     // ── Rate limiting by IP ──
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    if (!rateLimit(ip)) {
+    if (!(await rateLimit(`absen:${ip}`, ABSEN_MAX, ABSEN_WINDOW_MS))) {
       return NextResponse.json(
         { error: 'Terlalu banyak pengiriman absen. Coba lagi beberapa saat.' },
         { status: 429 }

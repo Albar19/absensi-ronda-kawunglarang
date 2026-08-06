@@ -73,11 +73,11 @@ export function formatJamSesi(jenis: JenisAbsen): string {
 }
 
 // ----------------------------------------------------------
-// Dapatkan tanggal hari ini format YYYY-MM-DD
+// Dapatkan tanggal hari ini format YYYY-MM-DD (WIB, UTC+7)
 // ----------------------------------------------------------
 export function getTanggalHariIni(): string {
-  const now = new Date();
-  return now.toISOString().split('T')[0];
+  const wib = new Date(Date.now() + 7 * 60 * 60 * 1000);
+  return wib.toISOString().split('T')[0];
 }
 
 // ----------------------------------------------------------

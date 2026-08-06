@@ -134,6 +134,12 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json(
+          { error: `"${updateData.nama ?? ''}" sudah terdaftar di dusun ${updateData.dusun ?? ''}.` },
+          { status: 409 }
+        );
+      }
       return NextResponse.json({ error: 'Gagal mengupdate warga' }, { status: 500 });
     }
 
