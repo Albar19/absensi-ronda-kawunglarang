@@ -149,7 +149,9 @@ export async function PUT(request: Request) {
   }
 }
 
-// DELETE /api/warga — soft delete (aktif=false, admin-only)
+// DELETE /api/warga?id=...&hapus_absen=1 — hapus permanen (admin-only)
+// Tanpa hapus_absen: hapus baris warga saja. Dengan hapus_absen=1: ikut
+// menghapus record absen atas nama+dusun tsb (untuk bersihkan data iseng).
 export async function DELETE(request: Request) {
   if (!(await isAdminRequest())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -158,15 +160,39 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const hapusAbsen = searchParams.get('hapus_absen') === '1';
 
     if (!id) {
       return NextResponse.json({ error: 'id wajib diisi' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    // Ambil nama + dusun dulu untuk pencocokan record absen
+    const { data: warga, error: getErr } = await supabase
       .from('warga')
-      .update({ aktif: false })
-      .eq('id', id);
+      .select('nama, dusun')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (getErr) {
+      return NextResponse.json({ error: 'Gagal mengambil data warga' }, { status: 500 });
+    }
+    if (!warga) {
+      return NextResponse.json({ error: 'Warga tidak ditemukan' }, { status: 404 });
+    }
+
+    if (hapusAbsen) {
+      const { error: delAbsenErr } = await supabase
+        .from('absen_records')
+        .delete()
+        .eq('nama_warga', warga.nama)
+        .eq('dusun', warga.dusun);
+
+      if (delAbsenErr) {
+        return NextResponse.json({ error: 'Gagal menghapus data absen' }, { status: 500 });
+      }
+    }
+
+    const { error } = await supabase.from('warga').delete().eq('id', id);
 
     if (error) {
       return NextResponse.json({ error: 'Gagal menghapus warga' }, { status: 500 });

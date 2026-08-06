@@ -5,6 +5,7 @@ import { Download, X, Loader } from 'lucide-react';
 import { formatTanggalIndo } from '@/lib/data';
 import { AbsenRecord } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
+import { useToast } from '@/components/ui/Toast';
 import type { Cell } from 'exceljs';
 
 const BULAN_INDONESIA = [
@@ -16,6 +17,7 @@ const WARNA_NAVY = '1E3A8A';
 const WARNA_ABU = 'E5E7EB';
 
 export default function ExportButton() {
+  const { push } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [months, setMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState('');
@@ -24,7 +26,7 @@ export default function ExportButton() {
   async function openModal() {
     const res = await fetch('/api/absen/semua');
     if (!res.ok) {
-      alert('Gagal mengambil data. Pastikan Anda masih login.');
+      push('error', 'Gagal mengambil data. Pastikan Anda masih login.');
       return;
     }
     const semuaAbsen: AbsenRecord[] = await res.json();
@@ -36,7 +38,7 @@ export default function ExportButton() {
     const sorted = Array.from(uniqueMonths).sort((a, b) => b.localeCompare(a));
 
     if (sorted.length === 0) {
-      alert('Belum ada data absensi.');
+      push('info', 'Belum ada data absensi.');
       return;
     }
 
@@ -50,7 +52,7 @@ export default function ExportButton() {
     const ExcelJS = await import('exceljs');
 
     const absenRes = await fetch('/api/absen/semua');
-    if (!absenRes.ok) { alert('Gagal mengambil data absensi.'); setLoading(false); return; }
+    if (!absenRes.ok) { push('error', 'Gagal mengambil data absensi.'); setLoading(false); return; }
 
     const semuaAbsen: AbsenRecord[] = await absenRes.json();
 
@@ -69,7 +71,7 @@ export default function ExportButton() {
     filteredAbsen = filteredAbsen.filter(r => r.tanggal);
 
     if (filteredAbsen.length === 0) {
-      alert('Tidak ada data untuk periode ini.');
+      push('info', 'Tidak ada data untuk periode ini.');
       setLoading(false);
       return;
     }

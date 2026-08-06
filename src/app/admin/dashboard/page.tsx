@@ -7,6 +7,8 @@ import { AbsenRecord, JadwalRonda, Warga } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
 import ExportButton from '@/components/admin/ExportButton';
+import { ToastProvider, useToast } from '@/components/ui/Toast';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 type Tab = 'log' | 'jadwal' | 'warga';
 
@@ -26,6 +28,15 @@ const HARI_LABEL: Record<string, string> = {
 };
 
 export default function AdminDashboardPage() {
+  return (
+    <ToastProvider>
+      <DashboardInner />
+    </ToastProvider>
+  );
+}
+
+function DashboardInner() {
+  const { push } = useToast();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('log');
   const [authChecked, setAuthChecked] = useState(false);
@@ -39,7 +50,6 @@ export default function AdminDashboardPage() {
   const [jadwal, setJadwal] = useState<JadwalRonda[]>([]);
   const [jadwalLoading, setJadwalLoading] = useState(false);
   const [jadwalSaving, setJadwalSaving] = useState(false);
-  const [jadwalMessage, setJadwalMessage] = useState('');
   const [jadwalDirty, setJadwalDirty] = useState(false);
 
   // ── Bulan filter ──
@@ -48,19 +58,18 @@ export default function AdminDashboardPage() {
   const [monthlyData, setMonthlyData] = useState<AbsenRecord[]>([]);
   const [monthlyLoading, setMonthlyLoading] = useState(false);
 
-  // ── Rekap Warga ──
+  // ── Daftar Warga ──
   const [wargaSearch, setWargaSearch] = useState('');
   const [wargaList, setWargaList] = useState<Warga[]>([]);
   const [wargaLoading, setWargaLoading] = useState(false);
   const [wargaFilter, setWargaFilter] = useState<'belum' | 'terdaftar' | 'semua'>('belum');
   const [wargaDusun, setWargaDusun] = useState('');
-  const [wargaMessage, setWargaMessage] = useState('');
-  const [wargaError, setWargaError] = useState('');
   const [namaBaru, setNamaBaru] = useState('');
   const [dusunBaru, setDusunBaru] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNama, setEditNama] = useState('');
   const [editDusun, setEditDusun] = useState('');
+  const [hapusTarget, setHapusTarget] = useState<Warga | null>(null);
 
   async function loadAvailableMonths() {
     try {
@@ -179,16 +188,15 @@ export default function AdminDashboardPage() {
       if (res.ok) {
         const data: Warga[] = await res.json();
         setWargaList(data);
-        setWargaMessage('');
       } else {
         const err = await res.json();
-        setWargaError(err.error || 'Gagal memuat daftar warga');
+        push('error', err.error || 'Gagal memuat daftar warga');
       }
     } catch {
-      setWargaError('Gagal terhubung ke server');
+      push('error', 'Gagal terhubung ke server');
     }
     setWargaLoading(false);
-  }, [wargaFilter, wargaDusun]);
+  }, [wargaFilter, wargaDusun, push]);
 
   useEffect(() => {
     if (tab === 'warga') {
@@ -201,13 +209,10 @@ export default function AdminDashboardPage() {
     const nama = namaBaru.trim();
     const dusun = dusunBaru.trim();
     if (!nama || !dusun) {
-      setWargaError('Nama dan dusun wajib diisi.');
-      setWargaMessage('');
+      push('error', 'Nama dan dusun wajib diisi.');
       return;
     }
     setWargaLoading(true);
-    setWargaError('');
-    setWargaMessage('');
     try {
       const res = await fetch('/api/warga', {
         method: 'POST',
@@ -217,14 +222,14 @@ export default function AdminDashboardPage() {
       if (res.ok) {
         setNamaBaru('');
         setDusunBaru('');
-        setWargaMessage(`"${nama}" ditambahkan ke warga terdaftar.`);
+        push('success', `"${nama}" ditambahkan ke warga terdaftar.`);
         await loadWarga();
       } else {
         const err = await res.json();
-        setWargaError(err.error || 'Gagal menambahkan warga');
+        push('error', err.error || 'Gagal menambahkan warga');
       }
     } catch {
-      setWargaError('Gagal terhubung ke server');
+      push('error', 'Gagal terhubung ke server');
     }
     setWargaLoading(false);
   }
@@ -236,11 +241,11 @@ export default function AdminDashboardPage() {
       body: JSON.stringify({ id: w.id, terdaftar: true, aktif: true }),
     });
     if (res.ok) {
-      setWargaMessage(`"${w.nama}" diterima sebagai warga terdaftar.`);
+      push('success', `"${w.nama}" diterima sebagai warga terdaftar.`);
       await loadWarga();
     } else {
       const err = await res.json();
-      setWargaError(err.error || 'Gagal menyetujui warga');
+      push('error', err.error || 'Gagal menyetujui warga');
     }
   }
 
@@ -251,11 +256,11 @@ export default function AdminDashboardPage() {
       body: JSON.stringify({ id: w.id, aktif: !w.aktif }),
     });
     if (res.ok) {
-      setWargaMessage(w.aktif ? `"${w.nama}" dinonaktifkan.` : `"${w.nama}" diaktifkan kembali.`);
+      push('success', w.aktif ? `"${w.nama}" dinonaktifkan.` : `"${w.nama}" diaktifkan kembali.`);
       await loadWarga();
     } else {
       const err = await res.json();
-      setWargaError(err.error || 'Gagal mengubah status warga');
+      push('error', err.error || 'Gagal mengubah status warga');
     }
   }
 
@@ -263,15 +268,13 @@ export default function AdminDashboardPage() {
     setEditingId(w.id);
     setEditNama(w.nama);
     setEditDusun(w.dusun);
-    setWargaMessage('');
-    setWargaError('');
   }
 
   async function handleSimpanEdit(w: Warga) {
     const nama = editNama.trim();
     const dusun = editDusun.trim();
     if (!nama || !dusun) {
-      setWargaError('Nama dan dusun wajib diisi.');
+      push('error', 'Nama dan dusun wajib diisi.');
       return;
     }
     const res = await fetch('/api/warga', {
@@ -281,24 +284,30 @@ export default function AdminDashboardPage() {
     });
     if (res.ok) {
       setEditingId(null);
-      setWargaMessage(`Data "${w.nama}" diperbarui.`);
+      push('success', `Data "${w.nama}" diperbarui.`);
       await loadWarga();
     } else {
       const err = await res.json();
-      setWargaError(err.error || 'Gagal menyimpan perubahan');
+      push('error', err.error || 'Gagal menyimpan perubahan');
     }
   }
 
-  async function handleHapusWarga(w: Warga) {
-    const konfirmasi = confirm(`Hapus "${w.nama}" dari daftar? (Data absen tidak dihapus)`);
-    if (!konfirmasi) return;
-    const res = await fetch(`/api/warga?id=${encodeURIComponent(w.id)}`, { method: 'DELETE' });
+  async function handleKonfirmasiHapus(hapusAbsen: boolean) {
+    if (!hapusTarget) return;
+    const w = hapusTarget;
+    setHapusTarget(null);
+    const res = await fetch(
+      `/api/warga?id=${encodeURIComponent(w.id)}${hapusAbsen ? '&hapus_absen=1' : ''}`,
+      { method: 'DELETE' }
+    );
     if (res.ok) {
-      setWargaMessage(`"${w.nama}" dihapus dari daftar.`);
+      push('success', hapusAbsen
+        ? `"${w.nama}" dihapus beserta data absennya.`
+        : `"${w.nama}" dihapus dari daftar.`);
       await loadWarga();
     } else {
       const err = await res.json();
-      setWargaError(err.error || 'Gagal menghapus warga');
+      push('error', err.error || 'Gagal menghapus warga');
     }
   }
 
@@ -310,12 +319,10 @@ export default function AdminDashboardPage() {
   function handleJadwalChange(hari: string, petugas: string) {
     setJadwal(prev => prev.map(j => j.hari === hari ? { ...j, petugas } : j));
     setJadwalDirty(true);
-    setJadwalMessage('');
   }
 
   async function handleSimpanJadwal() {
     setJadwalSaving(true);
-    setJadwalMessage('');
     try {
       const res = await fetch('/api/jadwal', {
         method: 'PUT',
@@ -323,15 +330,15 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ jadwal: jadwal.map(j => ({ hari: j.hari, petugas: j.petugas })) }),
       });
       if (res.ok) {
-        setJadwalMessage('Jadwal berhasil disimpan.');
+        push('success', 'Jadwal berhasil disimpan.');
         setJadwalDirty(false);
         await loadJadwal();
       } else {
         const err = await res.json();
-        setJadwalMessage(`${err.error || 'Gagal menyimpan'}`);
+        push('error', err.error || 'Gagal menyimpan jadwal');
       }
     } catch {
-      setJadwalMessage('Gagal terhubung ke server');
+      push('error', 'Gagal terhubung ke server');
     }
     setJadwalSaving(false);
   }
@@ -654,9 +661,6 @@ export default function AdminDashboardPage() {
 
                 {/* Message + Save */}
                 <div className="px-5 py-4 bg-slate-50 border-t border-slate-200 space-y-3">
-                  {jadwalMessage && (
-                    <p className={`text-sm font-bold ${jadwalMessage.includes('berhasil') ? 'text-green-700' : 'text-red-700'}`}>{jadwalMessage}</p>
-                  )}
                   <div className="flex items-center gap-3 flex-wrap">
                     <button
                       type="button"
@@ -756,7 +760,7 @@ export default function AdminDashboardPage() {
                     <button
                       key={f}
                       type="button"
-                      onClick={() => { setWargaFilter(f); setWargaMessage(''); setWargaError(''); }}
+                      onClick={() => setWargaFilter(f)}
                       className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
                         wargaFilter === f
                           ? 'bg-[#1e3a8a] text-white shadow-card'
@@ -770,7 +774,7 @@ export default function AdminDashboardPage() {
                   <div className="relative sm:w-52">
                     <select
                       value={wargaDusun}
-                      onChange={e => { setWargaDusun(e.target.value); setWargaMessage(''); setWargaError(''); }}
+                      onChange={e => setWargaDusun(e.target.value)}
                       className="appearance-none w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-slate-700 focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
                       style={{ minHeight: '40px' }}
                     >
@@ -793,12 +797,6 @@ export default function AdminDashboardPage() {
                     style={{ minHeight: '42px' }}
                   />
                 </div>
-                {wargaMessage && (
-                  <p className="text-sm font-bold text-green-700">{wargaMessage}</p>
-                )}
-                {wargaError && (
-                  <p className="text-sm font-bold text-red-700">{wargaError}</p>
-                )}
               </div>
 
               {wargaLoading ? (
@@ -926,7 +924,7 @@ export default function AdminDashboardPage() {
                               )}
                               <button
                                 type="button"
-                                onClick={() => void handleHapusWarga(w)}
+                                onClick={() => setHapusTarget(w)}
                                 title="Hapus"
                                 className="flex items-center justify-center bg-red-50 text-red-600 p-2.5 rounded-lg hover:bg-red-100 active:scale-95 transition-all"
                                 style={{ width: '40px', height: '40px' }}
@@ -951,6 +949,39 @@ export default function AdminDashboardPage() {
       </div>
         </>
       )}
+
+      {/* Modal konfirmasi hapus warga */}
+      <ConfirmModal
+        open={hapusTarget !== null}
+        title={`Hapus "${hapusTarget?.nama ?? ''}"?`}
+        onClose={() => setHapusTarget(null)}
+      >
+        <div className="space-y-4">
+          <p>
+            Aksi ini <strong>permanen</strong>. Warga tidak akan lagi muncul di daftar
+            dan autocomplete. Data absen atas nama <strong>{hapusTarget?.dusun}</strong> tetap
+            tersimpan kecuali Anda memilih ikut menghapusnya.
+          </p>
+          <div className="flex flex-col gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => void handleKonfirmasiHapus(true)}
+              className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-red-700 active:scale-[0.98] transition-all"
+              style={{ minHeight: '48px' }}
+            >
+              <Trash2 size={16} /> Hapus + Data Absen
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleKonfirmasiHapus(false)}
+              className="w-full flex items-center justify-center gap-2 bg-slate-100 text-slate-700 px-4 py-3 rounded-xl font-bold text-sm hover:bg-slate-200 active:scale-[0.98] transition-all"
+              style={{ minHeight: '48px' }}
+            >
+              Hapus saja dari daftar
+            </button>
+          </div>
+        </div>
+      </ConfirmModal>
     </main>
   );
 }
