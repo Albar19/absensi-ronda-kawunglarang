@@ -13,6 +13,7 @@ const BULAN_INDONESIA = [
 ];
 
 const WARNA_NAVY = '1E3A8A';
+const WARNA_ABU = 'E5E7EB';
 
 export default function ExportButton() {
   const [showModal, setShowModal] = useState(false);
@@ -29,7 +30,9 @@ export default function ExportButton() {
     const semuaAbsen: AbsenRecord[] = await res.json();
 
     const uniqueMonths = new Set<string>();
-    semuaAbsen.forEach(r => uniqueMonths.add(r.tanggal.slice(0, 7)));
+    semuaAbsen.forEach(r => {
+      if (r.tanggal) uniqueMonths.add(r.tanggal.slice(0, 7));
+    });
     const sorted = Array.from(uniqueMonths).sort((a, b) => b.localeCompare(a));
 
     if (sorted.length === 0) {
@@ -62,27 +65,42 @@ export default function ExportButton() {
       labelPeriode = `${BULAN_INDONESIA[parseInt(bulan) - 1]} ${tahun}`;
     }
 
+    // Buang record tanpa tanggal agar tidak memunculkan "undefined/NaN" di laporan
+    filteredAbsen = filteredAbsen.filter(r => r.tanggal);
+
     if (filteredAbsen.length === 0) {
       alert('Tidak ada data untuk periode ini.');
       setLoading(false);
       return;
     }
 
-    // ── Hanya absen pulang yang dihitung sebagai hadir lengkap ──
-    const absenPulang = filteredAbsen.filter(r => r.jenisAbsen === 'pulang');
-
-    // ── Rekap per dusun ──
-    const dusunCounts = new Map<string, number>();
-    absenPulang.forEach(r => {
-      dusunCounts.set(r.dusun, (dusunCounts.get(r.dusun) || 0) + 1);
+    // ── Statistik per dusun ──
+    const masukCounts = new Map<string, number>();
+    const pulangCounts = new Map<string, number>();
+    filteredAbsen.forEach(r => {
+      const map = r.jenisAbsen === 'masuk' ? masukCounts : pulangCounts;
+      map.set(r.dusun, (map.get(r.dusun) || 0) + 1);
     });
 
     const dusunSummary = CONFIG.dusunList.map(d => {
-      const count = dusunCounts.get(d) || 0;
-      return { dusun: d, count };
-    }).sort((a, b) => b.count - a.count);
+      const masuk = masukCounts.get(d) || 0;
+      const pulang = pulangCounts.get(d) || 0;
+      return { dusun: d, masuk, pulang };
+    }).sort((a, b) => b.pulang - a.pulang || b.masuk - a.masuk);
 
-    const totalHadir = absenPulang.length;
+    const totalMasuk = filteredAbsen.filter(r => r.jenisAbsen === 'masuk').length;
+    const totalPulang = filteredAbsen.filter(r => r.jenisAbsen === 'pulang').length;
+
+    // ── Statistik per tanggal (untuk sheet harian) ──
+    const byDate = new Map<string, Map<string, { masuk: number; pulang: number }>>();
+    filteredAbsen.forEach(r => {
+      let dusunMap = byDate.get(r.tanggal);
+      if (!dusunMap) { dusunMap = new Map(); byDate.set(r.tanggal, dusunMap); }
+      let s = dusunMap.get(r.dusun);
+      if (!s) { s = { masuk: 0, pulang: 0 }; dusunMap.set(r.dusun, s); }
+      if (r.jenisAbsen === 'masuk') s.masuk++; else s.pulang++;
+    });
+    const datesSorted = Array.from(byDate.keys()).sort((a, b) => b.localeCompare(a));
 
     // ── Detail terurut ──
     const sortedAbsen = [...filteredAbsen].sort((a, b) => {
@@ -122,80 +140,152 @@ export default function ExportButton() {
       cell.border = borderThin();
     }
 
+    // ── Utility: total cell ──
+    function styleTotal(cell: Cell, align: 'left' | 'center' = 'left') {
+      cell.font = { bold: true, size: 11 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: WARNA_ABU } };
+      cell.alignment = { horizontal: align, vertical: 'middle' };
+      cell.border = borderThin();
+    }
+
     // ══════════════════════════════════════════════
     // Sheet 1: REKAP PER DUSUN
     // ══════════════════════════════════════════════
     const wsRekap = wb.addWorksheet('Rekap per Dusun');
 
-    // Baris 1: Judul
-    wsRekap.mergeCells('A1:B1');
+    wsRekap.mergeCells('A1:D1');
     const judulRekap = wsRekap.getCell('A1');
     judulRekap.value = 'REKAPITULASI ABSENSI RONDA PER DUSUN';
     judulRekap.font = { bold: true, size: 14, color: { argb: WARNA_NAVY } };
     judulRekap.alignment = { horizontal: 'center', vertical: 'middle' };
     wsRekap.getRow(1).height = 32;
 
-    // Baris 2: Periode
-    wsRekap.mergeCells('A2:B2');
+    wsRekap.mergeCells('A2:D2');
     const periodeRekap = wsRekap.getCell('A2');
     periodeRekap.value = `Periode: ${labelPeriode}`;
     periodeRekap.font = { italic: true, size: 11, color: { argb: '666666' } };
     periodeRekap.alignment = { horizontal: 'center', vertical: 'middle' };
     wsRekap.getRow(2).height = 20;
 
-    // Baris 3: kosong
-    // Baris 4: Header
     const headerRekap = wsRekap.getRow(4);
-    headerRekap.getCell(1).value = 'Dusun';
-    headerRekap.getCell(2).value = 'Hadir Lengkap';
-    styleHeader(headerRekap.getCell(1));
-    styleHeader(headerRekap.getCell(2));
+    ['Dusun', 'Masuk', 'Pulang', '% Lengkap'].forEach((h, i) => {
+      headerRekap.getCell(i + 1).value = h;
+      styleHeader(headerRekap.getCell(i + 1));
+    });
     headerRekap.height = 24;
 
-    // Baris 5+: Data dusun
     dusunSummary.forEach((d, i) => {
       const row = wsRekap.getRow(5 + i);
       row.getCell(1).value = d.dusun;
-      row.getCell(2).value = d.count;
+      row.getCell(2).value = d.masuk;
+      row.getCell(3).value = d.pulang;
+      row.getCell(4).value = d.masuk > 0 ? d.pulang / d.masuk : 0;
 
       styleData(row.getCell(1), 'left');
-      styleData(row.getCell(2), 'center');
+      [2, 3, 4].forEach(col => styleData(row.getCell(col), 'center'));
       row.getCell(2).numFmt = '#,##0';
+      row.getCell(3).numFmt = '#,##0';
+      row.getCell(4).numFmt = '0%';
       row.height = 22;
     });
 
-    // Baris total
     const barisTotal = 5 + dusunSummary.length;
     const totalRowRekap = wsRekap.getRow(barisTotal);
     totalRowRekap.getCell(1).value = 'TOTAL';
-    totalRowRekap.getCell(2).value = totalHadir;
+    totalRowRekap.getCell(2).value = totalMasuk;
+    totalRowRekap.getCell(3).value = totalPulang;
+    totalRowRekap.getCell(4).value = totalMasuk > 0 ? totalPulang / totalMasuk : 0;
 
-    [1, 2].forEach(col => {
+    [1, 2, 3, 4].forEach(col => {
       const cell = totalRowRekap.getCell(col);
-      cell.font = { bold: true, size: 11 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E5E7EB' } };
-      cell.alignment = { horizontal: col === 1 ? 'left' : 'center', vertical: 'middle' };
-      cell.border = borderThin();
-      if (col === 2) cell.numFmt = '#,##0';
+      styleTotal(cell, col === 1 ? 'left' : 'center');
+      if (col === 2 || col === 3) cell.numFmt = '#,##0';
+      if (col === 4) cell.numFmt = '0%';
     });
     totalRowRekap.height = 24;
 
     wsRekap.getColumn(1).width = 28;
-    wsRekap.getColumn(2).width = 20;
+    wsRekap.getColumn(2).width = 12;
+    wsRekap.getColumn(3).width = 12;
+    wsRekap.getColumn(4).width = 14;
 
-    // Baris keterangan
     const barisKetRekap = barisTotal + 2;
-    wsRekap.mergeCells(`A${barisKetRekap}:B${barisKetRekap}`);
+    wsRekap.mergeCells(`A${barisKetRekap}:D${barisKetRekap}`);
     const ketRekap = wsRekap.getCell(`A${barisKetRekap}`);
-    ketRekap.value = '* Hadir Lengkap = warga yang melakukan absen MASUK + PULANG di malam yang sama.';
+    ketRekap.value = '* % Lengkap = jumlah absen PULANG dibagi MASUK (warga yang hadir lengkap pada malam yang sama).';
     ketRekap.font = { italic: true, size: 10, color: { argb: '999999' } };
 
     // ══════════════════════════════════════════════
-    // Sheet 2: DETAIL ABSENSI
+    // Sheet 2: REKAP PER TANGGAL
+    // ══════════════════════════════════════════════
+    const wsHarian = wb.addWorksheet('Rekap per Tanggal');
+
+    wsHarian.mergeCells('A1:D1');
+    const judulHarian = wsHarian.getCell('A1');
+    judulHarian.value = 'REKAP ABSENSI PER TANGGAL';
+    judulHarian.font = { bold: true, size: 14, color: { argb: WARNA_NAVY } };
+    judulHarian.alignment = { horizontal: 'center', vertical: 'middle' };
+    wsHarian.getRow(1).height = 32;
+
+    wsHarian.mergeCells('A2:D2');
+    const periodeHarian = wsHarian.getCell('A2');
+    periodeHarian.value = `Periode: ${labelPeriode}`;
+    periodeHarian.font = { italic: true, size: 11, color: { argb: '666666' } };
+    periodeHarian.alignment = { horizontal: 'center', vertical: 'middle' };
+    wsHarian.getRow(2).height = 20;
+
+    const headerHarian = wsHarian.getRow(4);
+    ['Tanggal', 'Dusun', 'Masuk', 'Pulang'].forEach((h, i) => {
+      headerHarian.getCell(i + 1).value = h;
+      styleHeader(headerHarian.getCell(i + 1));
+    });
+    headerHarian.height = 24;
+
+    let rowIdx = 5;
+    for (const t of datesSorted) {
+      const dusunMap = byDate.get(t)!;
+      for (const d of CONFIG.dusunList) {
+        const s = dusunMap.get(d);
+        if (!s || (s.masuk === 0 && s.pulang === 0)) continue;
+        const row = wsHarian.getRow(rowIdx);
+        row.getCell(1).value = formatTanggalIndo(t);
+        row.getCell(2).value = d;
+        row.getCell(3).value = s.masuk;
+        row.getCell(4).value = s.pulang;
+        styleData(row.getCell(1), 'left');
+        styleData(row.getCell(2), 'left');
+        styleData(row.getCell(3), 'center');
+        styleData(row.getCell(4), 'center');
+        row.getCell(3).numFmt = '#,##0';
+        row.getCell(4).numFmt = '#,##0';
+        row.height = 20;
+        rowIdx++;
+      }
+
+      // Total per tanggal
+      let sumMasuk = 0, sumPulang = 0;
+      dusunMap.forEach(s => { sumMasuk += s.masuk; sumPulang += s.pulang; });
+      const tRow = wsHarian.getRow(rowIdx);
+      tRow.getCell(1).value = `TOTAL ${formatTanggalIndo(t)}`;
+      tRow.getCell(3).value = sumMasuk;
+      tRow.getCell(4).value = sumPulang;
+      [1, 2, 3, 4].forEach(col => styleTotal(tRow.getCell(col), col === 1 || col === 2 ? 'left' : 'center'));
+      tRow.getCell(3).numFmt = '#,##0';
+      tRow.getCell(4).numFmt = '#,##0';
+      tRow.height = 20;
+      rowIdx++;
+    }
+
+    wsHarian.getColumn(1).width = 32;
+    wsHarian.getColumn(2).width = 28;
+    wsHarian.getColumn(3).width = 12;
+    wsHarian.getColumn(4).width = 12;
+
+    // ══════════════════════════════════════════════
+    // Sheet 3: DETAIL ABSENSI
     // ══════════════════════════════════════════════
     const wsDetail = wb.addWorksheet('Detail Absensi');
 
-    // Baris 1: Judul
     wsDetail.mergeCells('A1:G1');
     const judulDetail = wsDetail.getCell('A1');
     judulDetail.value = 'DETAIL ABSENSI RONDA';
@@ -203,7 +293,6 @@ export default function ExportButton() {
     judulDetail.alignment = { horizontal: 'center', vertical: 'middle' };
     wsDetail.getRow(1).height = 32;
 
-    // Baris 2: Periode
     wsDetail.mergeCells('A2:G2');
     const periodeDetail = wsDetail.getCell('A2');
     periodeDetail.value = `Periode: ${labelPeriode}`;
@@ -211,7 +300,6 @@ export default function ExportButton() {
     periodeDetail.alignment = { horizontal: 'center', vertical: 'middle' };
     wsDetail.getRow(2).height = 20;
 
-    // Baris 4: Header
     const headerDetail = wsDetail.getRow(4);
     const detailHeaders = ['No', 'Nama', 'Dusun', 'Tanggal', 'Jam Absen', 'Jenis', 'Jarak (m)'];
     detailHeaders.forEach((h, i) => {
@@ -220,18 +308,16 @@ export default function ExportButton() {
     });
     headerDetail.height = 24;
 
-    // Baris 5+: Data
     sortedAbsen.forEach((r, i) => {
       const row = wsDetail.getRow(5 + i);
       row.getCell(1).value = i + 1;
       row.getCell(2).value = r.nama;
       row.getCell(3).value = r.dusun;
-      row.getCell(4).value = formatTanggalIndo(r.tanggal);
+      row.getCell(4).value = r.tanggal ? formatTanggalIndo(r.tanggal) : '—';
       row.getCell(5).value = r.jamAbsen;
       row.getCell(6).value = r.jenisAbsen === 'masuk' ? 'MASUK' : 'PULANG';
       row.getCell(7).value = r.jarakMeter;
 
-      // No, Jam, Jarak → center; lainnya → left
       const aligns: ('center' | 'left')[] = ['center', 'left', 'left', 'left', 'center', 'center', 'center'];
       [1, 2, 3, 4, 5, 6, 7].forEach(col => {
         const cell = row.getCell(col);
