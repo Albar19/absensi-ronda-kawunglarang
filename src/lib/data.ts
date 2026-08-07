@@ -62,14 +62,6 @@ export function cekJamStatus(): JamStatus {
   return 'ditutup';
 }
 
-export function getJenisAbsenSaatIni(): JenisAbsen {
-  const status = cekJamStatus();
-  if (status === 'masuk') return 'masuk';
-  if (status === 'pulang') return 'pulang';
-  // Fallback — seharusnya tidak dipanggil saat jam tutup
-  return 'masuk';
-}
-
 export function formatJamSesi(jenis: JenisAbsen): string {
   if (jenis === 'masuk') {
     const b = `${String(CONFIG.jamBukaMasuk).padStart(2,'0')}:${String(CONFIG.menitBukaMasuk).padStart(2,'0')}`;
@@ -100,14 +92,6 @@ export function formatTanggalIndo(tanggalStr: string): string {
   ];
   const d = new Date(tanggalStr + 'T00:00:00');
   return `${hari[d.getDay()]}, ${d.getDate()} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-// ----------------------------------------------------------
-// Dapatkan nama hari dalam bahasa Indonesia
-// ----------------------------------------------------------
-export function getHariIniIndonesia(): string {
-  const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  return hari[new Date().getDay()];
 }
 
 // ----------------------------------------------------------

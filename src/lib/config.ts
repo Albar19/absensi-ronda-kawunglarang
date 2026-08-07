@@ -31,4 +31,3 @@ export const CONFIG = {
 } as const;
 
 export type JenisAbsen = 'masuk' | 'pulang';
-export type Hari = 'senin' | 'selasa' | 'rabu' | 'kamis' | 'jumat' | 'sabtu' | 'minggu';

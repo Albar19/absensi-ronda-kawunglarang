@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { isAdminRequest } from '@/lib/api-auth';
-
-function getTanggalHariIni(): string {
-  // WIB (UTC+7) agar sinkron dengan tanggal_ronda di record absen
-  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split('T')[0];
-}
+import { getTanggalHariIni } from '@/lib/data';
 
 function mapRecord(r: Record<string, unknown>) {
   return {

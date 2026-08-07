@@ -66,6 +66,21 @@ export default function HomePage() {
   // Sukses — kumpulan record (multi nama)
   const [successRecords, setSuccessRecords] = useState<AbsenRecord[]>([]);
 
+  // Ambil nama warga terdaftar untuk satu dusun (di-cache per dusun)
+  const loadNamaDusun = useCallback(async (dusun: string) => {
+    if (!dusun || namaByDusun[dusun]) return;
+    setLoadingNama(true);
+    try {
+      const res = await fetch(`/api/absen/daftar-nama?dusun=${encodeURIComponent(dusun)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setNamaByDusun(prev => ({ ...prev, [dusun]: data.names ?? [] }));
+      }
+    } catch { /* silent */ } finally {
+      setLoadingNama(false);
+    }
+  }, [namaByDusun]);
+
   // Load daftar nama untuk autocomplete + data warga tersimpan
   useEffect(() => {
     const init = async () => {
@@ -90,7 +105,7 @@ export default function HomePage() {
       }
     };
     init();
-  }, []);
+  }, [loadNamaDusun]);
 
   const mulaiCek = useCallback(async (jenis: JenisAbsen) => {
     setJenisAbsen(jenis);
@@ -195,7 +210,7 @@ export default function HomePage() {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
-  }, []);
+  }, [loadNamaDusun]);
 
   // ── Sesi MASUK: submit semua baris nama (satu dusun di atas) ──
   const handleSubmitMasuk = useCallback(async () => {
@@ -350,25 +365,10 @@ export default function HomePage() {
     setRows(prev => prev.map((r, i) => (i === idx ? { ...r, manual } : r)));
   }, []);
 
-  // Ambil nama warga terdaftar untuk satu dusun (di-cache per dusun)
-  const loadNamaDusun = useCallback(async (dusun: string) => {
-    if (!dusun || namaByDusun[dusun]) return;
-    setLoadingNama(true);
-    try {
-      const res = await fetch(`/api/absen/daftar-nama?dusun=${encodeURIComponent(dusun)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setNamaByDusun(prev => ({ ...prev, [dusun]: data.names ?? [] }));
-      }
-    } catch { /* silent */ } finally {
-      setLoadingNama(false);
-    }
-  }, [namaByDusun]);
-
   // Satu dusun di atas — semua baris nama mengikuti dusun ini
   const pilihDusun = useCallback((dusun: string) => {
     setDusunForm(dusun);
-    setRows(prev => prev.map(r => ({ nama: '', manual: false })));
+    setRows(prev => prev.map(() => ({ nama: '', manual: false })));
     void loadNamaDusun(dusun);
   }, [loadNamaDusun]);
 

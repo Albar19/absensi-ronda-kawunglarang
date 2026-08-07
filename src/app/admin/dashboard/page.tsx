@@ -55,7 +55,7 @@ function DashboardInner() {
 
   // ── Bulan filter ──
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
-  const [periodFilter, setPeriodFilter] = useState<'today' | string>('today');
+  const [periodFilter, setPeriodFilter] = useState<'today' | string>(getTanggalHariIni().slice(0, 7));
   const [monthlyData, setMonthlyData] = useState<AbsenRecord[]>([]);
   const [monthlyLoading, setMonthlyLoading] = useState(false);
 
@@ -79,32 +79,12 @@ function DashboardInner() {
       const data: AbsenRecord[] = await res.json();
       const months = new Set<string>();
       data.forEach(r => months.add(r.tanggal.slice(0, 7)));
+      // Bulan berjalan selalu tampil walau belum ada data
+      months.add(getTanggalHariIni().slice(0, 7));
       const sorted = Array.from(months).sort((a, b) => b.localeCompare(a));
       setAvailableMonths(sorted);
     } catch { /* silent */ }
   }
-
-  async function handlePeriodChange(value: string) {
-    setPeriodFilter(value);
-    if (value === 'today') {
-      setMonthlyData([]);
-    } else {
-      setMonthlyLoading(true);
-      try {
-        const res = await fetch('/api/absen/semua');
-        if (res.ok) {
-          const all: AbsenRecord[] = await res.json();
-          setMonthlyData(all.filter(r => r.tanggal.startsWith(value)));
-        }
-      } catch { /* silent */ }
-      setMonthlyLoading(false);
-    }
-  }
-
-  // ── Data yang ditampilkan (hari ini atau bulan terfilter) ──
-  const displayData = periodFilter === 'today' ? absenHariIni : monthlyData;
-  // Kehadiran dihitung per ORANG unik (nama+dusun+tanggal); lengkap = masuk + pulang
-  const kehadiran = useMemo(() => hitungKehadiran(displayData), [displayData]);
 
   const refreshData = useCallback(async () => {
     try {
@@ -126,6 +106,35 @@ function DashboardInner() {
       `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
     );
   }, [router]);
+
+  const loadPeriode = useCallback(async (value: string) => {
+    if (value === 'today') {
+      await refreshData();
+      return;
+    }
+    setMonthlyLoading(true);
+    try {
+      const res = await fetch('/api/absen/semua');
+      if (res.ok) {
+        const all: AbsenRecord[] = await res.json();
+        setMonthlyData(all.filter(r => r.tanggal.startsWith(value)));
+      }
+    } catch { /* silent */ }
+    setMonthlyLoading(false);
+  }, [refreshData]);
+
+  async function handlePeriodChange(value: string) {
+    setPeriodFilter(value);
+    if (value === 'today') {
+      setMonthlyData([]);
+    }
+    await loadPeriode(value);
+  }
+
+  // ── Data yang ditampilkan (hari ini atau bulan terfilter) ──
+  const displayData = periodFilter === 'today' ? absenHariIni : monthlyData;
+  // Kehadiran dihitung per ORANG unik (nama+dusun+tanggal); lengkap = masuk + pulang
+  const kehadiran = useMemo(() => hitungKehadiran(displayData), [displayData]);
 
   const loadJadwal = useCallback(async () => {
     setJadwalLoading(true);
@@ -168,12 +177,12 @@ function DashboardInner() {
   useEffect(() => {
     if (!authChecked) return;
     void (async () => {
-      await refreshData();
       await loadAvailableMonths();
+      await loadPeriode(getTanggalHariIni().slice(0, 7));
     })();
     const interval = setInterval(refreshData, 30000);
     return () => clearInterval(interval);
-  }, [refreshData, authChecked]);
+  }, [refreshData, loadPeriode, authChecked]);
 
   useEffect(() => {
     if (!authChecked) return;
@@ -433,7 +442,9 @@ function DashboardInner() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h2 className="text-lg font-black text-slate-900 truncate">
-                    {periodFilter === 'today' ? tanggalLabel : 'Rekap Bulanan'}
+                    {periodFilter === 'today'
+                      ? tanggalLabel
+                      : `${BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} ${periodFilter.split('-')[0]}`}
                   </h2>
                   {/* Dropdown filter bulan */}
                   <div className="relative">
@@ -457,14 +468,12 @@ function DashboardInner() {
                   {periodFilter === 'today' && lastRefresh && <span className="ml-2">· Data: {lastRefresh}</span>}
                 </p>
               </div>
-              {periodFilter === 'today' && (
-                <button onClick={refreshData}
+              <button onClick={() => void loadPeriode(periodFilter)}
                   className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.97] transition-all flex-shrink-0"
                   style={{ minHeight: '44px' }}>
                   <RefreshCw size={16} strokeWidth={2} />
                   <span className="hidden sm:inline">Refresh</span>
                 </button>
-              )}
             </div>
 
             {/* Kehadiran per Dusun */}
