@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
 import { hitungJarak } from '@/lib/data';
+import { isDemoMode } from '@/lib/data';
 import { rateLimit } from '@/lib/rate-limit';
 
 // Batas pengiriman absen per IP (persisten di Supabase, aman untuk serverless)
@@ -73,10 +74,13 @@ export async function POST(request: Request) {
     }
 
     // ── VALIDASI JAM SERVER-SIDE (waktu server WIB, bukan client) ──
+    // Demo mode: lewati validasi jam agar bisa absen kapan saja. GPS tetap divalidasi.
     const { menit: wibMenit, jamAbsenServer, tanggalWib } = getWibNow();
 
     let tanggalRonda: string;
-    if (jenisAbsen === 'masuk') {
+    if (isDemoMode()) {
+      tanggalRonda = tanggalWib;
+    } else if (jenisAbsen === 'masuk') {
       if (wibMenit < MASUK_MULAI || wibMenit >= MASUK_SELESAI + GRACE_MENIT) {
         return NextResponse.json(
           { error: 'Absen masuk hanya tersedia pukul 20:00 - 22:00 WIB.' },

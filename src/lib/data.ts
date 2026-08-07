@@ -30,6 +30,12 @@ export function hitungJarak(
 // ----------------------------------------------------------
 export type JamStatus = 'masuk' | 'pulang' | 'belum-buka' | 'ditutup';
 
+// Demo mode: buka sesi absen kapan saja (untuk demo lapangan).
+// Aktif hanya bila env NEXT_PUBLIC_DEMO_MODE=true. Matikan setelah demo.
+export function isDemoMode(): boolean {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+}
+
 function totalMenitSekarang(): number {
   const now = new Date();
   return now.getHours() * 60 + now.getMinutes();
@@ -41,6 +47,9 @@ const PULANG_MULAI = CONFIG.jamBukaPulang * 60 + CONFIG.menitBukaPulang;     // 
 const PULANG_SELESAI = CONFIG.jamTutupPulang * 60 + CONFIG.menitTutupPulang; // 1439
 
 export function cekJamStatus(): JamStatus {
+  // Demo mode: sesi selalu terbuka (masuk) agar bisa demo kapan saja.
+  if (isDemoMode()) return 'masuk';
+
   const t = totalMenitSekarang();
 
   // Sesi pulang: 23:00 - 23:59 WIB

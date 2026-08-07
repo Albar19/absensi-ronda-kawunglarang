@@ -13,6 +13,7 @@ import {
   getDeviceId,
   muatDataWarga,
   simpanDataWarga,
+  isDemoMode,
 } from '@/lib/data';
 import HeaderBanner  from '@/components/citizen/HeaderBanner';
 import StatusCards   from '@/components/citizen/StatusCards';
@@ -48,6 +49,7 @@ export default function HomePage() {
   const [koordinat,      setKoordinat]      = useState<{lat:number;lng:number}|null>(null);
   const [pesanError,     setPesanError]     = useState('');
   const [jenisAbsen,     setJenisAbsen]     = useState<JenisAbsen>('masuk');
+  const [demoJenis,      setDemoJenis]      = useState<JenisAbsen>('masuk');
 
   // Form state — multi nama (sesi masuk)
   const [rows, setRows] = useState<OrangRow[]>([{ nama: '', dusun: '' }]);
@@ -190,7 +192,10 @@ export default function HomePage() {
   const handleSubmitMasuk = useCallback(async () => {
     const validRows = rows
       .map(r => ({ nama: r.nama.trim(), dusun: r.dusun.trim() }))
-      .filter(r => r.nama.length > 0 && r.dusun.length > 0);
+      .filter(r => r.nama.length > 0 && r.dusun.length > 0)
+      .map(r => isDemoMode() && !r.nama.startsWith('[DEMO]')
+        ? { ...r, nama: `[DEMO] ${r.nama}` }
+        : r);
 
     if (validRows.length === 0) {
       setPesanError('Isi minimal satu nama dan pilih dusun.');
@@ -346,8 +351,9 @@ export default function HomePage() {
     : rows.some(r => r.nama.trim().length > 0 && r.dusun.trim().length > 0);
 
   // ── Adaptive labels ──
+  const demo = isDemoMode();
   const jamStatus = cekJamStatus();
-  const sesiAktif = jamStatus === 'masuk' || jamStatus === 'pulang' ? jamStatus : null;
+  const sesiAktif = demo ? demoJenis : (jamStatus === 'masuk' || jamStatus === 'pulang' ? jamStatus : null);
   const labelSesi = sesiAktif === 'pulang' ? 'PULANG' : 'MASUK';
   const labelSesiLower = sesiAktif === 'pulang' ? 'pulang' : 'masuk';
   const jamSesiStr = sesiAktif ? formatJamSesi(sesiAktif) : '';
@@ -464,6 +470,28 @@ export default function HomePage() {
             </div>
 
             {/* CTA */}
+            {demo && (
+              <div className="grid grid-cols-2 gap-2">
+                {(['masuk', 'pulang'] as const).map(j => (
+                  <button
+                    key={j}
+                    type="button"
+                    onClick={() => setDemoJenis(j)}
+                    className={`rounded-xl font-black text-base tracking-wide py-3 transition-all active:scale-[0.98] ${
+                      demoJenis === j
+                        ? j === 'masuk'
+                          ? 'bg-[#1e3a8a] text-white shadow-sm'
+                          : 'bg-amber-500 text-white shadow-sm'
+                        : 'bg-white text-slate-500 border-2 border-slate-200 hover:bg-slate-50'
+                    }`}
+                    style={{ minHeight: '52px' }}
+                  >
+                    {j === 'masuk' ? 'MASUK' : 'PULANG'}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <button
               type="button"
               onClick={sesiAktif ? () => mulaiCek(sesiAktif) : undefined}

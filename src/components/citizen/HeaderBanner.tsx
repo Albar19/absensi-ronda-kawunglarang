@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import { Landmark } from 'lucide-react';
 import { CONFIG } from '@/lib/config';
+import { isDemoMode } from '@/lib/data';
 
 export default function HeaderBanner() {
   const [waktu, setWaktu] = useState('');
   const [tanggal, setTanggal] = useState('');
+  const demo = isDemoMode();
 
   useEffect(() => {
     const HARI  = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
@@ -26,6 +28,13 @@ export default function HeaderBanner() {
     <header className="w-full bg-[#1e3a8a] text-white">
       {/* Gold top stripe */}
       <div className="h-1.5 bg-[#f59e0b]" />
+
+      {/* Badge demo mode */}
+      {demo && (
+        <div className="bg-amber-400 text-amber-950 text-center text-xs font-black tracking-widest uppercase py-1.5 px-4">
+          MODE DEMO — data akan diprefiks [DEMO]
+        </div>
+      )}
 
       <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
         {/* ─── Identity row ─── */}
