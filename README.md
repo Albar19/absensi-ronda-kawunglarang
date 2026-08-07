@@ -29,7 +29,7 @@ Sistem absensi ronda malam berbasis web untuk **Desa Kawunglarang**, dikembangka
 | **Absen Masuk** | Warga buka halaman, cek GPS (radius 150m dari Bale Desa), absen masuk (20:00–22:00 WIB) |
 | **Absen Pulang** | Warga absen pulang (23:00–23:59 WIB) — wajib sudah absen masuk malam ini |
 | **1 Perangkat Bisa Banyak Warga** | Karena keterbatasan perangkat, satu HP bisa dipakai absen banyak warga. Ada fitur "Tambah Nama" saat absen masuk. |
-| **Checklist Absen Pulang** | Saat sesi pulang, semua nama yang sudah absen masuk dari perangkat tampil dengan centang. Nama yang pulang lebih awal bisa di-uncheck. |
+| **Checklist Absen Pulang** | Saat sesi pulang, semua nama yang sudah absen masuk **malam ini** (bebas perangkat) tampil dengan centang. Nama yang pulang lebih awal bisa di-uncheck. |
 | **Dropdown Pilih Nama** | Saat absen masuk, warga pilih **satu dusun** di atas → muncul dropdown nama warga terdaftar di dusun tsb untuk semua baris (termasuk "Tambah Nama"). Ada fallback ketik manual. |
 | **Jadwal Ronda Mingguan** | Admin atur petugas ronda per hari (Senin–Minggu) via dropdown di dashboard |
 | **Dashboard Admin** | Log kehadiran real-time + leaderboard progress bar per dusun |
@@ -70,10 +70,9 @@ Perhitungan kehadiran: hanya **absen pulang** yang dihitung sebagai hadir lengka
 | `latitude` | float8 | Latitude GPS |
 | `longitude` | float8 | Longitude GPS |
 | `jarak_meter` | int4 | Jarak dari Bale Desa (meter) |
-| `device_id` | text | ID perangkat unik (localStorage) |
 
 Index: `idx_absen_tanggal_dusun` pada `(tanggal_ronda, dusun)`  
-Index: `idx_absen_device_jenis` pada `(device_id, tanggal_ronda, jenis_absen)`
+> Kolom `device_id` pada record lama tidak lagi dipakai — 1 perangkat bebas dipakai banyak warga, identitas absen berdasarkan **nama + dusun**.
 
 ### Tabel `warga`
 
@@ -129,7 +128,7 @@ Fungsi `rate_limit_check(p_key, p_max, p_window_ms)` dikelola lewat RPC atomik (
 ### Sesi Pulang (23:00 – 23:59 WIB)
 1. Warga buka halaman yang sama
 2. Sistem cek jam — otomatis mendeteksi sesi pulang
-3. Sistem menampilkan semua nama yang sudah absen masuk dari perangkat ini
+3. Sistem menampilkan semua nama yang sudah absen masuk **malam ini** (bebas perangkat)
 4. Hilangkan centang pada nama yang **pulang lebih awal**, lalu tekan SAYA PULANG RONDA
 5. Sistem cek GPS — harus dalam radius **150m** dari Bale Desa
 6. Data tersimpan dengan `jenis_absen: 'pulang'` untuk setiap nama yang dicentang
@@ -238,7 +237,7 @@ src/
 │   ├── kontak/
 │   │   └── page.tsx           # Halaman kontak
 │   └── api/
-│       ├── absen/             # POST absen + GET (hari-ini, semua, cek-masuk, daftar-nama)
+│       ├── absen/             # POST absen + GET (hari-ini, semua, cek-masuk, daftar-nama, reset-demo)
 │       ├── auth/              # Login/logout admin (cookie JWT)
 │       ├── jadwal/            # GET/PUT jadwal ronda + hari-ini + download
 │       └── qr/                # GET QR Code (PNG)
@@ -346,7 +345,7 @@ export const CONFIG = {
 - **Auth admin:** Menggunakan cookie `admin_token` dengan JWT sederhana (via `src/app/api/auth/`). Login WAJIB `ADMIN_PASSWORD_HASH` (bcrypt) — password plaintext tidak didukung. Tanpa env ini, login ditolak.
 - **Validasi absen:** Jam sesi & tanggal ronda dihitung **server-side (WIB)**, GPS divalidasi 2x (client + server Haversine 150m).
 - **Endpoint admin:** `/api/absen/semua`, `/api/absen/hari-ini`, `/api/jadwal*` butuh cookie admin (401 tanpa login).
-- **Multi-nama per perangkat:** Karena keterbatasan perangkat, 1 HP bisa dipakai absen banyak warga. Saat sesi masuk ada tombol "Tambah Nama"; saat sesi pulang muncul checklist semua nama yang sudah absen masuk dari perangkat (yang pulang lebih awal bisa di-uncheck). Identitas absen berdasarkan **nama + dusun** (bukan device), sehingga dua orang dengan nama sama tapi dusun berbeda tetap dianggap berbeda.
+- **Multi-nama per perangkat:** Karena keterbatasan perangkat, 1 HP bisa dipakai absen banyak warga. Saat sesi masuk ada tombol "Tambah Nama"; saat sesi pulang muncul checklist **semua nama yang absen masuk malam ini** (bebas perangkat, yang pulang lebih awal bisa di-uncheck). Identitas absen berdasarkan **nama + dusun** (bukan device), sehingga dua orang dengan nama sama tapi dusun berbeda tetap dianggap berbeda.
 - **Jam absen:** Server memakai waktu server WIB (UTC+7), bukan waktu client. Pastikan kelima tabel dibuat via migrasi di `supabase/` (urutan: `migration_relawan.sql` → `migration_multi_nama.sql` → `migration_jadwal.sql` → `migration_warga.sql` → `migration_rate_limit.sql`) di Supabase dashboard.
 
 ### Kontak

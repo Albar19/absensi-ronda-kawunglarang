@@ -10,7 +10,6 @@ import {
   formatJamSesi,
   generateId,
   getTanggalHariIni,
-  getDeviceId,
   muatDataWarga,
   simpanDataWarga,
   isDemoMode,
@@ -82,7 +81,7 @@ export default function HomePage() {
       // → menentukan tombol ABSEN / PULANG otomatis.
       if (isDemoMode()) {
         try {
-          const cekRes = await fetch(`/api/absen/cek-masuk?device_id=${encodeURIComponent(getDeviceId())}&tanggal=${getTanggalHariIni()}`);
+          const cekRes = await fetch(`/api/absen/cek-masuk?tanggal=${getTanggalHariIni()}`);
           if (cekRes.ok) {
             const cekData = await cekRes.json();
             setSudahMasuk((cekData.people?.length ?? 0) > 0);
@@ -120,8 +119,7 @@ export default function HomePage() {
     // Sesi pulang: ambil daftar orang yang sudah absen masuk dari perangkat ini
     if (jenis === 'pulang') {
       try {
-        const deviceId = getDeviceId();
-        const cekRes = await fetch(`/api/absen/cek-masuk?device_id=${encodeURIComponent(deviceId)}&tanggal=${getTanggalHariIni()}`);
+        const cekRes = await fetch(`/api/absen/cek-masuk?tanggal=${getTanggalHariIni()}`);
         if (!cekRes.ok) {
           const cekData = await cekRes.json();
           setStatusJarak(null);
@@ -217,7 +215,6 @@ export default function HomePage() {
 
     setIsSubmitting(true);
     const now = new Date();
-    const deviceId = getDeviceId();
     const jamAbsen = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
     const tanggal = getTanggalHariIni();
     const submitted: AbsenRecord[] = [];
@@ -233,7 +230,6 @@ export default function HomePage() {
         latitude: koordinat?.lat ?? 0,
         longitude: koordinat?.lng ?? 0,
         jarakMeter: jarakMeter ?? 0,
-        deviceId,
       };
 
       try {
@@ -277,7 +273,6 @@ export default function HomePage() {
 
     setIsSubmitting(true);
     const now = new Date();
-    const deviceId = getDeviceId();
     const jamAbsen = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
     const tanggal = getTanggalHariIni();
     const submitted: AbsenRecord[] = [];
@@ -293,7 +288,6 @@ export default function HomePage() {
         latitude: koordinat?.lat ?? 0,
         longitude: koordinat?.lng ?? 0,
         jarakMeter: jarakMeter ?? 0,
-        deviceId,
       };
 
       try {
@@ -385,6 +379,18 @@ export default function HomePage() {
       else next.add(key);
       return next;
     });
+  }, []);
+
+  // Demo: hapus semua data test ([DEMO]) agar test berikutnya bersih
+  const handleResetDemo = useCallback(async () => {
+    if (!confirm('Hapus semua data test ([DEMO])? Data tidak bisa dikembalikan.')) return;
+    try {
+      const res = await fetch('/api/absen/reset-demo', { method: 'POST' });
+      if (!res.ok) throw new Error();
+      window.location.reload();
+    } catch {
+      alert('Gagal membersihkan data. Coba lagi.');
+    }
   }, []);
 
   const isFormValid = jenisAbsen === 'pulang'
@@ -483,7 +489,7 @@ export default function HomePage() {
                 <ol className="space-y-1.5">
                   {[
                     'Tekan tombol MULAI ABSEN PULANG',
-                    'Sistem menampilkan semua nama yang sudah absen masuk dari perangkat ini',
+                    'Sistem menampilkan semua nama yang sudah absen masuk malam ini',
                     'Hilangkan centang jika ada yang pulang lebih awal',
                     'Tekan SAYA PULANG RONDA',
                   ].map((step, i) => (
@@ -530,6 +536,16 @@ export default function HomePage() {
                 Masuk sebagai Admin
               </a>
             </div>
+
+            {demo && (
+              <button
+                type="button"
+                onClick={handleResetDemo}
+                className="w-full text-xs font-bold text-red-400 hover:text-red-600 transition-colors text-center"
+              >
+                Bersihkan Data Test ([DEMO])
+              </button>
+            )}
           </div>
         )}
 

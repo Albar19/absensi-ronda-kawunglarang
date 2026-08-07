@@ -13,7 +13,8 @@ absen asli sesuai jam sesi (masuk 20:00–22:00, pulang 23:00–23:59 WIB).
 1. Pastikan kode demo sudah dihapus dari branch kerja:
    - `src/lib/data.ts` — fungsi `isDemoMode()` dan `cekJamStatus()` yang selalu return `'masuk'`
    - `src/app/api/absen/route.ts` — blok demo: bypass rate-limit, relaksasi cek "wajib masuk dulu" untuk pulang, dan `upsert` diganti INSERT polos (`{ data: null }`) saat demo
-   - `src/app/page.tsx` — prefiks otomatis `[DEMO]` pada nama, state `sudahMasuk` + deteksi via `/api/absen/cek-masuk` (tombol adaptif ABSEN/PULANG), tombol "LANJUT ABSEN PULANG" di layar sukses
+   - `src/app/page.tsx` — prefiks otomatis `[DEMO]` pada nama, state `sudahMasuk` + deteksi via `/api/absen/cek-masuk` (tombol adaptif ABSEN/PULANG), tombol "LANJUT ABSEN PULANG" di layar sukses, tombol "Bersihkan Data Test ([DEMO])" + handler `handleResetDemo`
+   - `src/app/api/absen/reset-demo/route.ts` — hapus folder ini (khusus demo; di produksi hanya balas 403)
    - `src/components/citizen/SuccessScreen.tsx` — tombol "LANJUT ABSEN PULANG"
    - `src/components/citizen/HeaderBanner.tsx` — badge "MODE DEMO"
 2. Commit dan push ke `main`.

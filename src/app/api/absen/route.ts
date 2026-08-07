@@ -43,9 +43,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { nama, dusun, jenisAbsen, latitude, longitude, deviceId } = body;
+    const { nama, dusun, jenisAbsen, latitude, longitude } = body;
 
-    if (!nama || !dusun || !deviceId || !jenisAbsen) {
+    if (!nama || !dusun || !jenisAbsen) {
       return NextResponse.json(
         { error: 'Data absen tidak lengkap' },
         { status: 400 }
@@ -58,7 +58,6 @@ export async function POST(request: Request) {
     if (
       typeof nama !== 'string' || namaTrimmed.length === 0 || nama.length > 100 ||
       typeof dusun !== 'string' || dusunTrimmed.length === 0 || dusun.length > 50 ||
-      typeof deviceId !== 'string' || deviceId.length < 8 || deviceId.length > 100 ||
       (jenisAbsen !== 'masuk' && jenisAbsen !== 'pulang')
     ) {
       return NextResponse.json(
@@ -230,7 +229,6 @@ export async function POST(request: Request) {
       jarak_meter: jarakFinal,
       latitude: latNum,
       longitude: lngNum,
-      device_id: deviceId,
     };
 
     const { error } = await supabase.from('absen_records').insert(insertData);

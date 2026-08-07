@@ -18,7 +18,6 @@ function mapRecord(r: Record<string, unknown>) {
     latitude: Number(r.latitude ?? r.koordinat_lat ?? 0),
     longitude: Number(r.longitude ?? r.koordinat_lng ?? 0),
     jarakMeter: Number(r.jarak_meter ?? 0),
-    deviceId: r.device_id ?? r.warga_id ?? '',
   };
 }
 

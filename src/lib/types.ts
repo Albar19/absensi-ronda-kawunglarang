@@ -13,7 +13,6 @@ export interface AbsenRecord {
   latitude: number;
   longitude: number;
   jarakMeter: number;
-  deviceId: string;
 }
 
 export interface JadwalRonda {

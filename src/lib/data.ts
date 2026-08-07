@@ -1,5 +1,5 @@
 // ============================================================
-// DATA LAYER - Helpers, Haversine, Device ID, LocalStorage
+// DATA LAYER - Helpers, Haversine, LocalStorage
 // ============================================================
 
 import { CONFIG, type JenisAbsen } from './config';
@@ -118,25 +118,10 @@ export function generateId(): string {
 }
 
 // ----------------------------------------------------------
-// DEVICE ID - identifikasi unik per HP (disimpan di localStorage)
-// ----------------------------------------------------------
-const DEVICE_KEY = 'absensi_device_id';
-const WARGA_KEY = 'absensi_warga_data';
-
-export function getDeviceId(): string {
-  if (typeof window === 'undefined') return '';
-  let deviceId = localStorage.getItem(DEVICE_KEY);
-  if (!deviceId) {
-    deviceId = generateId() + '-' + Date.now().toString(36);
-    localStorage.setItem(DEVICE_KEY, deviceId);
-  }
-  return deviceId;
-}
-
-// ----------------------------------------------------------
 // Simpan & muat data warga (nama + dusun) ke localStorage
 // untuk auto-fill di kunjungan berikutnya
 // ----------------------------------------------------------
+const WARGA_KEY = 'absensi_warga_data';
 export interface WargaData {
   nama: string;
   dusun: string;

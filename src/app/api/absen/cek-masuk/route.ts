@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// GET /api/absen/cek-masuk?device_id=xxx&tanggal=YYYY-MM-DD
-// Mengembalikan daftar orang yang sudah absen masuk dari perangkat ini hari ini
-// (nama + dusun). Dipakai saat sesi pulang untuk menampilkan checklist.
+// GET /api/absen/cek-masuk?tanggal=YYYY-MM-DD
+// Mengembalikan daftar semua warga yang sudah absen masuk malam ini
+// (nama + dusun, unik). Dipakai saat sesi pulang untuk menampilkan checklist.
+// Tanpa filter perangkat: 1 HP bisa dipakai banyak orang.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const deviceId = searchParams.get('device_id');
   const tanggal = searchParams.get('tanggal');
 
-  if (!deviceId || !tanggal) {
+  if (!tanggal) {
     return NextResponse.json(
-      { error: 'Param device_id dan tanggal wajib' },
+      { error: 'Param tanggal wajib' },
       { status: 400 }
     );
   }
@@ -19,7 +19,6 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from('absen_records')
     .select('nama_warga, dusun')
-    .eq('device_id', deviceId)
     .eq('tanggal_ronda', tanggal)
     .eq('jenis_absen', 'masuk');
 
@@ -29,7 +28,6 @@ export async function GET(request: Request) {
       const fb = await supabase
         .from('absen_records')
         .select('nama, dusun')
-        .eq('warga_id', deviceId)
         .eq('tanggal', tanggal)
         .eq('jenis_absen', 'masuk');
       if (fb.error) {
@@ -41,7 +39,7 @@ export async function GET(request: Request) {
       })));
       if (people.length === 0) {
         return NextResponse.json(
-          { error: 'Belum ada absen masuk dari perangkat ini malam ini.' },
+          { error: 'Belum ada absen masuk malam ini.' },
           { status: 404 }
         );
       }
@@ -57,7 +55,7 @@ export async function GET(request: Request) {
 
   if (people.length === 0) {
     return NextResponse.json(
-      { error: 'Belum ada absen masuk dari perangkat ini malam ini.' },
+      { error: 'Belum ada absen masuk malam ini.' },
       { status: 404 }
     );
   }
