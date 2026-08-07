@@ -22,7 +22,6 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status') || 'semua';
-  const search = searchParams.get('search')?.trim().toLowerCase() || '';
   const dusun = searchParams.get('dusun')?.trim() || '';
 
   let query = supabase.from('warga').select('id, nama, dusun, terdaftar, aktif, created_at');
@@ -42,10 +41,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Gagal mengambil data warga' }, { status: 500 });
   }
 
-  let warga = data ?? [];
-  if (search) {
-    warga = warga.filter(w => w.nama.toLowerCase().includes(search));
-  }
+  const warga = data ?? [];
 
   return NextResponse.json(warga);
 }
