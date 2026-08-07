@@ -49,7 +49,8 @@ export default function HomePage() {
   const [koordinat,      setKoordinat]      = useState<{lat:number;lng:number}|null>(null);
   const [pesanError,     setPesanError]     = useState('');
   const [jenisAbsen,     setJenisAbsen]     = useState<JenisAbsen>('masuk');
-  const [demoJenis,      setDemoJenis]      = useState<JenisAbsen>('masuk');
+  // Demo mode: true = perangkat sudah absen masuk hari ini → tombol jadi PULANG
+  const [sudahMasuk,     setSudahMasuk]     = useState(false);
 
   // Form state — multi nama (sesi masuk)
   const [rows, setRows] = useState<OrangRow[]>([{ nama: '', dusun: '' }]);
@@ -79,6 +80,18 @@ export default function HomePage() {
       const saved = muatDataWarga();
       if (saved) {
         setRows([{ nama: saved.nama, dusun: saved.dusun }]);
+      }
+
+      // Demo mode: deteksi apakah perangkat ini sudah absen masuk hari ini
+      // → menentukan tombol ABSEN / PULANG otomatis.
+      if (isDemoMode()) {
+        try {
+          const cekRes = await fetch(`/api/absen/cek-masuk?device_id=${encodeURIComponent(getDeviceId())}&tanggal=${getTanggalHariIni()}`);
+          if (cekRes.ok) {
+            const cekData = await cekRes.json();
+            setSudahMasuk((cekData.people?.length ?? 0) > 0);
+          }
+        } catch { /* silent */ }
       }
     };
     init();
@@ -251,6 +264,7 @@ export default function HomePage() {
     setSuccessRecords(submitted);
     setIsSubmitting(false);
     setFlowState('success');
+    if (isDemoMode()) setSudahMasuk(true);
   }, [rows, koordinat, jarakMeter]);
 
   // ── Sesi PULANG: submit semua nama yang dicentang ──
@@ -308,6 +322,8 @@ export default function HomePage() {
     setSuccessRecords(submitted);
     setIsSubmitting(false);
     setFlowState('success');
+    // Setelah pulang, perangkat bisa langsung absen masuk lagi (test berulang)
+    if (isDemoMode()) setSudahMasuk(false);
   }, [pulangPeople, checkedNames, koordinat, jarakMeter]);
 
   const handleReset = useCallback(() => {
@@ -350,10 +366,14 @@ export default function HomePage() {
     ? checkedNames.size > 0
     : rows.some(r => r.nama.trim().length > 0 && r.dusun.trim().length > 0);
 
-  // ── Adaptive labels ──
+  // ── Adaptive session ──
   const demo = isDemoMode();
   const jamStatus = cekJamStatus();
-  const sesiAktif = demo ? demoJenis : (jamStatus === 'masuk' || jamStatus === 'pulang' ? jamStatus : null);
+  // Demo: tombol adaptif — sudah absen masuk → PULANG, belum → MASUK.
+  // Produksi: ikuti jam sesi asli.
+  const sesiAktif = demo
+    ? (sudahMasuk ? 'pulang' : 'masuk')
+    : (jamStatus === 'masuk' || jamStatus === 'pulang' ? jamStatus : null);
   const labelSesi = sesiAktif === 'pulang' ? 'PULANG' : 'MASUK';
   const labelSesiLower = sesiAktif === 'pulang' ? 'pulang' : 'masuk';
   const jamSesiStr = sesiAktif ? formatJamSesi(sesiAktif) : '';
@@ -470,28 +490,6 @@ export default function HomePage() {
             </div>
 
             {/* CTA */}
-            {demo && (
-              <div className="grid grid-cols-2 gap-2">
-                {(['masuk', 'pulang'] as const).map(j => (
-                  <button
-                    key={j}
-                    type="button"
-                    onClick={() => setDemoJenis(j)}
-                    className={`rounded-xl font-black text-base tracking-wide py-3 transition-all active:scale-[0.98] ${
-                      demoJenis === j
-                        ? j === 'masuk'
-                          ? 'bg-[#1e3a8a] text-white shadow-sm'
-                          : 'bg-amber-500 text-white shadow-sm'
-                        : 'bg-white text-slate-500 border-2 border-slate-200 hover:bg-slate-50'
-                    }`}
-                    style={{ minHeight: '52px' }}
-                  >
-                    {j === 'masuk' ? 'MASUK' : 'PULANG'}
-                  </button>
-                ))}
-              </div>
-            )}
-
             <button
               type="button"
               onClick={sesiAktif ? () => mulaiCek(sesiAktif) : undefined}
@@ -716,7 +714,12 @@ export default function HomePage() {
 
         {/* ─── SUCCESS ─── */}
         {flowState === 'success' && successRecords.length > 0 && (
-          <SuccessScreen records={successRecords} onBack={handleReset} onTambahNama={jenisAbsen === 'masuk' ? () => { setSuccessRecords([]); setRows(prev => [...prev, { nama: '', dusun: '' }]); setFlowState('form'); } : undefined} />
+          <SuccessScreen
+            records={successRecords}
+            onBack={handleReset}
+            onTambahNama={jenisAbsen === 'masuk' ? () => { setSuccessRecords([]); setRows(prev => [...prev, { nama: '', dusun: '' }]); setFlowState('form'); } : undefined}
+            onLanjutPulang={demo && jenisAbsen === 'masuk' ? () => mulaiCek('pulang') : undefined}
+          />
         )}
 
       </div>

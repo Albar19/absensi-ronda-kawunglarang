@@ -31,9 +31,11 @@ function getWibNow() {
 
 export async function POST(request: Request) {
   try {
-    // ── Rate limiting by IP ──
+    const demo = isDemoMode();
+
+    // ── Rate limiting by IP (di-bypass saat demo mode agar bisa spam test) ──
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    if (!(await rateLimit(`absen:${ip}`, ABSEN_MAX, ABSEN_WINDOW_MS))) {
+    if (!demo && !(await rateLimit(`absen:${ip}`, ABSEN_MAX, ABSEN_WINDOW_MS))) {
       return NextResponse.json(
         { error: 'Terlalu banyak pengiriman absen. Coba lagi beberapa saat.' },
         { status: 429 }
@@ -130,7 +132,8 @@ export async function POST(request: Request) {
     }
 
     // ── Absen pulang wajib sudah absen masuk di malam yang sama ──
-    if (jenisAbsen === 'pulang') {
+    // Demo mode: relaksasi — bebas absen pulang tanpa harus masuk dulu (untuk test).
+    if (!demo && jenisAbsen === 'pulang') {
       const { data: sudahMasuk } = await supabase
         .from('absen_records')
         .select('id')
@@ -149,14 +152,17 @@ export async function POST(request: Request) {
     }
 
     // ── UPSERT: jika nama_warga + dusun + tanggal_ronda + jenis_absen sudah ada, UPDATE ──
-    const { data: existing } = await supabase
-      .from('absen_records')
-      .select('id')
-      .eq('nama_warga', namaTrimmed)
-      .eq('dusun', dusunTrimmed)
-      .eq('tanggal_ronda', tanggalRonda)
-      .eq('jenis_absen', jenisAbsen)
-      .maybeSingle();
+    // Demo mode: selalu INSERT baru (skip upsert) agar setiap absen menambah record untuk test export.
+    const { data: existing } = demo
+      ? { data: null }
+      : await supabase
+          .from('absen_records')
+          .select('id')
+          .eq('nama_warga', namaTrimmed)
+          .eq('dusun', dusunTrimmed)
+          .eq('tanggal_ronda', tanggalRonda)
+          .eq('jenis_absen', jenisAbsen)
+          .maybeSingle();
 
     if (existing) {
       const updateData: Record<string, unknown> = {

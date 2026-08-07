@@ -104,13 +104,6 @@ export default function ExportButton() {
     });
     const datesSorted = Array.from(byDate.keys()).sort((a, b) => b.localeCompare(a));
 
-    // ── Detail terurut ──
-    const sortedAbsen = [...filteredAbsen].sort((a, b) => {
-      const dc = b.tanggal.localeCompare(a.tanggal);
-      if (dc !== 0) return dc;
-      return b.jamAbsen.localeCompare(a.jamAbsen);
-    });
-
     // ═══════════════════════════════════════════════
     // BUAT WORKBOOK
     // ═══════════════════════════════════════════════
@@ -282,60 +275,6 @@ export default function ExportButton() {
     wsHarian.getColumn(2).width = 28;
     wsHarian.getColumn(3).width = 12;
     wsHarian.getColumn(4).width = 12;
-
-    // ══════════════════════════════════════════════
-    // Sheet 3: DETAIL ABSENSI
-    // ══════════════════════════════════════════════
-    const wsDetail = wb.addWorksheet('Detail Absensi');
-
-    wsDetail.mergeCells('A1:G1');
-    const judulDetail = wsDetail.getCell('A1');
-    judulDetail.value = 'DETAIL ABSENSI RONDA';
-    judulDetail.font = { bold: true, size: 14, color: { argb: WARNA_NAVY } };
-    judulDetail.alignment = { horizontal: 'center', vertical: 'middle' };
-    wsDetail.getRow(1).height = 32;
-
-    wsDetail.mergeCells('A2:G2');
-    const periodeDetail = wsDetail.getCell('A2');
-    periodeDetail.value = `Periode: ${labelPeriode}`;
-    periodeDetail.font = { italic: true, size: 11, color: { argb: '666666' } };
-    periodeDetail.alignment = { horizontal: 'center', vertical: 'middle' };
-    wsDetail.getRow(2).height = 20;
-
-    const headerDetail = wsDetail.getRow(4);
-    const detailHeaders = ['No', 'Nama', 'Dusun', 'Tanggal', 'Jam Absen', 'Jenis', 'Jarak (m)'];
-    detailHeaders.forEach((h, i) => {
-      headerDetail.getCell(i + 1).value = h;
-      styleHeader(headerDetail.getCell(i + 1));
-    });
-    headerDetail.height = 24;
-
-    sortedAbsen.forEach((r, i) => {
-      const row = wsDetail.getRow(5 + i);
-      row.getCell(1).value = i + 1;
-      row.getCell(2).value = r.nama;
-      row.getCell(3).value = r.dusun;
-      row.getCell(4).value = r.tanggal ? formatTanggalIndo(r.tanggal) : '—';
-      row.getCell(5).value = r.jamAbsen;
-      row.getCell(6).value = r.jenisAbsen === 'masuk' ? 'MASUK' : 'PULANG';
-      row.getCell(7).value = r.jarakMeter;
-
-      const aligns: ('center' | 'left')[] = ['center', 'left', 'left', 'left', 'center', 'center', 'center'];
-      [1, 2, 3, 4, 5, 6, 7].forEach(col => {
-        const cell = row.getCell(col);
-        styleData(cell, aligns[col - 1]);
-        if (col === 7) cell.numFmt = '#,##0';
-      });
-      row.height = 20;
-    });
-
-    wsDetail.getColumn(1).width = 6;
-    wsDetail.getColumn(2).width = 28;
-    wsDetail.getColumn(3).width = 20;
-    wsDetail.getColumn(4).width = 32;
-    wsDetail.getColumn(5).width = 14;
-    wsDetail.getColumn(6).width = 10;
-    wsDetail.getColumn(7).width = 12;
 
     // ── Generate & download ──
     const buffer = await wb.xlsx.writeBuffer();

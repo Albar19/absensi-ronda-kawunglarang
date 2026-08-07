@@ -12,8 +12,9 @@ absen asli sesuai jam sesi (masuk 20:00–22:00, pulang 23:00–23:59 WIB).
 
 1. Pastikan kode demo sudah dihapus dari branch kerja:
    - `src/lib/data.ts` — fungsi `isDemoMode()` dan `cekJamStatus()` yang selalu return `'masuk'`
-   - `src/app/api/absen/route.ts` — blok yang melewati validasi jam sesi
-   - `src/app/page.tsx` — prefiks otomatis `[DEMO]` pada nama
+   - `src/app/api/absen/route.ts` — blok demo: bypass rate-limit, relaksasi cek "wajib masuk dulu" untuk pulang, dan `upsert` diganti INSERT polos (`{ data: null }`) saat demo
+   - `src/app/page.tsx` — prefiks otomatis `[DEMO]` pada nama, state `sudahMasuk` + deteksi via `/api/absen/cek-masuk` (tombol adaptif ABSEN/PULANG), tombol "LANJUT ABSEN PULANG" di layar sukses
+   - `src/components/citizen/SuccessScreen.tsx` — tombol "LANJUT ABSEN PULANG"
    - `src/components/citizen/HeaderBanner.tsx` — badge "MODE DEMO"
 2. Commit dan push ke `main`.
 
@@ -42,7 +43,8 @@ absen asli sesuai jam sesi (masuk 20:00–22:00, pulang 23:00–23:59 WIB).
 11. `/api/absen/hari-ini` → tidak error, tidak ada nama `[DEMO]`.
 12. `/api/jadwal` → 7 baris jadwal normal.
 13. **Uji sesi tertutup:** di luar jam 20–22 / 23–00 WIB, `POST /api/absen` harus ditolak
-    (`403 waktu tertutup`) → membuktikan demo mati.
+    (`403 waktu tertutup`) → membuktikan demo mati. Tombol halaman utama juga kembali
+    menampilkan "ABSEN DITUTUP" di luar jam sesi.
 14. Record yang masuk setelah verifikasi adalah data asli warga.
 
 ---
@@ -52,6 +54,8 @@ absen asli sesuai jam sesi (masuk 20:00–22:00, pulang 23:00–23:59 WIB).
 | Gejala | Penyebab | Solusi |
 |--------|----------|--------|
 | Sesi selalu terbuka | Demo mode masih aktif di env produksi | Ulangi langkah 3–5 |
+| Bisa absen pulang tanpa absen masuk | Relaksasi pulang demo masih aktif | Hapus blok demo di `absen/route.ts`, redeploy |
+| Absen berulang dari 1 perangkat | Bypass rate-limit + INSERT polos masih aktif | Hapus blok demo di `absen/route.ts`, redeploy |
 | `[DEMO]` masih muncul di log | DB belum dibersihkan | Langkah 7–9 |
 | Login admin ditolak | `ADMIN_PASSWORD_HASH` / `JWT_SECRET` bermasalah | Cek env produksi di Vercel |
 | QR menunjuk ke preview | `NEXT_PUBLIC_BASE_URL` salah | Set ke domain produksi, redeploy |

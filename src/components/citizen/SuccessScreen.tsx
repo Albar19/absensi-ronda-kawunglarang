@@ -1,15 +1,16 @@
 'use client';
 
-import { CheckCircle, Moon, Sunrise, User, Building2, Clock, MapPin, Plus } from 'lucide-react';
+import { CheckCircle, Moon, Sunrise, User, Building2, Clock, MapPin, Plus, ArrowRight } from 'lucide-react';
 import { AbsenRecord } from '@/lib/types';
 
 interface SuccessScreenProps {
   records: AbsenRecord[];
   onBack: () => void;
   onTambahNama?: () => void;
+  onLanjutPulang?: () => void;
 }
 
-export default function SuccessScreen({ records, onBack, onTambahNama }: SuccessScreenProps) {
+export default function SuccessScreen({ records, onBack, onTambahNama, onLanjutPulang }: SuccessScreenProps) {
   const jenisAbsen = records[0]?.jenisAbsen ?? 'masuk';
   const labelSesi = jenisAbsen === 'pulang' ? 'PULANG' : 'MASUK';
   const IconSesi = jenisAbsen === 'pulang' ? Sunrise : Moon;
@@ -68,6 +69,17 @@ export default function SuccessScreen({ records, onBack, onTambahNama }: Success
 
       {/* Action buttons */}
       <div className="w-full max-w-sm space-y-3">
+        {onLanjutPulang && jenisAbsen === 'masuk' && (
+          <button
+            type="button"
+            onClick={onLanjutPulang}
+            className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-base active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            style={{ minHeight: '54px' }}
+          >
+            LANJUT ABSEN PULANG <ArrowRight size={20} strokeWidth={2.5} />
+          </button>
+        )}
+
         {onTambahNama && jenisAbsen === 'masuk' && (
           <button
             type="button"
