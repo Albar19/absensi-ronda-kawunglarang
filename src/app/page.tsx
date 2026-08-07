@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Moon, Sunrise, Lock, User, Shield, Loader, CheckCircle, MapPin, Plus, Trash2 } from 'lucide-react';
+import { Moon, Sunrise, Lock, User, Shield, Loader, CheckCircle, MapPin, Plus, Trash2, ArrowLeft, PenLine } from 'lucide-react';
 import { FlowState, AbsenRecord } from '@/lib/types';
 import { CONFIG, type JenisAbsen } from '@/lib/config';
 import {
@@ -400,6 +400,14 @@ export default function HomePage() {
     ? checkedNames.size > 0
     : dusunForm.trim().length > 0 && rows.some(r => r.nama.trim().length > 0);
 
+  // Penanda langkah — bantu pengguna tahu posisi saat mengisi form
+  const langkah = jenisAbsen === 'pulang'
+    ? { steps: ['Centang Nama', 'Tekan Tombol Pulang'], current: checkedNames.size > 0 ? 1 : 0 }
+    : {
+        steps: ['Pilih Dusun', 'Pilih Nama', 'Tekan Tombol Hadir'],
+        current: !dusunForm ? 0 : (rows.some(r => r.nama.trim()) ? 2 : 1),
+      };
+
   // ── Adaptive session ──
   const demo = isDemoMode();
   const jamStatus = cekJamStatus();
@@ -449,7 +457,7 @@ export default function HomePage() {
 
         {/* ─── IDLE ─── */}
         {flowState === 'idle' && (
-          <div className="px-4 sm:px-6 py-8 space-y-5">
+          <div className="px-4 sm:px-6 py-8 space-y-5 animate-fade-up">
             {/* Welcome */}
             <div className="text-center space-y-1.5">
               <Moon size={56} className="text-slate-300 mx-auto" strokeWidth={1.5} />
@@ -461,61 +469,33 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Step guide */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 space-y-3 shadow-card">
-              <p className="text-xs font-black tracking-widest uppercase text-slate-400">Cara Absen — 2 Sesi</p>
-
-              {/* Sesi 1: Masuk */}
-              <div>
-                <p className="text-xs font-black text-green-700 uppercase tracking-wider mb-1.5">Sesi 1: Absen Masuk (20:00 — 22:00 WIB)</p>
-                <ol className="space-y-1.5">
-                  {[
-                    'Tekan tombol MULAI ABSEN MASUK',
-                    'Izinkan akses lokasi GPS',
-                    'Pilih Dusun, lalu pilih Nama dari daftar warga',
-                    'Gunakan "Tambah Nama" jika ada peserta lain di perangkat ini',
-                    'Tekan SAYA HADIR RONDA',
-                  ].map((step, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-green-600 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
-                        {i + 1}
-                      </span>
-                      <span className="text-sm font-semibold text-slate-700 leading-snug">{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-
-              {/* Sesi 2: Pulang */}
-              <div>
-                <p className="text-xs font-black text-yellow-700 uppercase tracking-wider mb-1.5">Sesi 2: Absen Pulang (23:00 — 23:59 WIB)</p>
-                <ol className="space-y-1.5">
-                  {[
-                    'Tekan tombol MULAI ABSEN PULANG',
-                    'Sistem menampilkan semua nama yang sudah absen masuk malam ini',
-                    'Hilangkan centang jika ada yang pulang lebih awal',
-                    'Tekan SAYA PULANG RONDA',
-                  ].map((step, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-yellow-600 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">
-                        {i + 1}
-                      </span>
-                      <span className="text-sm font-semibold text-slate-700 leading-snug">{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-
-              {/* Note */}
-              <p className="text-xs font-semibold text-slate-400 leading-relaxed pt-1 border-t border-slate-200">
-                Hadir dihitung hanya jika melakukan <strong className="text-slate-600">MASUK + PULANG</strong> di malam yang sama.
+            {/* Step guide — sederhana, teks besar */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 space-y-3.5 shadow-card">
+              <p className="text-sm font-black text-slate-800">3 Langkah Mudah:</p>
+              {[
+                'Tekan tombol besar di bawah untuk mulai absen',
+                'Izinkan izin lokasi (GPS) saat diminta HP',
+                'Pilih Dusun & Nama, lalu tekan tombol besar untuk selesai',
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-full bg-navy text-white text-sm font-black flex items-center justify-center flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <p className="text-sm sm:text-base font-semibold text-slate-700 leading-snug">{step}</p>
+                </div>
+              ))}
+              <p className="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed pt-2.5 border-t border-slate-200">
+                Malam ini 2 sesi:{' '}
+                <strong className="text-green-700">Masuk (20:00–22:00)</strong> &{' '}
+                <strong className="text-yellow-700">Pulang (23:00–23:59)</strong>. Hadir dihitung
+                jika <strong className="text-slate-600">masuk + pulang</strong> di malam yang sama.
               </p>
             </div>
 
             {/* Tips izin GPS */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
-              <MapPin size={20} className="text-amber-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
-              <div className="text-xs font-semibold text-amber-800 leading-relaxed">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5 flex items-start gap-3">
+              <MapPin size={22} className="text-amber-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
+              <div className="text-sm font-semibold text-amber-800 leading-relaxed">
                 <p className="font-black text-amber-900 mb-0.5">Tips Izin Lokasi</p>
                 Saat HP meminta izin lokasi, pilih <strong>IZINKAN</strong>, lalu pilih{' '}
                 <strong>LOKASI AKURAT / PRECISE</strong> — jangan pilih &quot;Perkiraan / Approximate&quot;
@@ -528,7 +508,7 @@ export default function HomePage() {
               type="button"
               onClick={sesiAktif ? () => mulaiCek(sesiAktif) : undefined}
               disabled={!sesiAktif}
-              className={`w-full text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide active:scale-[0.98] transition-all shadow-sm disabled:opacity-80 disabled:cursor-not-allowed bg-[#1e3a8a] hover:bg-[#1e40af]`}
+              className={`w-full text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide active:scale-[0.98] transition-all shadow-sm disabled:opacity-80 disabled:cursor-not-allowed bg-navy hover:bg-navy-hover`}
               style={{ minHeight: '68px' }}
             >
               {tombolMulai}
@@ -554,7 +534,7 @@ export default function HomePage() {
 
         {/* ─── CHECKING ─── */}
         {flowState === 'checking' && (
-          <div className="py-2">
+          <div className="py-2 animate-fade-up">
             <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} akurasiMeter={akurasi} />
             <div className="px-4 py-5 flex items-center justify-center gap-2 text-slate-400 text-sm font-semibold">
               <Loader size={18} className="animate-spin" />
@@ -570,19 +550,38 @@ export default function HomePage() {
 
         {/* ─── FORM ─── */}
         {flowState === 'form' && (
-          <div className="px-4 sm:px-6 pb-8 space-y-4">
+          <div className="px-4 sm:px-6 pb-8 space-y-4 animate-fade-up">
             <div className="pt-3">
               <button
                 type="button"
                 onClick={handleReset}
-                className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1"
+                className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1.5 py-1"
               >
-                ← Kembali
+                <ArrowLeft size={16} strokeWidth={2.5} />
+                Kembali
               </button>
             </div>
 
             <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} akurasiMeter={akurasi} />
             <div className="h-px bg-slate-100" />
+
+            {/* Penanda langkah — besar & jelas */}
+            <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-card">
+              <div className="flex gap-1.5 flex-shrink-0">
+                {langkah.steps.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`inline-block h-2.5 w-2.5 rounded-full transition-all duration-300 ${
+                      i < langkah.current ? 'bg-green-600' : i === langkah.current ? 'bg-navy scale-110' : 'bg-slate-300'
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-sm sm:text-base font-black text-slate-700 min-w-0">
+                Langkah {langkah.current + 1} dari {langkah.steps.length}:{' '}
+                <span className="text-navy">{langkah.steps[langkah.current]}</span>
+              </p>
+            </div>
 
             {/* Sesi badge */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3">
@@ -598,13 +597,13 @@ export default function HomePage() {
             {jenisAbsen === 'pulang' ? (
               /* ══════════ FORM PULANG — CHECKLIST ══════════ */
               <>
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                  <Shield size={22} className="text-amber-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5 flex items-start gap-3">
+                  <Shield size={24} className="text-amber-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-amber-900">
+                    <p className="text-base font-bold text-amber-900">
                       Nama yang sudah absen masuk ({pulangPeople.length} org)
                     </p>
-                    <p className="text-xs text-amber-700 mt-0.5">
+                    <p className="text-sm text-amber-700 mt-0.5 leading-relaxed">
                       Hilangkan centang untuk yang <strong>pulang lebih awal</strong>. Nama yang tetap tercentang tercatat HADIR lengkap.
                     </p>
                   </div>
@@ -614,21 +613,21 @@ export default function HomePage() {
                   {pulangPeople.map(p => {
                     const k = keyOrang(p);
                     return (
-                      <label key={k} className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors">
+                      <label key={k} className="flex items-center gap-3 px-4 py-4 cursor-pointer hover:bg-slate-50 transition-colors active:bg-slate-50">
                         <input
                           type="checkbox"
                           checked={checkedNames.has(k)}
                           onChange={() => toggleChecked(k)}
-                          className="w-5 h-5 accent-blue-700 flex-shrink-0"
+                          className="w-6 h-6 accent-blue-700 flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-900 truncate">{p.nama}</p>
-                          <p className="text-xs text-slate-500 font-semibold">{p.dusun}</p>
+                          <p className="text-base font-bold text-slate-900 truncate">{p.nama}</p>
+                          <p className="text-sm text-slate-500 font-semibold">{p.dusun}</p>
                         </div>
                         {checkedNames.has(k) ? (
-                          <CheckCircle size={18} className="text-green-600 flex-shrink-0" strokeWidth={2} />
+                          <CheckCircle size={22} className="text-green-600 flex-shrink-0" strokeWidth={2} />
                         ) : (
-                          <span className="text-[10px] font-black text-slate-400 uppercase flex-shrink-0">pulang awal</span>
+                          <span className="text-xs font-black text-slate-400 uppercase flex-shrink-0">pulang awal</span>
                         )}
                       </label>
                     );
@@ -639,7 +638,7 @@ export default function HomePage() {
                   type="button"
                   onClick={handleSubmitPulang}
                   disabled={!isFormValid || isSubmitting}
-                  className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  className="w-full bg-navy hover:bg-navy-hover text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   style={{ minHeight: '68px' }}
                 >
                   {isSubmitting ? (
@@ -654,13 +653,13 @@ export default function HomePage() {
             ) : (
               /* ══════════ FORM MASUK — MULTI NAMA ══════════ */
               <>
-                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                  <User size={22} className="text-green-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3.5 flex items-start gap-3">
+                  <User size={24} className="text-green-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-green-900">
+                    <p className="text-base font-bold text-green-900">
                       Isi data peserta ronda
                     </p>
-                    <p className="text-xs text-green-700 mt-0.5">
+                    <p className="text-sm text-green-700 mt-0.5 leading-relaxed">
                       Pilih <strong>dusun</strong> dulu, lalu pilih <strong>nama</strong> dari daftar warga. Tekan <strong>&quot;+ Tambah Nama&quot;</strong> untuk menambahkan peserta lain.
                     </p>
                   </div>
@@ -668,13 +667,13 @@ export default function HomePage() {
 
                 {/* Satu dusun untuk semua baris nama */}
                 <div>
-                  <label className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">
                     Pilih Dusun
                   </label>
                   <select
                     value={dusunForm}
                     onChange={e => pilihDusun(e.target.value)}
-                    className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                    className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-navy focus:outline-none transition-colors"
                     style={{ minHeight: '56px' }}
                   >
                     <option value="">-- Pilih Dusun --</option>
@@ -699,7 +698,7 @@ export default function HomePage() {
                         </button>
                       )}
                       <div>
-                        <label className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">
                           Nama Lengkap {rows.length > 1 ? `#${idx + 1}` : ''}
                         </label>
                         {row.manual ? (
@@ -711,7 +710,7 @@ export default function HomePage() {
                             placeholder="Ketik nama lengkap"
                             value={row.nama}
                             onChange={e => ubahRow(idx, e.target.value)}
-                            className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                            className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-navy focus:outline-none transition-colors"
                             style={{ minHeight: '56px' }}
                           />
                         ) : !dusunForm ? (
@@ -727,7 +726,7 @@ export default function HomePage() {
                             ref={idx === 0 ? (namaInputRef as React.RefObject<HTMLSelectElement>) : undefined}
                             value={row.nama}
                             onChange={e => ubahRow(idx, e.target.value)}
-                            className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                            className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-navy focus:outline-none transition-colors"
                             style={{ minHeight: '56px' }}
                           >
                             <option value="">
@@ -744,9 +743,11 @@ export default function HomePage() {
                           <button
                             type="button"
                             onClick={() => setRowManual(idx, !row.manual)}
-                            className="mt-1.5 text-xs font-bold text-[#1e3a8a] underline hover:text-[#1e40af] transition-colors"
+                            className="mt-2 w-full flex items-center justify-center gap-1.5 border-2 border-slate-300 bg-white hover:bg-slate-50 text-navy rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+                            style={{ minHeight: '44px' }}
                           >
-                            {row.manual ? '← Pilih dari daftar' : 'Ketik nama manual…'}
+                            {row.manual ? <ArrowLeft size={16} strokeWidth={2.5} /> : <PenLine size={16} strokeWidth={2.5} />}
+                            {row.manual ? 'Pilih dari daftar' : 'Ketik nama manual…'}
                           </button>
                         )}
                       </div>
@@ -757,7 +758,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={tambahRow}
-                    className="w-full bg-white hover:bg-slate-50 text-[#1e3a8a] border-2 border-dashed border-[#1e3a8a]/40 rounded-xl font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full bg-white hover:bg-slate-50 text-navy border-2 border-dashed border-navy/40 rounded-xl font-bold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                     style={{ minHeight: '52px' }}
                   >
                     <Plus size={18} strokeWidth={2.5} /> Tambah Nama
@@ -769,7 +770,7 @@ export default function HomePage() {
                   type="button"
                   onClick={handleSubmitMasuk}
                   disabled={!isFormValid || isSubmitting}
-                  className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  className="w-full bg-navy hover:bg-navy-hover text-white rounded-xl font-black text-xl sm:text-2xl tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   style={{ minHeight: '68px' }}
                 >
                   {isSubmitting ? (

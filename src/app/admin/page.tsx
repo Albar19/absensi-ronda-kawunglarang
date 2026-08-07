@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Lock, User, Eye, EyeOff, Shield } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, Shield, AlertCircle, Loader } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
           {/* Header */}
-          <div className="bg-[#1e3a8a] px-6 py-7 text-center">
+          <div className="bg-navy px-6 py-7 text-center">
             <div className="w-16 h-16 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center mx-auto mb-4">
               <Shield size={30} className="text-white" strokeWidth={1.8} />
             </div>
@@ -70,7 +70,7 @@ export default function AdminLoginPage() {
                   placeholder="Masukkan username"
                   autoComplete="username"
                   required
-                  className="w-full pl-11 pr-4 border-2 border-slate-200 rounded-xl text-base font-semibold text-slate-900 placeholder:text-slate-300 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                  className="w-full pl-11 pr-4 border-2 border-slate-200 rounded-xl text-base font-semibold text-slate-900 placeholder:text-slate-300 focus:border-navy focus:outline-none transition-colors"
                   style={{ minHeight: '52px', paddingTop: '14px', paddingBottom: '14px' }}
                 />
               </div>
@@ -91,7 +91,7 @@ export default function AdminLoginPage() {
                   placeholder="Masukkan password"
                   autoComplete="current-password"
                   required
-                  className="w-full pl-11 pr-12 border-2 border-slate-200 rounded-xl text-base font-semibold text-slate-900 placeholder:text-slate-300 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                  className="w-full pl-11 pr-12 border-2 border-slate-200 rounded-xl text-base font-semibold text-slate-900 placeholder:text-slate-300 focus:border-navy focus:outline-none transition-colors"
                   style={{ minHeight: '52px', paddingTop: '14px', paddingBottom: '14px' }}
                 />
                 <button
@@ -109,7 +109,7 @@ export default function AdminLoginPage() {
             {/* Error */}
             {error && (
               <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <span className="text-red-500 text-base mt-0.5 flex-shrink-0">⚠️</span>
+                <AlertCircle size={20} className="text-red-500 mt-0.5 flex-shrink-0" strokeWidth={2} />
                 <p className="text-sm font-bold text-red-700">{error}</p>
               </div>
             )}
@@ -118,10 +118,16 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-lg tracking-wide transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full bg-navy hover:bg-navy-hover text-white rounded-xl font-black text-lg tracking-wide transition-all active:scale-[0.98] disabled:opacity-50"
               style={{ minHeight: '54px' }}
             >
-              {loading ? '⏳ Masuk…' : 'MASUK'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader size={20} className="animate-spin" strokeWidth={2.5} /> Masuk…
+                </span>
+              ) : (
+                'MASUK'
+              )}
             </button>
 
             <div className="text-center pt-1">

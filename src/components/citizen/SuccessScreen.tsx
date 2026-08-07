@@ -16,9 +16,9 @@ export default function SuccessScreen({ records, onBack, onTambahNama, onLanjutP
   const IconSesi = jenisAbsen === 'pulang' ? Sunrise : Moon;
 
   return (
-    <div className="flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14 text-center">
+    <div className="flex flex-col items-center px-4 sm:px-6 py-10 sm:py-14 text-center animate-fade-up">
       {/* Check icon */}
-      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-green-600 flex items-center justify-center mb-6 shadow-elevated ring-4 ring-green-200">
+      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-green-600 flex items-center justify-center mb-6 shadow-elevated ring-4 ring-green-200 animate-scale-in">
         <CheckCircle size={52} className="text-white" strokeWidth={2} />
       </div>
 
@@ -74,7 +74,7 @@ export default function SuccessScreen({ records, onBack, onTambahNama, onLanjutP
             type="button"
             onClick={onLanjutPulang}
             className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-base active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            style={{ minHeight: '54px' }}
+            style={{ minHeight: '60px' }}
           >
             LANJUT ABSEN PULANG <ArrowRight size={20} strokeWidth={2.5} />
           </button>
@@ -84,8 +84,8 @@ export default function SuccessScreen({ records, onBack, onTambahNama, onLanjutP
           <button
             type="button"
             onClick={onTambahNama}
-            className="w-full bg-[#1e3a8a] hover:bg-[#1e40af] text-white rounded-xl font-black text-base active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            style={{ minHeight: '54px' }}
+            className="w-full bg-navy hover:bg-navy-hover text-white rounded-xl font-black text-base active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            style={{ minHeight: '60px' }}
           >
             <Plus size={20} strokeWidth={2.5} /> Tambah Nama Lainnya
           </button>
@@ -95,7 +95,7 @@ export default function SuccessScreen({ records, onBack, onTambahNama, onLanjutP
           type="button"
           onClick={onBack}
           className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 border-2 border-slate-200 rounded-xl font-black text-base active:scale-[0.98] transition-all"
-          style={{ minHeight: '54px' }}
+          style={{ minHeight: '60px' }}
         >
           Kembali ke Halaman Utama
         </button>

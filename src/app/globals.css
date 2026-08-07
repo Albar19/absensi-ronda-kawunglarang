@@ -5,6 +5,7 @@
 ═══════════════════════════════════════════════════ */
 @theme {
   --color-navy: #1e3a8a;
+  --color-navy-hover: #1e40af;
   --color-gold: #f59e0b;
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
   --shadow-elevated: 0 4px 12px -2px rgb(0 0 0 / 0.08);
@@ -115,56 +116,16 @@ button { user-select: none; cursor: pointer; }
 .animate-shake { animation: shake 0.35s ease-in-out; }
 
 /* ═══════════════════════════════════════════════════
-   UTILITY — button base (touch-friendly)
+   MOTION — hormati preferensi pengguna
 ═══════════════════════════════════════════════════ */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 52px;
-  padding: 0 20px;
-  font-weight: 700;
-  font-size: 15px;
-  border-radius: var(--radius-md);
-  border: 2px solid transparent;
-  transition: background-color 0.15s, border-color 0.15s, transform 0.1s, opacity 0.15s;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
-.btn:active:not(:disabled) { transform: scale(0.97); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.btn-primary {
-  background: var(--navy);
-  color: #fff;
-  border-color: var(--navy);
-}
-.btn-primary:not(:disabled):hover { background: var(--navy-hover); border-color: var(--navy-hover); }
-
-.btn-ghost {
-  background: transparent;
-  color: var(--text-muted);
-  border-color: var(--border);
-}
-.btn-ghost:not(:disabled):hover { background: #f3f4f6; }
-
-/* ═══════════════════════════════════════════════════
-   FORM ELEMENTS
-═══════════════════════════════════════════════════ */
-.input-base {
-  width: 100%;
-  min-height: 52px;
-  padding: 14px 16px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
-  background: var(--surface);
-  border: 2px solid var(--border);
-  border-radius: var(--radius-md);
-  transition: border-color 0.15s, box-shadow 0.15s;
-  outline: none;
-}
-.input-base::placeholder { color: #9ca3af; font-weight: 400; }
-.input-base:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(30,58,138,0.08); }
 
 /* ═══════════════════════════════════════════════════
    PRINT

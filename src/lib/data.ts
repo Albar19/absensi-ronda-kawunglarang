@@ -5,6 +5,15 @@
 import { CONFIG, type JenisAbsen } from './config';
 
 // ----------------------------------------------------------
+// LABEL INDONESIA — dipakai bersama di beberapa halaman
+// ----------------------------------------------------------
+export const BULAN_INDONESIA = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+];
+export const HARI_INDONESIA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+// ----------------------------------------------------------
 // HAVERSINE FORMULA - hitung jarak 2 titik GPS dalam meter
 // ----------------------------------------------------------
 export function hitungJarak(

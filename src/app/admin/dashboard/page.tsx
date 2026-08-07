@@ -5,18 +5,13 @@ import { useRouter } from 'next/navigation';
 import { LogOut, RefreshCw, Users, Calendar, Save, QrCode, Loader, FileDown, Search, ChevronDown, Plus, Trash2, UserCheck, UserX, Pencil, ClipboardList } from 'lucide-react';
 import { AbsenRecord, JadwalRonda, Warga } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
-import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
+import { formatTanggalIndo, getTanggalHariIni, BULAN_INDONESIA } from '@/lib/data';
 import { hitungKehadiran } from '@/lib/kehadiran';
 import ExportButton from '@/components/admin/ExportButton';
 import { ToastProvider, useToast } from '@/components/ui/Toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 
 type Tab = 'log' | 'jadwal' | 'warga';
-
-const BULAN_INDONESIA = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-];
 
 const HARI_LABEL: Record<string, string> = {
   senin: 'Senin',
@@ -376,7 +371,7 @@ function DashboardInner() {
       ) : (
         <>
       {/* ─── NAVBAR ─── */}
-      <nav className="bg-[#1e3a8a] text-white sticky top-0 z-50 shadow-card">
+      <nav className="bg-navy text-white sticky top-0 z-50 shadow-card">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-blue-200 uppercase tracking-widest">Dashboard Admin</p>
@@ -451,7 +446,7 @@ function DashboardInner() {
                     <select
                       value={periodFilter === 'today' ? 'today' : periodFilter}
                       onChange={e => handlePeriodChange(e.target.value)}
-                      className="appearance-none bg-white border-2 border-slate-300 rounded-xl px-4 py-2 pr-10 text-sm font-bold text-slate-700 focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
+                      className="appearance-none bg-white border-2 border-slate-300 rounded-xl px-4 py-2 pr-10 text-sm font-bold text-slate-700 focus:border-navy focus:outline-none transition-colors cursor-pointer"
                       style={{ minHeight: '40px' }}
                     >
                       <option value="today">Hari Ini</option>
@@ -507,7 +502,7 @@ function DashboardInner() {
                         </div>
                         <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[#1e3a8a] rounded-full transition-all duration-500"
+                            className="h-full bg-navy rounded-full transition-all duration-500"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -608,7 +603,7 @@ function DashboardInner() {
               <a
                 href="/api/qr"
                 download
-                className="inline-flex items-center gap-2 bg-white text-[#1e3a8a] border-2 border-[#1e3a8a] px-5 py-3 rounded-lg font-bold text-sm hover:bg-[#1e3a8a] hover:text-white active:scale-[0.98] transition-all"
+                className="inline-flex items-center gap-2 bg-white text-navy border-2 border-navy px-5 py-3 rounded-lg font-bold text-sm hover:bg-navy hover:text-white active:scale-[0.98] transition-all"
                 style={{ minHeight: '44px' }}
               >
                 <QrCode size={18} strokeWidth={2} />
@@ -625,7 +620,7 @@ function DashboardInner() {
           <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <Calendar size={20} className="text-[#1e3a8a]" strokeWidth={2} />
+                <Calendar size={20} className="text-navy" strokeWidth={2} />
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
                   Jadwal Ronda Mingguan
                 </h3>
@@ -655,7 +650,7 @@ function DashboardInner() {
                             <select
                               value={j.petugas}
                               onChange={e => handleJadwalChange(j.hari, e.target.value)}
-                              className="w-full max-w-xs px-3 py-2.5 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-800 bg-white focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                              className="w-full max-w-xs px-3 py-2.5 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-800 bg-white focus:border-navy focus:outline-none transition-colors"
                               style={{ minHeight: '44px' }}
                             >
                               {CONFIG.petugasList.map(p => (
@@ -676,7 +671,7 @@ function DashboardInner() {
                       type="button"
                       onClick={handleSimpanJadwal}
                       disabled={jadwalSaving}
-                      className="inline-flex items-center gap-2 bg-[#1e3a8a] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#1e40af] active:scale-[0.98] transition-all disabled:opacity-50"
+                      className="inline-flex items-center gap-2 bg-navy text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-navy-hover active:scale-[0.98] transition-all disabled:opacity-50"
                       style={{ minHeight: '48px' }}
                     >
                       <Save size={18} strokeWidth={2} />
@@ -710,7 +705,7 @@ function DashboardInner() {
             <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-200">
                 <div className="flex items-center gap-2">
-                  <Users size={20} className="text-[#1e3a8a]" strokeWidth={2} />
+                  <Users size={20} className="text-navy" strokeWidth={2} />
                   <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
                     Daftar Warga
                   </h3>
@@ -737,7 +732,7 @@ function DashboardInner() {
                       value={namaBaru}
                       onChange={e => setNamaBaru(e.target.value)}
                       placeholder="Nama lengkap warga"
-                      className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                      className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-navy focus:outline-none transition-colors"
                       style={{ minHeight: '46px' }}
                     />
                   </div>
@@ -745,7 +740,7 @@ function DashboardInner() {
                     <select
                       value={dusunBaru}
                       onChange={e => setDusunBaru(e.target.value)}
-                      className="appearance-none w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 pr-10 text-sm font-bold text-slate-700 focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
+                      className="appearance-none w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 pr-10 text-sm font-bold text-slate-700 focus:border-navy focus:outline-none transition-colors cursor-pointer"
                       style={{ minHeight: '46px' }}
                     >
                       <option value="">-- Pilih Dusun --</option>
@@ -757,7 +752,7 @@ function DashboardInner() {
                   </div>
                   <button
                     type="submit"
-                    className="inline-flex items-center justify-center gap-2 bg-[#1e3a8a] text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-[#1e40af] active:scale-[0.98] transition-all flex-shrink-0"
+                    className="inline-flex items-center justify-center gap-2 bg-navy text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-navy-hover active:scale-[0.98] transition-all flex-shrink-0"
                     style={{ minHeight: '46px' }}
                   >
                     <Plus size={18} strokeWidth={2.5} />
@@ -778,7 +773,7 @@ function DashboardInner() {
                       onClick={() => setWargaFilter(f)}
                       className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all ${
                         wargaFilter === f
-                          ? 'bg-[#1e3a8a] text-white shadow-card'
+                          ? 'bg-navy text-white shadow-card'
                           : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                       }`}
                       style={{ minHeight: '32px' }}
@@ -790,7 +785,7 @@ function DashboardInner() {
                     <select
                       value={wargaDusun}
                       onChange={e => setWargaDusun(e.target.value)}
-                      className="appearance-none w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-slate-700 focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
+                      className="appearance-none w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-slate-700 focus:border-navy focus:outline-none transition-colors cursor-pointer"
                       style={{ minHeight: '40px' }}
                     >
                       <option value="">Semua Dusun</option>
@@ -808,7 +803,7 @@ function DashboardInner() {
                     value={wargaSearch}
                     onChange={e => setWargaSearch(e.target.value)}
                     placeholder="Cari nama..."
-                    className="w-full pl-10 pr-4 py-2.5 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                    className="w-full pl-10 pr-4 py-2.5 border-2 border-slate-300 rounded-xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-navy focus:outline-none transition-colors"
                     style={{ minHeight: '42px' }}
                   />
                 </div>
@@ -847,13 +842,13 @@ function DashboardInner() {
                               type="text"
                               value={editNama}
                               onChange={e => setEditNama(e.target.value)}
-                              className="flex-1 min-w-0 px-3 py-2 border-2 border-slate-300 rounded-xl text-sm font-semibold focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                              className="flex-1 min-w-0 px-3 py-2 border-2 border-slate-300 rounded-xl text-sm font-semibold focus:border-navy focus:outline-none transition-colors"
                               style={{ minHeight: '40px' }}
                             />
                             <select
                               value={editDusun}
                               onChange={e => setEditDusun(e.target.value)}
-                              className="appearance-none w-40 px-3 py-2 border-2 border-slate-300 rounded-xl text-sm font-semibold bg-white focus:border-[#1e3a8a] focus:outline-none transition-colors cursor-pointer"
+                              className="appearance-none w-40 px-3 py-2 border-2 border-slate-300 rounded-xl text-sm font-semibold bg-white focus:border-navy focus:outline-none transition-colors cursor-pointer"
                               style={{ minHeight: '40px' }}
                             >
                               {CONFIG.dusunList.map(d => (
@@ -919,7 +914,7 @@ function DashboardInner() {
                                   onClick={() => mulaiEdit(w)}
                                   title="Edit"
                                   className="flex items-center justify-center bg-slate-100 text-slate-600 p-2.5 rounded-lg hover:bg-slate-200 active:scale-95 transition-all"
-                                  style={{ width: '40px', height: '40px' }}
+                                  style={{ width: '44px', height: '44px' }}
                                 >
                                   <Pencil size={15} />
                                 </button>
@@ -934,7 +929,7 @@ function DashboardInner() {
                                       ? 'bg-orange-50 text-orange-600 hover:bg-orange-100'
                                       : 'bg-green-50 text-green-600 hover:bg-green-100'
                                   }`}
-                                  style={{ width: '40px', height: '40px' }}
+                                  style={{ width: '44px', height: '44px' }}
                                 >
                                   {w.aktif ? <UserX size={15} /> : <UserCheck size={15} />}
                                 </button>
@@ -944,7 +939,7 @@ function DashboardInner() {
                                 onClick={() => setHapusTarget(w)}
                                 title="Hapus"
                                 className="flex items-center justify-center bg-red-50 text-red-600 p-2.5 rounded-lg hover:bg-red-100 active:scale-95 transition-all"
-                                style={{ width: '40px', height: '40px' }}
+                                style={{ width: '44px', height: '44px' }}
                               >
                                 <Trash2 size={15} />
                               </button>

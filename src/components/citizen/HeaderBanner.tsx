@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Landmark } from 'lucide-react';
 import { CONFIG } from '@/lib/config';
-import { isDemoMode } from '@/lib/data';
+import { isDemoMode, HARI_INDONESIA, BULAN_INDONESIA } from '@/lib/data';
 
 export default function HeaderBanner() {
   const [waktu, setWaktu] = useState('');
@@ -11,12 +11,9 @@ export default function HeaderBanner() {
   const demo = isDemoMode();
 
   useEffect(() => {
-    const HARI  = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-    const BULAN = ['Januari','Februari','Maret','April','Mei','Juni',
-                   'Juli','Agustus','September','Oktober','November','Desember'];
     function tick() {
       const now = new Date();
-      setTanggal(`${HARI[now.getDay()]}, ${now.getDate()} ${BULAN[now.getMonth()]} ${now.getFullYear()}`);
+      setTanggal(`${HARI_INDONESIA[now.getDay()]}, ${now.getDate()} ${BULAN_INDONESIA[now.getMonth()]} ${now.getFullYear()}`);
       setWaktu(`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')} WIB`);
     }
     tick();
@@ -25,9 +22,9 @@ export default function HeaderBanner() {
   }, []);
 
   return (
-    <header className="w-full bg-[#1e3a8a] text-white">
+    <header className="w-full bg-navy text-white">
       {/* Gold top stripe */}
-      <div className="h-1.5 bg-[#f59e0b]" />
+      <div className="h-1.5 bg-gold" />
 
       {/* Badge demo mode */}
       {demo && (
@@ -40,8 +37,8 @@ export default function HeaderBanner() {
         {/* ─── Identity row ─── */}
         <div className="flex items-center gap-3 sm:gap-4">
           {/* Emblem */}
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white border-2 border-[#f59e0b] flex items-center justify-center flex-shrink-0 shadow-sm">
-            <Landmark size={24} className="text-[#1e3a8a]" strokeWidth={2} />
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white border-2 border-gold flex items-center justify-center flex-shrink-0 shadow-sm">
+            <Landmark size={24} className="text-navy" strokeWidth={2} />
           </div>
 
           {/* Title block */}
@@ -52,7 +49,7 @@ export default function HeaderBanner() {
             <h1 className="text-base sm:text-xl font-black tracking-wide leading-tight text-white truncate">
               {CONFIG.namaBalai}
             </h1>
-            <p className="text-[11px] sm:text-sm font-bold text-[#f59e0b] tracking-wide mt-0.5 truncate">
+            <p className="text-[11px] sm:text-sm font-bold text-gold tracking-wide mt-0.5 truncate">
               {CONFIG.subtitleAbsen}
             </p>
           </div>

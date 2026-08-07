@@ -2,16 +2,11 @@
 
 import { useState } from 'react';
 import { Download, X, Loader } from 'lucide-react';
-import { formatTanggalIndo } from '@/lib/data';
+import { formatTanggalIndo, BULAN_INDONESIA } from '@/lib/data';
 import { AbsenRecord } from '@/lib/types';
 import { hitungKehadiran } from '@/lib/kehadiran';
 import { useToast } from '@/components/ui/Toast';
 import type { Cell } from 'exceljs';
-
-const BULAN_INDONESIA = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-];
 
 const WARNA_NAVY = '1E3A8A';
 const WARNA_ABU = 'E5E7EB';
