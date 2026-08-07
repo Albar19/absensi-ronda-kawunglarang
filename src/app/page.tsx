@@ -787,7 +787,7 @@ export default function HomePage() {
           <SuccessScreen
             records={successRecords}
             onBack={handleReset}
-            onTambahNama={jenisAbsen === 'masuk' ? () => { setSuccessRecords([]); setRows(prev => [...prev, { nama: '' }]); setFlowState('form'); } : undefined}
+            onTambahNama={jenisAbsen === 'masuk' ? () => { setSuccessRecords([]); setRows([{ nama: '' }]); setFlowState('form'); } : undefined}
             onLanjutPulang={demo && jenisAbsen === 'masuk' ? () => mulaiCek('pulang') : undefined}
           />
         )}
