@@ -30,7 +30,7 @@ Sistem absensi ronda malam berbasis web untuk **Desa Kawunglarang**, dikembangka
 | **Absen Pulang** | Warga absen pulang (23:00–23:59 WIB) — wajib sudah absen masuk malam ini |
 | **1 Perangkat Bisa Banyak Warga** | Karena keterbatasan perangkat, satu HP bisa dipakai absen banyak warga. Ada fitur "Tambah Nama" saat absen masuk. |
 | **Checklist Absen Pulang** | Saat sesi pulang, semua nama yang sudah absen masuk dari perangkat tampil dengan centang. Nama yang pulang lebih awal bisa di-uncheck. |
-| **Dropdown Pilih Nama** | Saat absen masuk, warga pilih dusun → muncul dropdown nama warga terdaftar di dusun tsb. Ada fallback ketik manual. |
+| **Dropdown Pilih Nama** | Saat absen masuk, warga pilih **satu dusun** di atas → muncul dropdown nama warga terdaftar di dusun tsb untuk semua baris (termasuk "Tambah Nama"). Ada fallback ketik manual. |
 | **Jadwal Ronda Mingguan** | Admin atur petugas ronda per hari (Senin–Minggu) via dropdown di dashboard |
 | **Dashboard Admin** | Log kehadiran real-time + leaderboard progress bar per dusun |
 | **Export Excel** | Export rekap per dusun + detail absensi per bulan ke file `.xlsx` |
@@ -121,7 +121,7 @@ Fungsi `rate_limit_check(p_key, p_max, p_window_ms)` dikelola lewat RPC atomik (
 1. Warga buka halaman absen (scan QR atau buka URL)
 2. Sistem cek jam — jika dalam sesi masuk, tombol aktif
 3. Sistem cek GPS — harus dalam radius **150m** dari Bale Desa
-4. Warga pilih **Dusun**, lalu pilih **Nama** dari dropdown warga terdaftar (fallback: ketik manual)
+4. Warga pilih **satu Dusun** (di atas), lalu pilih **Nama** dari dropdown warga terdaftar dusun tsb (fallback: ketik manual)
 5. Nama yang sudah terdaftar & disetujui admin → absen tersimpan dengan `jenis_absen: 'masuk'`
 6. Nama yang **belum terdaftar** → absen ditolak, nama masuk antrean verifikasi admin (Daftar Warga → Menunggu Persetujuan). Setelah disetujui, warga absen kembali
 7. Jika ada peserta lain di perangkat yang sama, tekan **"Tambah Nama"**
@@ -291,7 +291,7 @@ export const CONFIG = {
   jamTutupPulang: 23,
   menitTutupPulang: 59,
 
-  // 6 dusun
+  // 6 dusun + Perangkat Desa (dipakai untuk absen & jadwal ronda)
   dusunList: [
     'Dusun Bungbulang',
     'Dusun Cibangkong',
@@ -299,6 +299,7 @@ export const CONFIG = {
     'Dusun Gudang',
     'Dusun Cibuluh',
     'Dusun Cihaurgeulis',
+    'Perangkat Desa',
   ],
 
   // 6 dusun + Perangkat Desa (untuk jadwal ronda)

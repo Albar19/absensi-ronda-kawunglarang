@@ -22,7 +22,6 @@ import SuccessScreen  from '@/components/citizen/SuccessScreen';
 
 interface OrangRow {
   nama: string;
-  dusun: string;
   manual?: boolean; // true = mode ketik manual, false = pilih dari dropdown
 }
 
@@ -53,8 +52,9 @@ export default function HomePage() {
   // Demo mode: true = perangkat sudah absen masuk hari ini → tombol jadi PULANG
   const [sudahMasuk,     setSudahMasuk]     = useState(false);
 
-  // Form state — multi nama (sesi masuk)
-  const [rows, setRows] = useState<OrangRow[]>([{ nama: '', dusun: '' }]);
+  // Form state — satu dusun di atas + multi nama (sesi masuk)
+  const [rows, setRows] = useState<OrangRow[]>([{ nama: '' }]);
+  const [dusunForm, setDusunForm] = useState('');
   // Cache nama warga terdaftar per dusun (untuk dropdown pilih nama)
   const [namaByDusun, setNamaByDusun] = useState<Record<string, string[]>>({});
   const [loadingNama, setLoadingNama] = useState(false);
@@ -70,10 +70,12 @@ export default function HomePage() {
   // Load daftar nama untuk autocomplete + data warga tersimpan
   useEffect(() => {
     const init = async () => {
-      // Isi baris pertama dari localStorage jika ada
+      // Isi dusun + baris pertama dari localStorage jika ada
       const saved = muatDataWarga();
       if (saved) {
-        setRows([{ nama: saved.nama, dusun: saved.dusun, manual: true }]);
+        setDusunForm(saved.dusun);
+        setRows([{ nama: saved.nama, manual: true }]);
+        void loadNamaDusun(saved.dusun);
       }
 
       // Demo mode: deteksi apakah perangkat ini sudah absen masuk hari ini
@@ -150,9 +152,11 @@ export default function HomePage() {
         return;
       }
     } else {
-      // Sesi masuk: mulai dengan 1 baris kosong
+      // Sesi masuk: mulai dengan 1 baris kosong (dusun terpisah di atas)
       const saved = muatDataWarga();
-      setRows(saved ? [{ nama: saved.nama, dusun: saved.dusun }] : [{ nama: '', dusun: '' }]);
+      setDusunForm(saved?.dusun ?? '');
+      setRows(saved ? [{ nama: saved.nama, manual: true }] : [{ nama: '' }]);
+      if (saved?.dusun) void loadNamaDusun(saved.dusun);
     }
 
     if (!navigator.geolocation) {
@@ -195,17 +199,18 @@ export default function HomePage() {
     );
   }, []);
 
-  // ── Sesi MASUK: submit semua baris nama ──
+  // ── Sesi MASUK: submit semua baris nama (satu dusun di atas) ──
   const handleSubmitMasuk = useCallback(async () => {
+    const dusun = dusunForm.trim();
     const validRows = rows
-      .map(r => ({ nama: r.nama.trim(), dusun: r.dusun.trim() }))
-      .filter(r => r.nama.length > 0 && r.dusun.length > 0)
+      .map(r => ({ nama: r.nama.trim(), dusun }))
+      .filter(r => r.nama.length > 0 && dusun.length > 0)
       .map(r => isDemoMode() && !r.nama.startsWith('[DEMO]')
         ? { ...r, nama: `[DEMO] ${r.nama}` }
         : r);
 
     if (validRows.length === 0) {
-      setPesanError('Isi minimal satu nama dan pilih dusun.');
+      setPesanError('Pilih dusun dan isi minimal satu nama.');
       setFlowState('rejected');
       return;
     }
@@ -259,7 +264,7 @@ export default function HomePage() {
     setIsSubmitting(false);
     setFlowState('success');
     if (isDemoMode()) setSudahMasuk(true);
-  }, [rows, koordinat, jarakMeter]);
+  }, [rows, dusunForm, koordinat, jarakMeter]);
 
   // ── Sesi PULANG: submit semua nama yang dicentang ──
   const handleSubmitPulang = useCallback(async () => {
@@ -335,7 +340,7 @@ export default function HomePage() {
   }, []);
 
   const tambahRow = useCallback(() => {
-    setRows(prev => [...prev, { nama: '', dusun: '' }]);
+    setRows(prev => [...prev, { nama: '' }]);
     setTimeout(() => namaInputRef.current?.focus(), 50);
   }, []);
 
@@ -343,8 +348,8 @@ export default function HomePage() {
     setRows(prev => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
   }, []);
 
-  const ubahRow = useCallback((idx: number, field: 'nama' | 'dusun', value: string) => {
-    setRows(prev => prev.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
+  const ubahRow = useCallback((idx: number, value: string) => {
+    setRows(prev => prev.map((r, i) => (i === idx ? { ...r, nama: value } : r)));
   }, []);
 
   const setRowManual = useCallback((idx: number, manual: boolean) => {
@@ -366,10 +371,10 @@ export default function HomePage() {
     }
   }, [namaByDusun]);
 
-  const pilihDusun = useCallback((idx: number, dusun: string) => {
-    setRows(prev => prev.map((r, i) =>
-      i === idx ? { ...r, dusun, nama: '', manual: false } : r
-    ));
+  // Satu dusun di atas — semua baris nama mengikuti dusun ini
+  const pilihDusun = useCallback((dusun: string) => {
+    setDusunForm(dusun);
+    setRows(prev => prev.map(r => ({ nama: '', manual: false })));
     void loadNamaDusun(dusun);
   }, [loadNamaDusun]);
 
@@ -384,7 +389,7 @@ export default function HomePage() {
 
   const isFormValid = jenisAbsen === 'pulang'
     ? checkedNames.size > 0
-    : rows.some(r => r.nama.trim().length > 0 && r.dusun.trim().length > 0);
+    : dusunForm.trim().length > 0 && rows.some(r => r.nama.trim().length > 0);
 
   // ── Adaptive session ──
   const demo = isDemoMode();
@@ -423,7 +428,7 @@ export default function HomePage() {
   ) : (
     <span className="flex flex-col items-center gap-0.5">
       <BadgeSesi warna="text-green-400" label="MASUK" />
-      <span className="flex items-center gap-2"><Moon size={24} strokeWidth={2} /> SAYA HADIR RONDA ({rows.filter(r => r.nama.trim() && r.dusun).length} org)</span>
+      <span className="flex items-center gap-2"><Moon size={24} strokeWidth={2} /> SAYA HADIR RONDA ({rows.filter(r => r.nama.trim()).length} org)</span>
     </span>
   );
 
@@ -642,6 +647,24 @@ export default function HomePage() {
                   </div>
                 </div>
 
+                {/* Satu dusun untuk semua baris nama */}
+                <div>
+                  <label className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
+                    Pilih Dusun
+                  </label>
+                  <select
+                    value={dusunForm}
+                    onChange={e => pilihDusun(e.target.value)}
+                    className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                    style={{ minHeight: '56px' }}
+                  >
+                    <option value="">-- Pilih Dusun --</option>
+                    {CONFIG.dusunList.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Daftar baris nama */}
                 <div className="space-y-3">
                   {rows.map((row, idx) => (
@@ -658,22 +681,6 @@ export default function HomePage() {
                       )}
                       <div>
                         <label className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
-                          Pilih Dusun
-                        </label>
-                        <select
-                          value={row.dusun}
-                          onChange={e => pilihDusun(idx, e.target.value)}
-                          className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-[#1e3a8a] focus:outline-none transition-colors"
-                          style={{ minHeight: '56px' }}
-                        >
-                          <option value="">-- Pilih Dusun --</option>
-                          {CONFIG.dusunList.map(d => (
-                            <option key={d} value={d}>{d}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
                           Nama Lengkap {rows.length > 1 ? `#${idx + 1}` : ''}
                         </label>
                         {row.manual ? (
@@ -684,37 +691,37 @@ export default function HomePage() {
                             autoComplete="name"
                             placeholder="Ketik nama lengkap"
                             value={row.nama}
-                            onChange={e => ubahRow(idx, 'nama', e.target.value)}
+                            onChange={e => ubahRow(idx, e.target.value)}
                             className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
                             style={{ minHeight: '56px' }}
                           />
-                        ) : !row.dusun ? (
+                        ) : !dusunForm ? (
                           <div
                             className="w-full px-4 py-4 text-base sm:text-lg font-semibold text-slate-400 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-between"
                             style={{ minHeight: '56px' }}
                           >
-                            Pilih dusun dulu untuk melihat daftar nama
+                            Pilih dusun di atas untuk melihat daftar nama
                             {loadingNama && <Loader size={16} className="animate-spin" />}
                           </div>
                         ) : (
                           <select
                             ref={idx === 0 ? (namaInputRef as React.RefObject<HTMLSelectElement>) : undefined}
                             value={row.nama}
-                            onChange={e => ubahRow(idx, 'nama', e.target.value)}
+                            onChange={e => ubahRow(idx, e.target.value)}
                             className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-[#1e3a8a] focus:outline-none transition-colors"
                             style={{ minHeight: '56px' }}
                           >
                             <option value="">
-                              {loadingNama && !namaByDusun[row.dusun]
+                              {loadingNama && !namaByDusun[dusunForm]
                                 ? 'Memuat daftar nama…'
                                 : '-- Pilih Nama --'}
                             </option>
-                            {(namaByDusun[row.dusun] ?? []).map(n => (
+                            {(namaByDusun[dusunForm] ?? []).map(n => (
                               <option key={n} value={n}>{n}</option>
                             ))}
                           </select>
                         )}
-                        {row.dusun && (
+                        {dusunForm && (
                           <button
                             type="button"
                             onClick={() => setRowManual(idx, !row.manual)}
@@ -764,7 +771,7 @@ export default function HomePage() {
           <SuccessScreen
             records={successRecords}
             onBack={handleReset}
-            onTambahNama={jenisAbsen === 'masuk' ? () => { setSuccessRecords([]); setRows(prev => [...prev, { nama: '', dusun: '' }]); setFlowState('form'); } : undefined}
+            onTambahNama={jenisAbsen === 'masuk' ? () => { setSuccessRecords([]); setRows(prev => [...prev, { nama: '' }]); setFlowState('form'); } : undefined}
             onLanjutPulang={demo && jenisAbsen === 'masuk' ? () => mulaiCek('pulang') : undefined}
           />
         )}

@@ -20,8 +20,8 @@ export const CONFIG = {
   jamTutupPulang: 23,
   menitTutupPulang: 59,
 
-  // Daftar dusun
-  dusunList: ['Dusun Bungbulang', 'Dusun Cibangkong', 'Dusun Desa', 'Dusun Gudang', 'Dusun Cibuluh', 'Dusun Cihaurgeulis'],
+  // Daftar dusun (6 dusun + Perangkat Desa untuk absen)
+  dusunList: ['Dusun Bungbulang', 'Dusun Cibangkong', 'Dusun Desa', 'Dusun Gudang', 'Dusun Cibuluh', 'Dusun Cihaurgeulis', 'Perangkat Desa'],
 
   // Daftar petugas ronda (6 dusun + perangkat desa)
   petugasList: ['Dusun Bungbulang', 'Dusun Cibangkong', 'Dusun Desa', 'Dusun Gudang', 'Dusun Cibuluh', 'Dusun Cihaurgeulis', 'Perangkat Desa'],
