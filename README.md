@@ -137,7 +137,7 @@ Fungsi `rate_limit_check(p_key, p_max, p_window_ms)` dikelola lewat RPC atomik (
 - **Hadir lengkap** = warga melakukan absen **masuk + pulang** di malam yang sama
 - Kehadiran dihitung **per orang unik** (nama + dusun + tanggal), bukan jumlah record —
   satu warga hanya dihitung 1 hadir per malam walau ada record ganda
-- Leaderboard, total hadir, dan kolom **% Lengkap** di export memakai definisi ini
+- Leaderboard, total hadir, dan kolom **% Kehadiran** di export memakai definisi ini
   (jadi tidak mungkin melebihi 100%)
 - Tidak ada batasan jadwal — setiap warga **terdaftar** bebas absen
 

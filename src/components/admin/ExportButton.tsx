@@ -79,13 +79,12 @@ export default function ExportButton() {
     // ── Kehadiran per ORANG unik (nama+dusun+tanggal). Lengkap = masuk + pulang. ──
     const kehadiran = hitungKehadiran(filteredAbsen);
 
-    // Hanya dusun yang benar-benar punya data yang dicetak
+    // Hanya dusun yang benar-benar punya data yang dicetak, terbanyak di atas
     const dusunSummary = Array.from(kehadiran.perDusun.entries())
       .map(([dusun, s]) => ({ dusun, ...s }))
-      .sort((a, b) => b.lengkap - a.lengkap || b.masuk - a.masuk);
+      .sort((a, b) => b.lengkap - a.lengkap || b.masuk - a.masuk || a.dusun.localeCompare(b.dusun));
 
     const totalMasuk = kehadiran.totalMasuk;
-    const totalPulang = kehadiran.totalPulang;
 
     // ── Statistik per tanggal (untuk sheet harian) ──
     const byDate = kehadiran.perTanggal;
@@ -135,14 +134,14 @@ export default function ExportButton() {
     // ══════════════════════════════════════════════
     const wsRekap = wb.addWorksheet('Rekap per Dusun');
 
-    wsRekap.mergeCells('A1:D1');
+    wsRekap.mergeCells('A1:C1');
     const judulRekap = wsRekap.getCell('A1');
-    judulRekap.value = 'REKAPITULASI ABSENSI RONDA PER DUSUN';
+    judulRekap.value = 'REKAPITULASI KEHADIRAN RONDA PER DUSUN';
     judulRekap.font = { bold: true, size: 14, color: { argb: WARNA_NAVY } };
     judulRekap.alignment = { horizontal: 'center', vertical: 'middle' };
     wsRekap.getRow(1).height = 32;
 
-    wsRekap.mergeCells('A2:D2');
+    wsRekap.mergeCells('A2:C2');
     const periodeRekap = wsRekap.getCell('A2');
     periodeRekap.value = `Periode: ${labelPeriode}`;
     periodeRekap.font = { italic: true, size: 11, color: { argb: '666666' } };
@@ -150,7 +149,7 @@ export default function ExportButton() {
     wsRekap.getRow(2).height = 20;
 
     const headerRekap = wsRekap.getRow(4);
-    ['Dusun', 'Masuk', 'Pulang', '% Lengkap'].forEach((h, i) => {
+    ['Dusun', 'Kehadiran', '% Kehadiran'].forEach((h, i) => {
       headerRekap.getCell(i + 1).value = h;
       styleHeader(headerRekap.getCell(i + 1));
     });
@@ -159,42 +158,38 @@ export default function ExportButton() {
     dusunSummary.forEach((d, i) => {
       const row = wsRekap.getRow(5 + i);
       row.getCell(1).value = d.dusun;
-      row.getCell(2).value = d.masuk;
-      row.getCell(3).value = d.lengkap;
-      row.getCell(4).value = d.masuk > 0 ? d.lengkap / d.masuk : 0;
+      row.getCell(2).value = d.lengkap;
+      row.getCell(3).value = d.masuk > 0 ? d.lengkap / d.masuk : 0;
 
       styleData(row.getCell(1), 'left');
-      [2, 3, 4].forEach(col => styleData(row.getCell(col), 'center'));
+      [2, 3].forEach(col => styleData(row.getCell(col), 'center'));
       row.getCell(2).numFmt = '#,##0';
-      row.getCell(3).numFmt = '#,##0';
-      row.getCell(4).numFmt = '0%';
+      row.getCell(3).numFmt = '0%';
       row.height = 22;
     });
 
     const barisTotal = 5 + dusunSummary.length;
     const totalRowRekap = wsRekap.getRow(barisTotal);
     totalRowRekap.getCell(1).value = 'TOTAL';
-    totalRowRekap.getCell(2).value = totalMasuk;
-    totalRowRekap.getCell(3).value = kehadiran.totalLengkap;
-    totalRowRekap.getCell(4).value = totalMasuk > 0 ? kehadiran.totalLengkap / totalMasuk : 0;
+    totalRowRekap.getCell(2).value = kehadiran.totalLengkap;
+    totalRowRekap.getCell(3).value = totalMasuk > 0 ? kehadiran.totalLengkap / totalMasuk : 0;
 
-    [1, 2, 3, 4].forEach(col => {
+    [1, 2, 3].forEach(col => {
       const cell = totalRowRekap.getCell(col);
       styleTotal(cell, col === 1 ? 'left' : 'center');
-      if (col === 2 || col === 3) cell.numFmt = '#,##0';
-      if (col === 4) cell.numFmt = '0%';
+      if (col === 2) cell.numFmt = '#,##0';
+      if (col === 3) cell.numFmt = '0%';
     });
     totalRowRekap.height = 24;
 
     wsRekap.getColumn(1).width = 28;
-    wsRekap.getColumn(2).width = 12;
-    wsRekap.getColumn(3).width = 12;
-    wsRekap.getColumn(4).width = 14;
+    wsRekap.getColumn(2).width = 14;
+    wsRekap.getColumn(3).width = 14;
 
     const barisKetRekap = barisTotal + 2;
-    wsRekap.mergeCells(`A${barisKetRekap}:D${barisKetRekap}`);
+    wsRekap.mergeCells(`A${barisKetRekap}:C${barisKetRekap}`);
     const ketRekap = wsRekap.getCell(`A${barisKetRekap}`);
-    ketRekap.value = '* Kehadiran dihitung per orang: HADIR = absen MASUK + PULANG di malam yang sama. Kolom Pulang = jumlah warga hadir lengkap. % Lengkap = Pulang / Masuk.';
+    ketRekap.value = '* Kehadiran = warga yang absen MASUK + PULANG di malam yang sama. % Kehadiran = Kehadiran ÷ jumlah warga absen masuk.';
     ketRekap.font = { italic: true, size: 10, color: { argb: '999999' } };
 
     // ══════════════════════════════════════════════
@@ -204,7 +199,7 @@ export default function ExportButton() {
 
     wsHarian.mergeCells('A1:D1');
     const judulHarian = wsHarian.getCell('A1');
-    judulHarian.value = 'REKAP ABSENSI PER TANGGAL';
+    judulHarian.value = 'REKAP KEHADIRAN PER TANGGAL';
     judulHarian.font = { bold: true, size: 14, color: { argb: WARNA_NAVY } };
     judulHarian.alignment = { horizontal: 'center', vertical: 'middle' };
     wsHarian.getRow(1).height = 32;
@@ -217,7 +212,7 @@ export default function ExportButton() {
     wsHarian.getRow(2).height = 20;
 
     const headerHarian = wsHarian.getRow(4);
-    ['Tanggal', 'Dusun', 'Masuk', 'Pulang'].forEach((h, i) => {
+    ['Tanggal', 'Dusun', 'Kehadiran', '% Kehadiran'].forEach((h, i) => {
       headerHarian.getCell(i + 1).value = h;
       styleHeader(headerHarian.getCell(i + 1));
     });
@@ -226,33 +221,36 @@ export default function ExportButton() {
     let rowIdx = 5;
     for (const t of datesSorted) {
       const dusunMap = byDate.get(t)!;
-      for (const [d, s] of dusunMap) {
-        if (s.masuk === 0 && s.pulang === 0) continue;
+      // Dalam satu tanggal, dusun terbanyak di atas
+      const dusunEntries = Array.from(dusunMap.entries())
+        .filter(([, s]) => s.masuk > 0 || s.pulang > 0)
+        .sort(([da, sa], [db, sb]) => sb.lengkap - sa.lengkap || sb.masuk - sa.masuk || da.localeCompare(db));
+      for (const [d, s] of dusunEntries) {
         const row = wsHarian.getRow(rowIdx);
         row.getCell(1).value = formatTanggalIndo(t);
         row.getCell(2).value = d;
-        row.getCell(3).value = s.masuk;
-        row.getCell(4).value = s.lengkap;
+        row.getCell(3).value = s.lengkap;
+        row.getCell(4).value = s.masuk > 0 ? s.lengkap / s.masuk : 0;
         styleData(row.getCell(1), 'left');
         styleData(row.getCell(2), 'left');
         styleData(row.getCell(3), 'center');
         styleData(row.getCell(4), 'center');
         row.getCell(3).numFmt = '#,##0';
-        row.getCell(4).numFmt = '#,##0';
+        row.getCell(4).numFmt = '0%';
         row.height = 20;
         rowIdx++;
       }
 
       // Total per tanggal
-      let sumMasuk = 0, sumPulang = 0;
-      dusunMap.forEach(s => { sumMasuk += s.masuk; sumPulang += s.lengkap; });
+      let sumMasuk = 0, sumKehadiran = 0;
+      dusunMap.forEach(s => { sumMasuk += s.masuk; sumKehadiran += s.lengkap; });
       const tRow = wsHarian.getRow(rowIdx);
       tRow.getCell(1).value = `TOTAL ${formatTanggalIndo(t)}`;
-      tRow.getCell(3).value = sumMasuk;
-      tRow.getCell(4).value = sumPulang;
+      tRow.getCell(3).value = sumKehadiran;
+      tRow.getCell(4).value = sumMasuk > 0 ? sumKehadiran / sumMasuk : 0;
       [1, 2, 3, 4].forEach(col => styleTotal(tRow.getCell(col), col === 1 || col === 2 ? 'left' : 'center'));
       tRow.getCell(3).numFmt = '#,##0';
-      tRow.getCell(4).numFmt = '#,##0';
+      tRow.getCell(4).numFmt = '0%';
       tRow.height = 20;
       rowIdx++;
     }
