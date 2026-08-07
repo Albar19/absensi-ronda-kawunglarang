@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Download, X, Loader } from 'lucide-react';
 import { formatTanggalIndo } from '@/lib/data';
 import { AbsenRecord } from '@/lib/types';
-import { CONFIG } from '@/lib/config';
+import { hitungKehadiran } from '@/lib/kehadiran';
 import { useToast } from '@/components/ui/Toast';
 import type { Cell } from 'exceljs';
 
@@ -76,32 +76,19 @@ export default function ExportButton() {
       return;
     }
 
-    // ── Statistik per dusun ──
-    const masukCounts = new Map<string, number>();
-    const pulangCounts = new Map<string, number>();
-    filteredAbsen.forEach(r => {
-      const map = r.jenisAbsen === 'masuk' ? masukCounts : pulangCounts;
-      map.set(r.dusun, (map.get(r.dusun) || 0) + 1);
-    });
+    // ── Kehadiran per ORANG unik (nama+dusun+tanggal). Lengkap = masuk + pulang. ──
+    const kehadiran = hitungKehadiran(filteredAbsen);
 
-    const dusunSummary = CONFIG.dusunList.map(d => {
-      const masuk = masukCounts.get(d) || 0;
-      const pulang = pulangCounts.get(d) || 0;
-      return { dusun: d, masuk, pulang };
-    }).sort((a, b) => b.pulang - a.pulang || b.masuk - a.masuk);
+    // Hanya dusun yang benar-benar punya data yang dicetak
+    const dusunSummary = Array.from(kehadiran.perDusun.entries())
+      .map(([dusun, s]) => ({ dusun, ...s }))
+      .sort((a, b) => b.lengkap - a.lengkap || b.masuk - a.masuk);
 
-    const totalMasuk = filteredAbsen.filter(r => r.jenisAbsen === 'masuk').length;
-    const totalPulang = filteredAbsen.filter(r => r.jenisAbsen === 'pulang').length;
+    const totalMasuk = kehadiran.totalMasuk;
+    const totalPulang = kehadiran.totalPulang;
 
     // ── Statistik per tanggal (untuk sheet harian) ──
-    const byDate = new Map<string, Map<string, { masuk: number; pulang: number }>>();
-    filteredAbsen.forEach(r => {
-      let dusunMap = byDate.get(r.tanggal);
-      if (!dusunMap) { dusunMap = new Map(); byDate.set(r.tanggal, dusunMap); }
-      let s = dusunMap.get(r.dusun);
-      if (!s) { s = { masuk: 0, pulang: 0 }; dusunMap.set(r.dusun, s); }
-      if (r.jenisAbsen === 'masuk') s.masuk++; else s.pulang++;
-    });
+    const byDate = kehadiran.perTanggal;
     const datesSorted = Array.from(byDate.keys()).sort((a, b) => b.localeCompare(a));
 
     // ═══════════════════════════════════════════════
@@ -173,8 +160,8 @@ export default function ExportButton() {
       const row = wsRekap.getRow(5 + i);
       row.getCell(1).value = d.dusun;
       row.getCell(2).value = d.masuk;
-      row.getCell(3).value = d.pulang;
-      row.getCell(4).value = d.masuk > 0 ? d.pulang / d.masuk : 0;
+      row.getCell(3).value = d.lengkap;
+      row.getCell(4).value = d.masuk > 0 ? d.lengkap / d.masuk : 0;
 
       styleData(row.getCell(1), 'left');
       [2, 3, 4].forEach(col => styleData(row.getCell(col), 'center'));
@@ -188,8 +175,8 @@ export default function ExportButton() {
     const totalRowRekap = wsRekap.getRow(barisTotal);
     totalRowRekap.getCell(1).value = 'TOTAL';
     totalRowRekap.getCell(2).value = totalMasuk;
-    totalRowRekap.getCell(3).value = totalPulang;
-    totalRowRekap.getCell(4).value = totalMasuk > 0 ? totalPulang / totalMasuk : 0;
+    totalRowRekap.getCell(3).value = kehadiran.totalLengkap;
+    totalRowRekap.getCell(4).value = totalMasuk > 0 ? kehadiran.totalLengkap / totalMasuk : 0;
 
     [1, 2, 3, 4].forEach(col => {
       const cell = totalRowRekap.getCell(col);
@@ -207,7 +194,7 @@ export default function ExportButton() {
     const barisKetRekap = barisTotal + 2;
     wsRekap.mergeCells(`A${barisKetRekap}:D${barisKetRekap}`);
     const ketRekap = wsRekap.getCell(`A${barisKetRekap}`);
-    ketRekap.value = '* % Lengkap = jumlah absen PULANG dibagi MASUK (warga yang hadir lengkap pada malam yang sama).';
+    ketRekap.value = '* Kehadiran dihitung per orang: HADIR = absen MASUK + PULANG di malam yang sama. Kolom Pulang = jumlah warga hadir lengkap. % Lengkap = Pulang / Masuk.';
     ketRekap.font = { italic: true, size: 10, color: { argb: '999999' } };
 
     // ══════════════════════════════════════════════
@@ -239,14 +226,13 @@ export default function ExportButton() {
     let rowIdx = 5;
     for (const t of datesSorted) {
       const dusunMap = byDate.get(t)!;
-      for (const d of CONFIG.dusunList) {
-        const s = dusunMap.get(d);
-        if (!s || (s.masuk === 0 && s.pulang === 0)) continue;
+      for (const [d, s] of dusunMap) {
+        if (s.masuk === 0 && s.pulang === 0) continue;
         const row = wsHarian.getRow(rowIdx);
         row.getCell(1).value = formatTanggalIndo(t);
         row.getCell(2).value = d;
         row.getCell(3).value = s.masuk;
-        row.getCell(4).value = s.pulang;
+        row.getCell(4).value = s.lengkap;
         styleData(row.getCell(1), 'left');
         styleData(row.getCell(2), 'left');
         styleData(row.getCell(3), 'center');
@@ -259,7 +245,7 @@ export default function ExportButton() {
 
       // Total per tanggal
       let sumMasuk = 0, sumPulang = 0;
-      dusunMap.forEach(s => { sumMasuk += s.masuk; sumPulang += s.pulang; });
+      dusunMap.forEach(s => { sumMasuk += s.masuk; sumPulang += s.lengkap; });
       const tRow = wsHarian.getRow(rowIdx);
       tRow.getCell(1).value = `TOTAL ${formatTanggalIndo(t)}`;
       tRow.getCell(3).value = sumMasuk;

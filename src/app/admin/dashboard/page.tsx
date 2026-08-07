@@ -6,6 +6,7 @@ import { LogOut, RefreshCw, Users, Calendar, Save, QrCode, Loader, FileDown, Sea
 import { AbsenRecord, JadwalRonda, Warga } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni } from '@/lib/data';
+import { hitungKehadiran } from '@/lib/kehadiran';
 import ExportButton from '@/components/admin/ExportButton';
 import { ToastProvider, useToast } from '@/components/ui/Toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -102,7 +103,8 @@ function DashboardInner() {
 
   // ── Data yang ditampilkan (hari ini atau bulan terfilter) ──
   const displayData = periodFilter === 'today' ? absenHariIni : monthlyData;
-  const displayPulang = useMemo(() => displayData.filter(r => r.jenisAbsen === 'pulang'), [displayData]);
+  // Kehadiran dihitung per ORANG unik (nama+dusun+tanggal); lengkap = masuk + pulang
+  const kehadiran = useMemo(() => hitungKehadiran(displayData), [displayData]);
 
   const refreshData = useCallback(async () => {
     try {
@@ -345,17 +347,13 @@ function DashboardInner() {
 
   // ── Dusun leaderboard (adaptif: hari ini atau bulan terfilter) ──
   const dusunLeaderboard = useMemo(() => {
-    const counts = new Map<string, number>();
-    displayPulang.forEach(r => {
-      counts.set(r.dusun, (counts.get(r.dusun) || 0) + 1);
-    });
     const dusunOrder = CONFIG.dusunList;
     return dusunOrder
-      .map(d => ({ dusun: d, count: counts.get(d) || 0 }))
+      .map(d => ({ dusun: d, count: kehadiran.perDusun.get(d)?.lengkap ?? 0 }))
       .sort((a, b) => b.count - a.count);
-  }, [displayPulang]);
+  }, [kehadiran]);
 
-  const totalHadir = displayPulang.length;
+  const totalHadir = kehadiran.totalLengkap;
   const tanggalLabel = formatTanggalIndo(getTanggalHariIni());
   const maxCount = Math.max(...dusunLeaderboard.map(d => d.count), 1);
 
