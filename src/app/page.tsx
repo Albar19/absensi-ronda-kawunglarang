@@ -349,7 +349,10 @@ export default function HomePage() {
   }, []);
 
   const tambahRow = useCallback(() => {
-    setRows(prev => [...prev, { nama: '' }]);
+    setRows(prev => {
+      const last = prev[prev.length - 1];
+      return [...prev, { nama: '', manual: last?.manual ?? false }];
+    });
     setTimeout(() => namaInputRef.current?.focus(), 50);
   }, []);
 
