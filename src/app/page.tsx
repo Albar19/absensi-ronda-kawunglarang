@@ -23,6 +23,7 @@ import SuccessScreen  from '@/components/citizen/SuccessScreen';
 interface OrangRow {
   nama: string;
   dusun: string;
+  manual?: boolean; // true = mode ketik manual, false = pilih dari dropdown
 }
 
 function BadgeSesi({ warna, label }: { warna: string; label: string }) {
@@ -54,8 +55,10 @@ export default function HomePage() {
 
   // Form state — multi nama (sesi masuk)
   const [rows, setRows] = useState<OrangRow[]>([{ nama: '', dusun: '' }]);
-  const [namaList, setNamaList] = useState<string[]>([]);
-  const namaInputRef = useRef<HTMLInputElement>(null);
+  // Cache nama warga terdaftar per dusun (untuk dropdown pilih nama)
+  const [namaByDusun, setNamaByDusun] = useState<Record<string, string[]>>({});
+  const [loadingNama, setLoadingNama] = useState(false);
+  const namaInputRef = useRef<HTMLInputElement | HTMLSelectElement>(null);
 
   // Sesi pulang — checklist nama yang sudah absen masuk dari perangkat ini
   const [pulangPeople, setPulangPeople] = useState<{ nama: string; dusun: string }[]>([]);
@@ -67,19 +70,10 @@ export default function HomePage() {
   // Load daftar nama untuk autocomplete + data warga tersimpan
   useEffect(() => {
     const init = async () => {
-      // Fetch daftar nama untuk autocomplete
-      try {
-        const namaRes = await fetch('/api/absen/daftar-nama');
-        if (namaRes.ok) {
-          const namaData = await namaRes.json();
-          if (namaData.names) setNamaList(namaData.names);
-        }
-      } catch { /* silent */ }
-
       // Isi baris pertama dari localStorage jika ada
       const saved = muatDataWarga();
       if (saved) {
-        setRows([{ nama: saved.nama, dusun: saved.dusun }]);
+        setRows([{ nama: saved.nama, dusun: saved.dusun, manual: true }]);
       }
 
       // Demo mode: deteksi apakah perangkat ini sudah absen masuk hari ini
@@ -349,9 +343,35 @@ export default function HomePage() {
     setRows(prev => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
   }, []);
 
-  const ubahRow = useCallback((idx: number, field: keyof OrangRow, value: string) => {
+  const ubahRow = useCallback((idx: number, field: 'nama' | 'dusun', value: string) => {
     setRows(prev => prev.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
   }, []);
+
+  const setRowManual = useCallback((idx: number, manual: boolean) => {
+    setRows(prev => prev.map((r, i) => (i === idx ? { ...r, manual } : r)));
+  }, []);
+
+  // Ambil nama warga terdaftar untuk satu dusun (di-cache per dusun)
+  const loadNamaDusun = useCallback(async (dusun: string) => {
+    if (!dusun || namaByDusun[dusun]) return;
+    setLoadingNama(true);
+    try {
+      const res = await fetch(`/api/absen/daftar-nama?dusun=${encodeURIComponent(dusun)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setNamaByDusun(prev => ({ ...prev, [dusun]: data.names ?? [] }));
+      }
+    } catch { /* silent */ } finally {
+      setLoadingNama(false);
+    }
+  }, [namaByDusun]);
+
+  const pilihDusun = useCallback((idx: number, dusun: string) => {
+    setRows(prev => prev.map((r, i) =>
+      i === idx ? { ...r, dusun, nama: '', manual: false } : r
+    ));
+    void loadNamaDusun(dusun);
+  }, [loadNamaDusun]);
 
   const toggleChecked = useCallback((key: string) => {
     setCheckedNames(prev => {
@@ -438,7 +458,7 @@ export default function HomePage() {
                   {[
                     'Tekan tombol MULAI ABSEN MASUK',
                     'Izinkan akses lokasi GPS',
-                    'Isi Nama dan pilih Dusun',
+                    'Pilih Dusun, lalu pilih Nama dari daftar warga',
                     'Gunakan "Tambah Nama" jika ada peserta lain di perangkat ini',
                     'Tekan SAYA HADIR RONDA',
                   ].map((step, i) => (
@@ -617,7 +637,7 @@ export default function HomePage() {
                       Isi data peserta ronda
                     </p>
                     <p className="text-xs text-green-700 mt-0.5">
-                      Satu perangkat bisa dipakai banyak orang. Tekan <strong>&quot;+ Tambah Nama&quot;</strong> untuk menambahkan peserta lain.
+                      Pilih <strong>dusun</strong> dulu, lalu pilih <strong>nama</strong> dari daftar warga. Tekan <strong>&quot;+ Tambah Nama&quot;</strong> untuk menambahkan peserta lain.
                     </p>
                   </div>
                 </div>
@@ -638,28 +658,11 @@ export default function HomePage() {
                       )}
                       <div>
                         <label className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
-                          Nama Lengkap {rows.length > 1 ? `#${idx + 1}` : ''}
-                        </label>
-                        <input
-                          ref={idx === 0 ? namaInputRef : undefined}
-                          type="text"
-                          inputMode="text"
-                          autoComplete="name"
-                          placeholder="Ketik nama lengkap"
-                          value={row.nama}
-                          onChange={e => ubahRow(idx, 'nama', e.target.value)}
-                          list="daftar-nama-list"
-                          className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
-                          style={{ minHeight: '56px' }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
                           Pilih Dusun
                         </label>
                         <select
                           value={row.dusun}
-                          onChange={e => ubahRow(idx, 'dusun', e.target.value)}
+                          onChange={e => pilihDusun(idx, e.target.value)}
                           className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-[#1e3a8a] focus:outline-none transition-colors"
                           style={{ minHeight: '56px' }}
                         >
@@ -669,16 +672,60 @@ export default function HomePage() {
                           ))}
                         </select>
                       </div>
+                      <div>
+                        <label className="block text-xs font-black tracking-widest uppercase text-slate-500 mb-1.5">
+                          Nama Lengkap {rows.length > 1 ? `#${idx + 1}` : ''}
+                        </label>
+                        {row.manual ? (
+                          <input
+                            ref={idx === 0 ? (namaInputRef as React.RefObject<HTMLInputElement>) : undefined}
+                            type="text"
+                            inputMode="text"
+                            autoComplete="name"
+                            placeholder="Ketik nama lengkap"
+                            value={row.nama}
+                            onChange={e => ubahRow(idx, 'nama', e.target.value)}
+                            className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                            style={{ minHeight: '56px' }}
+                          />
+                        ) : !row.dusun ? (
+                          <div
+                            className="w-full px-4 py-4 text-base sm:text-lg font-semibold text-slate-400 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-between"
+                            style={{ minHeight: '56px' }}
+                          >
+                            Pilih dusun dulu untuk melihat daftar nama
+                            {loadingNama && <Loader size={16} className="animate-spin" />}
+                          </div>
+                        ) : (
+                          <select
+                            ref={idx === 0 ? (namaInputRef as React.RefObject<HTMLSelectElement>) : undefined}
+                            value={row.nama}
+                            onChange={e => ubahRow(idx, 'nama', e.target.value)}
+                            className="w-full px-4 py-4 text-base sm:text-lg font-semibold border-2 border-slate-300 rounded-xl bg-white text-slate-900 focus:border-[#1e3a8a] focus:outline-none transition-colors"
+                            style={{ minHeight: '56px' }}
+                          >
+                            <option value="">
+                              {loadingNama && !namaByDusun[row.dusun]
+                                ? 'Memuat daftar nama…'
+                                : '-- Pilih Nama --'}
+                            </option>
+                            {(namaByDusun[row.dusun] ?? []).map(n => (
+                              <option key={n} value={n}>{n}</option>
+                            ))}
+                          </select>
+                        )}
+                        {row.dusun && (
+                          <button
+                            type="button"
+                            onClick={() => setRowManual(idx, !row.manual)}
+                            className="mt-1.5 text-xs font-bold text-[#1e3a8a] underline hover:text-[#1e40af] transition-colors"
+                          >
+                            {row.manual ? '← Pilih dari daftar' : 'Ketik nama manual…'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
-
-                  {namaList.length > 0 && (
-                    <datalist id="daftar-nama-list">
-                      {namaList.map(n => (
-                        <option key={n} value={n} />
-                      ))}
-                    </datalist>
-                  )}
 
                   {/* Tombol tambah nama */}
                   <button

@@ -30,7 +30,7 @@ Sistem absensi ronda malam berbasis web untuk **Desa Kawunglarang**, dikembangka
 | **Absen Pulang** | Warga absen pulang (23:00–23:59 WIB) — wajib sudah absen masuk malam ini |
 | **1 Perangkat Bisa Banyak Warga** | Karena keterbatasan perangkat, satu HP bisa dipakai absen banyak warga. Ada fitur "Tambah Nama" saat absen masuk. |
 | **Checklist Absen Pulang** | Saat sesi pulang, semua nama yang sudah absen masuk dari perangkat tampil dengan centang. Nama yang pulang lebih awal bisa di-uncheck. |
-| **Autocomplete Nama** | Saat ketik nama, otomatis muncul saran dari nama yang pernah absen sebelumnya. |
+| **Dropdown Pilih Nama** | Saat absen masuk, warga pilih dusun → muncul dropdown nama warga terdaftar di dusun tsb. Ada fallback ketik manual. |
 | **Jadwal Ronda Mingguan** | Admin atur petugas ronda per hari (Senin–Minggu) via dropdown di dashboard |
 | **Dashboard Admin** | Log kehadiran real-time + leaderboard progress bar per dusun |
 | **Export Excel** | Export rekap per dusun + detail absensi per bulan ke file `.xlsx` |
@@ -77,7 +77,8 @@ Index: `idx_absen_device_jenis` pada `(device_id, tanggal_ronda, jenis_absen)`
 
 ### Tabel `warga`
 
-Master daftar warga (whitelist non-blocking). Nama yang diketik manual saat absen masuk antrean verifikasi admin.
+Master daftar warga (whitelist). **Hanya warga `terdaftar=true` + `aktif=true` yang bisa absen**
+(dicek server-side di `POST /api/absen`). Nama belum terdaftar → absen ditolak & masuk antrean verifikasi.
 
 | Kolom | Tipe | Keterangan |
 |-------|------|------------|
@@ -120,8 +121,10 @@ Fungsi `rate_limit_check(p_key, p_max, p_window_ms)` dikelola lewat RPC atomik (
 1. Warga buka halaman absen (scan QR atau buka URL)
 2. Sistem cek jam — jika dalam sesi masuk, tombol aktif
 3. Sistem cek GPS — harus dalam radius **150m** dari Bale Desa
-4. Warga isi Nama dan pilih Dusun. Jika ada peserta lain di perangkat yang sama, tekan **"Tambah Nama"**
-5. Data tersimpan dengan `jenis_absen: 'masuk'` untuk setiap nama
+4. Warga pilih **Dusun**, lalu pilih **Nama** dari dropdown warga terdaftar (fallback: ketik manual)
+5. Nama yang sudah terdaftar & disetujui admin → absen tersimpan dengan `jenis_absen: 'masuk'`
+6. Nama yang **belum terdaftar** → absen ditolak, nama masuk antrean verifikasi admin (Daftar Warga → Menunggu Persetujuan). Setelah disetujui, warga absen kembali
+7. Jika ada peserta lain di perangkat yang sama, tekan **"Tambah Nama"**
 
 ### Sesi Pulang (23:00 – 23:59 WIB)
 1. Warga buka halaman yang sama
@@ -134,7 +137,7 @@ Fungsi `rate_limit_check(p_key, p_max, p_window_ms)` dikelola lewat RPC atomik (
 ### Perhitungan Kehadiran
 - **Hadir lengkap** = warga melakukan absen **masuk + pulang** di malam yang sama
 - Hanya absen **pulang** yang dihitung sebagai kehadiran di leaderboard
-- Tidak ada batasan jadwal — semua warga desa bebas absen
+- Tidak ada batasan jadwal — setiap warga **terdaftar** bebas absen
 
 ---
 

@@ -709,8 +709,9 @@ function DashboardInner() {
                   </h3>
                 </div>
                 <p className="text-xs text-slate-500 mt-1 font-medium">
-                  Nama yang diketik manual oleh warga masuk antrean verifikasi. Setujui untuk
-                  menonaktifkan nama iseng; warga terdaftar muncul di autocomplete form absen.
+                  Hanya warga <b>terdaftar</b> yang bisa absen. Nama yang diketik manual oleh warga
+                  belum disetujui → absennya ditolak & masuk antrean ini. Setujui agar warga bisa
+                  absen dan namanya muncul di dropdown form absen.
                 </p>
                 <p className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mt-3">
                   Klik <b>Terima</b> untuk menyetujui nama baru. Klik ikon <b>tong sampah</b> untuk

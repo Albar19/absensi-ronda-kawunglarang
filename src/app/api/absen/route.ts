@@ -131,6 +131,36 @@ export async function POST(request: Request) {
       );
     }
 
+    // ── WHITELIST: hanya warga terdaftar (terdaftar=true, aktif=true) yang bisa absen ──
+    // Demo mode: lewati agar test bebas. Nama belum terdaftar → masuk antrean
+    // verifikasi admin (warga.terdaftar=false), absen TIDAK ditulis ke absen_records.
+    if (!demo) {
+      const { data: warga } = await supabase
+        .from('warga')
+        .select('id, terdaftar, aktif')
+        .eq('nama', namaTrimmed)
+        .eq('dusun', dusunTrimmed)
+        .maybeSingle();
+
+      if (!warga || !warga.terdaftar || !warga.aktif) {
+        // Antrean verifikasi: simpan nama (belum disetujui) agar admin bisa Terima.
+        await supabase
+          .from('warga')
+          .upsert(
+            { nama: namaTrimmed, dusun: dusunTrimmed, terdaftar: false, aktif: true },
+            { onConflict: 'nama,dusun', ignoreDuplicates: true }
+          );
+
+        return NextResponse.json(
+          {
+            kode: 'BELUM_TERDAFTAR',
+            error: 'Nama belum terdaftar. Permintaan Anda sudah dikirim ke antrean verifikasi — minta admin menyetujui di dashboard, lalu absen kembali.',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     // ── Absen pulang wajib sudah absen masuk di malam yang sama ──
     // Demo mode: relaksasi — bebas absen pulang tanpa harus masuk dulu (untuk test).
     if (!demo && jenisAbsen === 'pulang') {
@@ -212,8 +242,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Auto-register nama ke master warga (non-blocking). Nama baru masuk
-    // antrean verifikasi admin (terdaftar=false) sampai disetujui.
+    // Auto-register nama ke master warga (demo mode: nama baru masuk
+    // antrean verifikasi admin terdaftar=false; produksi: nama terdaftar = no-op).
     await supabase
       .from('warga')
       .upsert(

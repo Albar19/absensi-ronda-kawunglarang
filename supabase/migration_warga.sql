@@ -1,11 +1,12 @@
 -- ============================================================
--- MIGRASI: Master Daftar Warga (whitelist non-blocking)
+-- MIGRASI: Master Daftar Warga (whitelist)
 -- Sistem Absensi Ronda Desa Kawunglarang
 -- ============================================================
 -- - terdaftar = false  : nama ketik manual oleh warga (antrean verifikasi admin)
--- - terdaftar = true   : disetujui admin, muncul di autocomplete
+-- - terdaftar = true   : disetujui admin, muncul di dropdown form absen
 -- - aktif = false      : disembunyikan (soft delete / tolak)
--- Nama tidak terdaftar TETAP bisa absen (non-blocking); admin yang memutuskan.
+-- Hanya warga terdaftar=true + aktif=true yang bisa absen (dicek di POST /api/absen).
+-- Nama belum terdaftar masuk antrean; setelah disetujui, warga absen kembali.
 -- ============================================================
 
 DROP TABLE IF EXISTS warga CASCADE;
