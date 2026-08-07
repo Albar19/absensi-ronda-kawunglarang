@@ -399,7 +399,7 @@ function DashboardInner() {
             style={{ minHeight: '42px' }}
           >
             <ClipboardList size={16} />
-            Log Kehadiran
+            Kehadiran
           </button>
           <button
             type="button"
@@ -469,11 +469,11 @@ function DashboardInner() {
               )}
             </div>
 
-            {/* Rekapitulasi Kehadiran per Dusun */}
+            {/* Kehadiran per Dusun */}
             <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                  Rekapitulasi Kehadiran per Dusun — {periodFilter === 'today' ? 'Malam Ini' : `${BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} ${periodFilter.split('-')[0]}`}
+                  Kehadiran per Dusun — {periodFilter === 'today' ? 'Malam Ini' : `${BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} ${periodFilter.split('-')[0]}`}
                 </h3>
               </div>
 
@@ -519,7 +519,7 @@ function DashboardInner() {
             <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                  Log Kehadiran ({displayData.length} data)
+                  Kehadiran ({displayData.length} data)
                 </h3>
                 {periodFilter !== 'today' && (
                   <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
@@ -588,6 +588,9 @@ function DashboardInner() {
 
                   <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-xs font-semibold text-slate-400">
                     Menampilkan {displayData.length} data absensi ({totalHadir} hadir lengkap)
+                  </div>
+                  <div className="px-4 py-2 bg-blue-50 border-t border-blue-100 text-xs font-semibold text-blue-600">
+                    Hadir lengkap = warga sudah absen Masuk <b>dan</b> Pulang.
                   </div>
                 </>
               )}
@@ -709,6 +712,10 @@ function DashboardInner() {
                   Nama yang diketik manual oleh warga masuk antrean verifikasi. Setujui untuk
                   menonaktifkan nama iseng; warga terdaftar muncul di autocomplete form absen.
                 </p>
+                <p className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mt-3">
+                  Klik <b>Terima</b> untuk menyetujui nama baru. Klik ikon <b>tong sampah</b> untuk
+                  menghapus nama yang iseng.
+                </p>
               </div>
 
               <div className="px-5 py-4">
@@ -768,7 +775,7 @@ function DashboardInner() {
                       }`}
                       style={{ minHeight: '32px' }}
                     >
-                      {f === 'belum' ? 'Belum Terdaftar' : f === 'terdaftar' ? 'Terdaftar' : 'Semua'}
+                      {f === 'belum' ? 'Menunggu Persetujuan' : f === 'terdaftar' ? 'Disetujui' : 'Semua'}
                     </button>
                   ))}
                   <div className="relative sm:w-52">
@@ -825,7 +832,7 @@ function DashboardInner() {
                 return (
                   <div className="divide-y divide-slate-100">
                     {list.map(w => (
-                      <div key={w.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+                      <div key={w.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors flex-wrap sm:flex-nowrap">
                         {editingId === w.id ? (
                           <>
                             <input
@@ -871,11 +878,11 @@ function DashboardInner() {
                                 </p>
                                 {!w.terdaftar ? (
                                   <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                                    Belum Terdaftar
+                                    Menunggu Persetujuan
                                   </span>
                                 ) : w.aktif ? (
                                   <span className="text-[10px] font-black uppercase tracking-wider text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
-                                    Terdaftar
+                                    Disetujui
                                   </span>
                                 ) : (
                                   <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
@@ -885,7 +892,7 @@ function DashboardInner() {
                               </div>
                               <p className="text-xs text-slate-500 font-semibold mt-0.5">{w.dusun}</p>
                             </div>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
                               {!w.terdaftar && (
                                 <button
                                   type="button"
@@ -898,15 +905,17 @@ function DashboardInner() {
                                   <span className="hidden sm:inline">Terima</span>
                                 </button>
                               )}
-                              <button
-                                type="button"
-                                onClick={() => mulaiEdit(w)}
-                                title="Edit"
-                                className="flex items-center justify-center bg-slate-100 text-slate-600 p-2.5 rounded-lg hover:bg-slate-200 active:scale-95 transition-all"
-                                style={{ width: '40px', height: '40px' }}
-                              >
-                                <Pencil size={15} />
-                              </button>
+                              {w.terdaftar && (
+                                <button
+                                  type="button"
+                                  onClick={() => mulaiEdit(w)}
+                                  title="Edit"
+                                  className="flex items-center justify-center bg-slate-100 text-slate-600 p-2.5 rounded-lg hover:bg-slate-200 active:scale-95 transition-all"
+                                  style={{ width: '40px', height: '40px' }}
+                                >
+                                  <Pencil size={15} />
+                                </button>
+                              )}
                               {w.terdaftar && (
                                 <button
                                   type="button"

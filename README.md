@@ -75,6 +75,33 @@ Perhitungan kehadiran: hanya **absen pulang** yang dihitung sebagai hadir lengka
 Index: `idx_absen_tanggal_dusun` pada `(tanggal_ronda, dusun)`  
 Index: `idx_absen_device_jenis` pada `(device_id, tanggal_ronda, jenis_absen)`
 
+### Tabel `warga`
+
+Master daftar warga (whitelist non-blocking). Nama yang diketik manual saat absen masuk antrean verifikasi admin.
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `id` | uuid (PK) | Auto generate |
+| `nama` | text | Nama warga |
+| `dusun` | text | Dusun warga |
+| `terdaftar` | boolean | `false` = antrean verifikasi, `true` = disetujui admin |
+| `aktif` | boolean | `false` = soft delete / disembunyikan |
+| `created_at` | timestamptz | Auto timestamp |
+
+Unique: `(nama, dusun)`. Warga yang sudah pernah absen otomatis `terdaftar=true` saat migrasi dijalankan.
+
+### Tabel `rate_limits`
+
+Counter rate limiter persisten (jalan di hosting serverless). Dipakai untuk batasi percobaan login & pengiriman absen per IP.
+
+| Kolom | Tipe | Keterangan |
+|-------|------|------------|
+| `key` | text (PK) | Contoh: `login:1.2.3.4` / `absen:1.2.3.4` |
+| `count` | int | Jumlah request dalam jendela |
+| `reset_at` | timestamptz | Waktu reset counter |
+
+Fungsi `rate_limit_check(p_key, p_max, p_window_ms)` dikelola lewat RPC atomik (row lock `FOR UPDATE`).
+
 ### Tabel `jadwal_ronda`
 
 | Kolom | Tipe | Keterangan |
@@ -138,9 +165,13 @@ ADMIN_PASSWORD_HASH=xxx                 # bcrypt hash password admin (lihat cara
 NEXT_PUBLIC_BASE_URL=https://xxx        # URL produksi untuk QR code (opsional, fallback ke domain saat dibuka)
 
 # 4. Setup database
-# Jalankan SQL migration di folder supabase/ secara berurutan:
-# - migration_relawan.sql
-# - migration_jadwal.sql
+# Jalankan SQL migration di folder supabase/ SECARA BERURUTAN (urutan penting!):
+#   1. migration_relawan.sql      # tabel absen_records + index
+#   2. migration_multi_nama.sql   # index identitas nama+dusun
+#   3. migration_jadwal.sql       # tabel jadwal_ronda + seed 7 hari
+#   4. migration_warga.sql        # tabel warga (master, backfill dari absen_records)
+#   5. migration_rate_limit.sql   # tabel + fungsi rate limiter persisten
+# Jalankan lewat Supabase Dashboard → SQL Editor, satu per satu.
 
 # 5. Jalankan development server
 npm run dev
@@ -220,7 +251,10 @@ src/
     └── types.ts               # Type definitions
 supabase/
 ├── migration_relawan.sql      # Tabel absen_records + index
-└── migration_jadwal.sql       # Tabel jadwal_ronda + seed 7 hari
+├── migration_multi_nama.sql   # Index identitas nama+dusun
+├── migration_jadwal.sql       # Tabel jadwal_ronda + seed 7 hari
+├── migration_warga.sql        # Tabel warga (master, backfill)
+└── migration_rate_limit.sql   # Rate limiter persisten (tabel + fungsi)
 ```
 
 ---
@@ -306,7 +340,7 @@ export const CONFIG = {
 - **Validasi absen:** Jam sesi & tanggal ronda dihitung **server-side (WIB)**, GPS divalidasi 2x (client + server Haversine 150m).
 - **Endpoint admin:** `/api/absen/semua`, `/api/absen/hari-ini`, `/api/jadwal*` butuh cookie admin (401 tanpa login).
 - **Multi-nama per perangkat:** Karena keterbatasan perangkat, 1 HP bisa dipakai absen banyak warga. Saat sesi masuk ada tombol "Tambah Nama"; saat sesi pulang muncul checklist semua nama yang sudah absen masuk dari perangkat (yang pulang lebih awal bisa di-uncheck). Identitas absen berdasarkan **nama + dusun** (bukan device), sehingga dua orang dengan nama sama tapi dusun berbeda tetap dianggap berbeda.
-- **Jam absen:** Server memakai waktu server WIB (UTC+7), bukan waktu client. Pastikan tabel `jadwal_ronda` sudah dibuat via `supabase/migration_jadwal.sql` di Supabase dashboard.
+- **Jam absen:** Server memakai waktu server WIB (UTC+7), bukan waktu client. Pastikan kelima tabel dibuat via migrasi di `supabase/` (urutan: `migration_relawan.sql` → `migration_multi_nama.sql` → `migration_jadwal.sql` → `migration_warga.sql` → `migration_rate_limit.sql`) di Supabase dashboard.
 
 ### Kontak
 

@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
             <div className="w-16 h-16 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center mx-auto mb-4">
               <Shield size={30} className="text-white" strokeWidth={1.8} />
             </div>
-            <h1 className="text-xl font-black tracking-wide text-white">ADMIN LOGIN</h1>
+            <h1 className="text-xl font-black tracking-wide text-white">Masuk Admin</h1>
             <p className="text-sm text-blue-300 mt-1 font-medium">Bale Desa Kawunglarang</p>
           </div>
 

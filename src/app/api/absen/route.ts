@@ -5,7 +5,8 @@ import { hitungJarak } from '@/lib/data';
 import { rateLimit } from '@/lib/rate-limit';
 
 // Batas pengiriman absen per IP (persisten di Supabase, aman untuk serverless)
-const ABSEN_MAX = 60;
+// 1 nama = 1 POST; satu HP bisa dipakai banyak warga, jadi batas dibuat longgar.
+const ABSEN_MAX = 150;
 const ABSEN_WINDOW_MS = 15 * 60 * 1000;
 
 // ── Waktu server dalam WIB (UTC+7) ──
