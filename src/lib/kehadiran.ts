@@ -11,7 +11,7 @@ export interface HitungKehadiran {
 // Aturan kehadiran: HADIR (lengkap) hanya jika orang yang sama (nama+dusun)
 // melakukan absen MASUK dan PULANG pada tanggal yang sama.
 // Semua hitungan memakai ORANG UNIK per tanggal (bukan jumlah record) agar tidak
-// terpengaruh record ganda — misalnya saat demo mode (selalu INSERT).
+// terpengaruh record ganda (upsert absen yang sama berulang kali).
 export function hitungKehadiran(records: AbsenRecord[]): HitungKehadiran {
   const masukSet = new Set<string>();
   const pulangSet = new Set<string>();

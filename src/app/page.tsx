@@ -12,7 +12,6 @@ import {
   getTanggalHariIni,
   muatDataWarga,
   simpanDataWarga,
-  isDemoMode,
 } from '@/lib/data';
 import HeaderBanner  from '@/components/citizen/HeaderBanner';
 import StatusCards   from '@/components/citizen/StatusCards';
@@ -48,8 +47,6 @@ export default function HomePage() {
   const [koordinat,      setKoordinat]      = useState<{lat:number;lng:number}|null>(null);
   const [pesanError,     setPesanError]     = useState('');
   const [jenisAbsen,     setJenisAbsen]     = useState<JenisAbsen>('masuk');
-  // Demo mode: true = perangkat sudah absen masuk hari ini → tombol jadi PULANG
-  const [sudahMasuk,     setSudahMasuk]     = useState(false);
 
   // Form state — satu dusun di atas + multi nama (sesi masuk)
   const [rows, setRows] = useState<OrangRow[]>([{ nama: '' }]);
@@ -90,18 +87,6 @@ export default function HomePage() {
         setDusunForm(saved.dusun);
         setRows([{ nama: saved.nama, manual: true }]);
         void loadNamaDusun(saved.dusun);
-      }
-
-      // Demo mode: deteksi apakah perangkat ini sudah absen masuk hari ini
-      // → menentukan tombol ABSEN / PULANG otomatis.
-      if (isDemoMode()) {
-        try {
-          const cekRes = await fetch(`/api/absen/cek-masuk?tanggal=${getTanggalHariIni()}`);
-          if (cekRes.ok) {
-            const cekData = await cekRes.json();
-            setSudahMasuk((cekData.people?.length ?? 0) > 0);
-          }
-        } catch { /* silent */ }
       }
     };
     init();
@@ -217,10 +202,7 @@ export default function HomePage() {
     const dusun = dusunForm.trim();
     const validRows = rows
       .map(r => ({ nama: r.nama.trim(), dusun }))
-      .filter(r => r.nama.length > 0 && dusun.length > 0)
-      .map(r => isDemoMode() && !r.nama.startsWith('[DEMO]')
-        ? { ...r, nama: `[DEMO] ${r.nama}` }
-        : r);
+      .filter(r => r.nama.length > 0 && dusun.length > 0);
 
     if (validRows.length === 0) {
       setPesanError('Pilih dusun dan isi minimal satu nama.');
@@ -274,7 +256,6 @@ export default function HomePage() {
     setSuccessRecords(submitted);
     setIsSubmitting(false);
     setFlowState('success');
-    if (isDemoMode()) setSudahMasuk(true);
   }, [rows, dusunForm, koordinat, jarakMeter]);
 
   // ── Sesi PULANG: submit semua nama yang dicentang ──
@@ -330,8 +311,6 @@ export default function HomePage() {
     setSuccessRecords(submitted);
     setIsSubmitting(false);
     setFlowState('success');
-    // Setelah pulang, perangkat bisa langsung absen masuk lagi (test berulang)
-    if (isDemoMode()) setSudahMasuk(false);
   }, [pulangPeople, checkedNames, koordinat, jarakMeter]);
 
   const handleReset = useCallback(() => {
@@ -384,18 +363,6 @@ export default function HomePage() {
     });
   }, []);
 
-  // Demo: hapus semua data test ([DEMO]) agar test berikutnya bersih
-  const handleResetDemo = useCallback(async () => {
-    if (!confirm('Hapus semua data test ([DEMO])? Data tidak bisa dikembalikan.')) return;
-    try {
-      const res = await fetch('/api/absen/reset-demo', { method: 'POST' });
-      if (!res.ok) throw new Error();
-      window.location.reload();
-    } catch {
-      alert('Gagal membersihkan data. Coba lagi.');
-    }
-  }, []);
-
   const isFormValid = jenisAbsen === 'pulang'
     ? checkedNames.size > 0
     : dusunForm.trim().length > 0 && rows.some(r => r.nama.trim().length > 0);
@@ -409,13 +376,8 @@ export default function HomePage() {
       };
 
   // ── Adaptive session ──
-  const demo = isDemoMode();
   const jamStatus = cekJamStatus();
-  // Demo: tombol adaptif — sudah absen masuk → PULANG, belum → MASUK.
-  // Produksi: ikuti jam sesi asli.
-  const sesiAktif = demo
-    ? (sudahMasuk ? 'pulang' : 'masuk')
-    : (jamStatus === 'masuk' || jamStatus === 'pulang' ? jamStatus : null);
+  const sesiAktif = jamStatus === 'masuk' || jamStatus === 'pulang' ? jamStatus : null;
   const labelSesi = sesiAktif === 'pulang' ? 'PULANG' : 'MASUK';
   const labelSesiLower = sesiAktif === 'pulang' ? 'pulang' : 'masuk';
   const jamSesiStr = sesiAktif ? formatJamSesi(sesiAktif) : '';
@@ -519,16 +481,6 @@ export default function HomePage() {
                 Masuk sebagai Admin
               </a>
             </div>
-
-            {demo && (
-              <button
-                type="button"
-                onClick={handleResetDemo}
-                className="w-full text-xs font-bold text-red-400 hover:text-red-600 transition-colors text-center"
-              >
-                Bersihkan Data Test ([DEMO])
-              </button>
-            )}
           </div>
         )}
 
@@ -792,7 +744,6 @@ export default function HomePage() {
             records={successRecords}
             onBack={handleReset}
             onTambahNama={jenisAbsen === 'masuk' ? () => { setSuccessRecords([]); setRows([{ nama: '' }]); setFlowState('form'); } : undefined}
-            onLanjutPulang={demo && jenisAbsen === 'masuk' ? () => mulaiCek('pulang') : undefined}
           />
         )}
 

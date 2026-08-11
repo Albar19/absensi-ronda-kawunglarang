@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
 import { hitungJarak } from '@/lib/data';
-import { isDemoMode } from '@/lib/data';
 import { rateLimit } from '@/lib/rate-limit';
 
 // Batas pengiriman absen per IP (persisten di Supabase, aman untuk serverless)
@@ -31,11 +30,9 @@ function getWibNow() {
 
 export async function POST(request: Request) {
   try {
-    const demo = isDemoMode();
-
-    // ── Rate limiting by IP (di-bypass saat demo mode agar bisa spam test) ──
+    // ── Rate limiting by IP (persisten di Supabase, aman untuk serverless) ──
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    if (!demo && !(await rateLimit(`absen:${ip}`, ABSEN_MAX, ABSEN_WINDOW_MS))) {
+    if (!(await rateLimit(`absen:${ip}`, ABSEN_MAX, ABSEN_WINDOW_MS))) {
       return NextResponse.json(
         { error: 'Terlalu banyak pengiriman absen. Coba lagi beberapa saat.' },
         { status: 429 }
@@ -75,13 +72,10 @@ export async function POST(request: Request) {
     }
 
     // ── VALIDASI JAM SERVER-SIDE (waktu server WIB, bukan client) ──
-    // Demo mode: lewati validasi jam agar bisa absen kapan saja. GPS tetap divalidasi.
     const { menit: wibMenit, jamAbsenServer, tanggalWib } = getWibNow();
 
     let tanggalRonda: string;
-    if (isDemoMode()) {
-      tanggalRonda = tanggalWib;
-    } else if (jenisAbsen === 'masuk') {
+    if (jenisAbsen === 'masuk') {
       if (wibMenit < MASUK_MULAI || wibMenit >= MASUK_SELESAI + GRACE_MENIT) {
         return NextResponse.json(
           { error: 'Absen masuk hanya tersedia pukul 20:00 - 22:00 WIB.' },
@@ -131,9 +125,9 @@ export async function POST(request: Request) {
     }
 
     // ── WHITELIST: hanya warga terdaftar (terdaftar=true, aktif=true) yang bisa absen ──
-    // Demo mode: lewati agar test bebas. Nama belum terdaftar → masuk antrean
-    // verifikasi admin (warga.terdaftar=false), absen TIDAK ditulis ke absen_records.
-    if (!demo) {
+    // Nama belum terdaftar → masuk antrean verifikasi admin (warga.terdaftar=false),
+    // absen TIDAK ditulis ke absen_records.
+    {
       const { data: warga } = await supabase
         .from('warga')
         .select('id, terdaftar, aktif')
@@ -161,8 +155,7 @@ export async function POST(request: Request) {
     }
 
     // ── Absen pulang wajib sudah absen masuk di malam yang sama ──
-    // Demo mode: relaksasi — bebas absen pulang tanpa harus masuk dulu (untuk test).
-    if (!demo && jenisAbsen === 'pulang') {
+    if (jenisAbsen === 'pulang') {
       const { data: sudahMasuk } = await supabase
         .from('absen_records')
         .select('id')
@@ -181,17 +174,14 @@ export async function POST(request: Request) {
     }
 
     // ── UPSERT: jika nama_warga + dusun + tanggal_ronda + jenis_absen sudah ada, UPDATE ──
-    // Demo mode: selalu INSERT baru (skip upsert) agar setiap absen menambah record untuk test export.
-    const { data: existing } = demo
-      ? { data: null }
-      : await supabase
-          .from('absen_records')
-          .select('id')
-          .eq('nama_warga', namaTrimmed)
-          .eq('dusun', dusunTrimmed)
-          .eq('tanggal_ronda', tanggalRonda)
-          .eq('jenis_absen', jenisAbsen)
-          .maybeSingle();
+    const { data: existing } = await supabase
+      .from('absen_records')
+      .select('id')
+      .eq('nama_warga', namaTrimmed)
+      .eq('dusun', dusunTrimmed)
+      .eq('tanggal_ronda', tanggalRonda)
+      .eq('jenis_absen', jenisAbsen)
+      .maybeSingle();
 
     if (existing) {
       const updateData: Record<string, unknown> = {
@@ -240,8 +230,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Auto-register nama ke master warga (demo mode: nama baru masuk
-    // antrean verifikasi admin terdaftar=false; produksi: nama terdaftar = no-op).
+    // Auto-register nama ke master warga (nama terdaftar = no-op).
     await supabase
       .from('warga')
       .upsert(
