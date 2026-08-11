@@ -12,6 +12,7 @@ import {
   getTanggalHariIni,
   muatDataWarga,
   simpanDataWarga,
+  type JamStatus,
 } from '@/lib/data';
 import HeaderBanner  from '@/components/citizen/HeaderBanner';
 import StatusCards   from '@/components/citizen/StatusCards';
@@ -47,6 +48,8 @@ export default function HomePage() {
   const [koordinat,      setKoordinat]      = useState<{lat:number;lng:number}|null>(null);
   const [pesanError,     setPesanError]     = useState('');
   const [jenisAbsen,     setJenisAbsen]     = useState<JenisAbsen>('masuk');
+  // Sesi saat ini (dari jam perangkat) — diperbarui berkala & saat tab kembali aktif
+  const [jamStatus,      setJamStatus]      = useState<JamStatus>(cekJamStatus());
 
   // Form state — satu dusun di atas + multi nama (sesi masuk)
   const [rows, setRows] = useState<OrangRow[]>([{ nama: '' }]);
@@ -91,6 +94,21 @@ export default function HomePage() {
     };
     init();
   }, [loadNamaDusun]);
+
+  // Perbarui status sesi berkala + saat tab kembali aktif, agar tombol otomatis
+  // berganti MASUK → PULANG tanpa perlu reload manual.
+  useEffect(() => {
+    const update = () => setJamStatus(cekJamStatus());
+    update();
+    const id = setInterval(update, 20000);
+    document.addEventListener('visibilitychange', update);
+    window.addEventListener('focus', update);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', update);
+      window.removeEventListener('focus', update);
+    };
+  }, []);
 
   const mulaiCek = useCallback(async (jenis: JenisAbsen) => {
     setJenisAbsen(jenis);
@@ -376,7 +394,6 @@ export default function HomePage() {
       };
 
   // ── Adaptive session ──
-  const jamStatus = cekJamStatus();
   const sesiAktif = jamStatus === 'masuk' || jamStatus === 'pulang' ? jamStatus : null;
   const labelSesi = sesiAktif === 'pulang' ? 'PULANG' : 'MASUK';
   const labelSesiLower = sesiAktif === 'pulang' ? 'pulang' : 'masuk';

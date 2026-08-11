@@ -66,6 +66,15 @@ export default function SuccessScreen({ records, onBack, onTambahNama }: Success
         ))}
       </div>
 
+      {jenisAbsen === 'masuk' && (
+        <div className="w-full max-w-sm bg-blue-50 border-2 border-blue-200 rounded-2xl px-4 py-3.5 mb-6 text-left">
+          <p className="text-sm font-black text-blue-900">Sesi pulang dibuka 23:00–23:59 WIB.</p>
+          <p className="text-xs font-semibold text-blue-700 mt-0.5">
+            Scan ulang QR ini malam nanti untuk absen pulang — halaman otomatis berubah ke sesi PULANG.
+          </p>
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="w-full max-w-sm space-y-3">
         {onTambahNama && jenisAbsen === 'masuk' && (
