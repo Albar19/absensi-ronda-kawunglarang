@@ -10,7 +10,7 @@ const fiturList = [
   {
     icon: MapPin,
     title: 'Verifikasi GPS',
-    desc: 'Cek lokasi otomatis — hanya dalam radius 150m dari Bale Desa.',
+    desc: 'Cek lokasi otomatis — hanya dalam radius 50m dari Bale Desa.',
   },
   {
     icon: Clock,
