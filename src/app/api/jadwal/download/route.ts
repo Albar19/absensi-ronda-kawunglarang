@@ -14,6 +14,8 @@ const HARI_LABEL: Record<string, string> = {
   minggu: 'Minggu',
 };
 
+const WARNA_NAVY = '1E3A8A';
+
 // GET /api/jadwal/download — download jadwal sebagai file Excel (admin-only)
 export async function GET() {
   if (!(await isAdminRequest())) {
@@ -52,34 +54,44 @@ export async function GET() {
       .map(h => jadwal.find(j => j.hari === h))
       .filter(Boolean) as JadwalRonda[];
 
-    // ── Build Excel ──
-    const XLSX = await import('xlsx');
-    const { utils, write } = XLSX;
+    // ── Build Excel (exceljs — sudah dipakai ExportButton, tanpa xlsx) ──
+    const ExcelJS = await import('exceljs');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Jadwal Ronda');
 
-    const rows: unknown[][] = [
-      [`JADWAL RONDA MINGGUAN — ${CONFIG.namaDesa}`],
-      [],
-      ['No', 'Hari', 'Petugas Ronda'],
-    ];
+    ws.mergeCells('A1:C1');
+    const judul = ws.getCell('A1');
+    judul.value = `JADWAL RONDA MINGGUAN — ${CONFIG.namaDesa}`;
+    judul.font = { bold: true, size: 14, color: { argb: WARNA_NAVY } };
+    judul.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(1).height = 28;
+
+    const headerRow = ws.getRow(3);
+    headerRow.values = ['No', 'Hari', 'Petugas Ronda'];
+    headerRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: WARNA_NAVY } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+    });
+    headerRow.height = 22;
 
     sorted.forEach((j, i) => {
-      rows.push([i + 1, HARI_LABEL[j.hari] || j.hari, j.petugas]);
+      const row = ws.getRow(4 + i);
+      row.getCell(1).value = i + 1;
+      row.getCell(2).value = HARI_LABEL[j.hari] || j.hari;
+      row.getCell(3).value = j.petugas;
+      row.eachCell(cell => {
+        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      });
+      row.height = 20;
     });
 
-    const ws = utils.aoa_to_sheet(rows);
-    ws['!cols'] = [
-      { wch: 6 },
-      { wch: 14 },
-      { wch: 22 },
-    ];
+    ws.getColumn(1).width = 6;
+    ws.getColumn(2).width = 14;
+    ws.getColumn(3).width = 22;
 
-    // Merge header row
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
-
-    const wb = utils.book_new();
-    utils.book_append_sheet(wb, ws, 'Jadwal Ronda');
-
-    const buffer = write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+    const buffer = await wb.xlsx.writeBuffer();
     const uint8 = new Uint8Array(buffer);
 
     return new NextResponse(uint8, {

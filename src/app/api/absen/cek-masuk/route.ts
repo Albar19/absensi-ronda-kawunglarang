@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
+
+const NO_STORE = { 'Cache-Control': 'no-store' };
+
+// Batas permintaan cek absen masuk per IP
+const CEK_MAX = 60;
+const CEK_WINDOW_MS = 15 * 60 * 1000;
 
 // GET /api/absen/cek-masuk?tanggal=YYYY-MM-DD
 // Mengembalikan daftar warga yang sudah absen masuk malam ini TAPI belum absen
@@ -8,13 +15,21 @@ import { supabase } from '@/lib/supabase';
 // Orang yang sudah punya record pulang hari ini dikeluarkan — satu nama satu
 // siklus masuk+pulang per malam, sesi berikutnya tidak membawa sesi sebelumnya.
 export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  if (!(await rateLimit(`cek:${ip}`, CEK_MAX, CEK_WINDOW_MS))) {
+    return NextResponse.json(
+      { error: 'Terlalu banyak permintaan. Coba lagi beberapa saat.' },
+      { status: 429, headers: NO_STORE }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const tanggal = searchParams.get('tanggal');
 
   if (!tanggal) {
     return NextResponse.json(
       { error: 'Param tanggal wajib' },
-      { status: 400 }
+      { status: 400, headers: NO_STORE }
     );
   }
 
@@ -22,7 +37,8 @@ export async function GET(request: Request) {
     .from('absen_records')
     .select('nama_warga, dusun')
     .eq('tanggal_ronda', tanggal)
-    .eq('jenis_absen', 'masuk');
+    .eq('jenis_absen', 'masuk')
+    .limit(500);
 
   if (error) {
     // Fallback ke kolom 'tanggal' jika 'tanggal_ronda' belum ada
@@ -31,9 +47,10 @@ export async function GET(request: Request) {
         .from('absen_records')
         .select('nama, dusun')
         .eq('tanggal', tanggal)
-        .eq('jenis_absen', 'masuk');
+        .eq('jenis_absen', 'masuk')
+        .limit(500);
       if (fb.error) {
-        return NextResponse.json({ error: 'Gagal memeriksa absen masuk' }, { status: 500 });
+        return NextResponse.json({ error: 'Gagal memeriksa absen masuk' }, { status: 500, headers: NO_STORE });
       }
       const people = filterSudahPulang(
         (fb.data ?? []).map((r: Record<string, unknown>) => ({
@@ -45,12 +62,12 @@ export async function GET(request: Request) {
       if (people.length === 0) {
         return NextResponse.json(
           { error: 'Belum ada absen masuk malam ini.' },
-          { status: 404 }
+          { status: 404, headers: NO_STORE }
         );
       }
-      return NextResponse.json({ success: true, people });
+      return NextResponse.json({ success: true, people }, { headers: NO_STORE });
     }
-    return NextResponse.json({ error: 'Gagal memeriksa absen masuk' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal memeriksa absen masuk' }, { status: 500, headers: NO_STORE });
   }
 
   const people = filterSudahPulang(
@@ -64,11 +81,11 @@ export async function GET(request: Request) {
   if (people.length === 0) {
     return NextResponse.json(
       { error: 'Belum ada absen masuk malam ini.' },
-      { status: 404 }
+      { status: 404, headers: NO_STORE }
     );
   }
 
-  return NextResponse.json({ success: true, people });
+  return NextResponse.json({ success: true, people }, { headers: NO_STORE });
 }
 
 // Kunci identitas (nama + dusun) orang yang sudah absen pulang malam ini
@@ -77,7 +94,8 @@ async function ambilSudahPulang(tanggal: string): Promise<Set<string>> {
     .from('absen_records')
     .select('nama_warga, dusun')
     .eq('tanggal_ronda', tanggal)
-    .eq('jenis_absen', 'pulang');
+    .eq('jenis_absen', 'pulang')
+    .limit(500);
   return keySet((data ?? []).map(r => ({
     nama: String(r.nama_warga ?? '').trim(),
     dusun: String(r.dusun ?? '').trim(),
@@ -90,7 +108,8 @@ async function ambilSudahPulangFallback(tanggal: string): Promise<Set<string>> {
     .from('absen_records')
     .select('nama, dusun')
     .eq('tanggal', tanggal)
-    .eq('jenis_absen', 'pulang');
+    .eq('jenis_absen', 'pulang')
+    .limit(500);
   return keySet((data ?? []).map((r: Record<string, unknown>) => ({
     nama: String(r.nama ?? '').trim(),
     dusun: String(r.dusun ?? '').trim(),

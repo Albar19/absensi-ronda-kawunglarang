@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { CONFIG } from '@/lib/config';
 import { hitungJarak } from '@/lib/data';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 // Batas pengiriman absen per IP (persisten di Supabase, aman untuk serverless)
 // 1 nama = 1 POST; satu HP bisa dipakai banyak warga, jadi batas dibuat longgar.
@@ -31,7 +31,7 @@ function getWibNow() {
 export async function POST(request: Request) {
   try {
     // ── Rate limiting by IP (persisten di Supabase, aman untuk serverless) ──
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = getClientIp(request);
     if (!(await rateLimit(`absen:${ip}`, ABSEN_MAX, ABSEN_WINDOW_MS))) {
       return NextResponse.json(
         { error: 'Terlalu banyak pengiriman absen. Coba lagi beberapa saat.' },

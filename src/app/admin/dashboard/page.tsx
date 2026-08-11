@@ -69,11 +69,10 @@ function DashboardInner() {
 
   async function loadAvailableMonths() {
     try {
-      const res = await fetch('/api/absen/semua');
+      const res = await fetch('/api/absen/bulan');
       if (!res.ok) return;
-      const data: AbsenRecord[] = await res.json();
-      const months = new Set<string>();
-      data.forEach(r => months.add(r.tanggal.slice(0, 7)));
+      const data = await res.json();
+      const months = new Set<string>(data.months ?? []);
       // Bulan berjalan selalu tampil walau belum ada data
       months.add(getTanggalHariIni().slice(0, 7));
       const sorted = Array.from(months).sort((a, b) => b.localeCompare(a));
@@ -109,10 +108,10 @@ function DashboardInner() {
     }
     setMonthlyLoading(true);
     try {
-      const res = await fetch('/api/absen/semua');
+      const res = await fetch(`/api/absen/semua?bulan=${encodeURIComponent(value)}`);
       if (res.ok) {
-        const all: AbsenRecord[] = await res.json();
-        setMonthlyData(all.filter(r => r.tanggal.startsWith(value)));
+        const data: AbsenRecord[] = await res.json();
+        setMonthlyData(data);
       }
     } catch { /* silent */ }
     setMonthlyLoading(false);

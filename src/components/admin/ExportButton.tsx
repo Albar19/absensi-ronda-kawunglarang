@@ -19,18 +19,13 @@ export default function ExportButton() {
   const [loading, setLoading] = useState(false);
 
   async function openModal() {
-    const res = await fetch('/api/absen/semua');
+    const res = await fetch('/api/absen/bulan');
     if (!res.ok) {
       push('error', 'Gagal mengambil data. Pastikan Anda masih login.');
       return;
     }
-    const semuaAbsen: AbsenRecord[] = await res.json();
-
-    const uniqueMonths = new Set<string>();
-    semuaAbsen.forEach(r => {
-      if (r.tanggal) uniqueMonths.add(r.tanggal.slice(0, 7));
-    });
-    const sorted = Array.from(uniqueMonths).sort((a, b) => b.localeCompare(a));
+    const data = await res.json();
+    const sorted: string[] = data.months ?? [];
 
     if (sorted.length === 0) {
       push('info', 'Belum ada data absensi.');
@@ -46,7 +41,9 @@ export default function ExportButton() {
     setLoading(true);
     const ExcelJS = await import('exceljs');
 
-    const absenRes = await fetch('/api/absen/semua');
+    const absenRes = await fetch(selectedMonth
+      ? `/api/absen/semua?bulan=${encodeURIComponent(selectedMonth)}`
+      : '/api/absen/semua');
     if (!absenRes.ok) { push('error', 'Gagal mengambil data absensi.'); setLoading(false); return; }
 
     const semuaAbsen: AbsenRecord[] = await absenRes.json();
@@ -56,7 +53,6 @@ export default function ExportButton() {
     let labelPeriode = 'Semua Periode';
 
     if (selectedMonth) {
-      filteredAbsen = semuaAbsen.filter(r => r.tanggal.startsWith(selectedMonth));
       const [tahun, bulan] = selectedMonth.split('-');
       labelFile = `${BULAN_INDONESIA[parseInt(bulan) - 1]}_${tahun}`;
       labelPeriode = `${BULAN_INDONESIA[parseInt(bulan) - 1]} ${tahun}`;

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { signToken } from '@/lib/auth';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 // Batas percobaan login per IP (persisten di Supabase, aman untuk serverless)
 const MAX_ATTEMPTS = 5;
@@ -10,8 +10,8 @@ const WINDOW_MS = 15 * 60 * 1000; // 15 menit
 
 export async function POST(request: Request) {
   try {
-    // Rate limiting by IP
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    // Rate limiting by IP (header trusted platform, fallback x-forwarded-for)
+    const ip = getClientIp(request);
     if (!(await rateLimit(`login:${ip}`, MAX_ATTEMPTS, WINDOW_MS))) {
       return NextResponse.json(
         { error: 'Terlalu banyak percobaan login. Coba lagi 15 menit.' },
