@@ -64,7 +64,7 @@ export default function KontakPage() {
                 <div>
                   <p className="text-sm font-bold text-slate-800">Desa Kawunglarang</p>
                   <p className="text-xs text-slate-500">
-                    Kecamatan Jalaksana, Kabupaten Kuningan, Jawa Barat
+                    Jl. Kawunglarang–Sukaharja No. 26, Kecamatan Rancah, Kabupaten Ciamis, Jawa Barat
                   </p>
                 </div>
               </div>

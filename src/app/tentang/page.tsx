@@ -139,7 +139,7 @@ export default function TentangPage() {
             <h2 className="text-lg font-black text-slate-900 mb-2">Tim Pengembang</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
               Dikembangkan oleh <strong>KKN 46 Universitas Kuningan</strong> untuk 
-              Pemerintah Desa Kawunglarang, Kecamatan Jalaksana, Kabupaten Kuningan.
+              Pemerintah Desa Kawunglarang, Kecamatan Rancah, Kabupaten Ciamis.
             </p>
             <a
               href="https://github.com/Albar19/absensi-ronda-kawunglarang"
