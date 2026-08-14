@@ -14,6 +14,16 @@ ALTER TABLE jadwal_ronda   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rate_limits    ENABLE ROW LEVEL SECURITY;
 
 -- Deny all untuk anon & authenticated (aplikasi tidak memakai Supabase Auth)
+-- DROP POLICY IF EXISTS membuat skrip idempotent — aman dijalankan ulang.
+DROP POLICY IF EXISTS deny_anon_absen ON absen_records;
+DROP POLICY IF EXISTS deny_auth_absen ON absen_records;
+DROP POLICY IF EXISTS deny_anon_warga  ON warga;
+DROP POLICY IF EXISTS deny_auth_warga  ON warga;
+DROP POLICY IF EXISTS deny_anon_jadwal ON jadwal_ronda;
+DROP POLICY IF EXISTS deny_auth_jadwal ON jadwal_ronda;
+DROP POLICY IF EXISTS deny_anon_rate   ON rate_limits;
+DROP POLICY IF EXISTS deny_auth_rate   ON rate_limits;
+
 CREATE POLICY deny_anon_absen ON absen_records FOR ALL TO anon USING (false) WITH CHECK (false);
 CREATE POLICY deny_anon_warga  ON warga          FOR ALL TO anon USING (false) WITH CHECK (false);
 CREATE POLICY deny_anon_jadwal ON jadwal_ronda   FOR ALL TO anon USING (false) WITH CHECK (false);

@@ -206,6 +206,14 @@ NEXT_PUBLIC_BASE_URL=https://xxx        # URL produksi untuk QR code (WAJIB di V
 #   8. migration_pending_cleanup.sql # auto-hapus pending > 30 hari via pg_cron
 # Jalankan lewat Supabase Dashboard → SQL Editor, satu per satu.
 
+# ⚠️ CATATAN PENTING:
+# - Seluruh migrasi AMAN dijalankan ulang (idempotent), TAPI file 1/3/4/5/7
+#   bersifat DESTRUKTIF (DROP TABLE) — hanya jalankan ulang dari awal jika
+#   ingin reset database dari nol.
+# - Untuk DB produksi yang sudah berisi data: cukup jalankan ulang
+#   migration_rls.sql (policy dibuat ulang dengan aman) atau baris GRANT di bawah:
+#     GRANT EXECUTE ON FUNCTION public.daftar_bulan_absen() TO service_role;
+
 # 5. Jalankan development server
 npm run dev
 ```

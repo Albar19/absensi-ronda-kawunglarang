@@ -3,7 +3,8 @@
 -- Sistem Absensi Ronda Desa Kawunglarang
 -- ============================================================
 -- Tabel jadwal_ronda: 7 baris (Senin - Minggu)
--- Opsi petugas: Dusun Pahing, Dusun Manis, Dusun Wage, Dusun Pon, Perangkat Desa
+-- Opsi petugas: 6 dusun (Bungbulang, Cibangkong, Desa, Gudang,
+-- Cibuluh, Cihaurgeulis) + Perangkat Desa (lihat src/lib/config.ts)
 -- ============================================================
 
 DROP TABLE IF EXISTS jadwal_ronda CASCADE;

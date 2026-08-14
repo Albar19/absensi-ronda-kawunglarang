@@ -29,5 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_pending_absen_nama ON pending_absen(nama_warga, d
 
 -- RLS: deny anon & authenticated (hanya service role yang akses)
 ALTER TABLE pending_absen ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS deny_anon_pending ON pending_absen;
+DROP POLICY IF EXISTS deny_auth_pending ON pending_absen;
 CREATE POLICY deny_anon_pending ON pending_absen FOR ALL TO anon USING (false) WITH CHECK (false);
 CREATE POLICY deny_auth_pending ON pending_absen FOR ALL TO authenticated USING (false) WITH CHECK (false);
