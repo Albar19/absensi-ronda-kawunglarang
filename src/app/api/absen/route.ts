@@ -125,7 +125,7 @@ export async function POST(request: Request) {
     }
 
     // ── WHITELIST: hanya warga terdaftar (terdaftar=true, aktif=true) yang bisa absen ──
-    // Nama belum terdaftar → masuk antrean verifikasi admin (warga.terdaftar=false),
+    // Nama belum terdaftar → masuk antrean pendaftaran admin (warga.terdaftar=false),
     // absen TIDAK ditulis ke absen_records.
     {
       const { data: warga } = await supabase
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (!warga || !warga.terdaftar || !warga.aktif) {
-        // Antrean verifikasi: simpan nama (belum disetujui) agar admin bisa Terima.
+        // Antrean pendaftaran: simpan nama (belum terdaftar) agar admin bisa Daftarkan.
         await supabase
           .from('warga')
           .upsert(
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
           );
 
         // Simpan absen (sudah lolos validasi jam + GPS) sebagai PENDING.
-        // Saat admin menyetujui warga, record ini otomatis dipindah ke
+        // Saat admin mendaftarkan warga, record ini otomatis dipindah ke
         // absen_records sehingga warga tidak perlu absen ulang.
         // Dedup per nama+dusun+tanggal+jenis agar tidak menumpuk.
         const { data: pendingAda } = await supabase
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             kode: 'BELUM_TERDAFTAR',
-            error: 'Nama belum terdaftar. Permintaan Anda sudah dikirim ke antrean verifikasi — setelah disetujui admin, kehadiran Anda langsung tercatat (tidak perlu absen ulang).',
+            error: 'Nama belum terdaftar. Kehadiran Anda belum tercatat — permintaan Anda masuk antrean pendaftaran. Setelah didaftarkan admin, kehadiran Anda langsung tercatat (tidak perlu absen ulang).',
           },
           { status: 403 }
         );

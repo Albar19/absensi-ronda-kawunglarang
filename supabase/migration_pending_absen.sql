@@ -1,11 +1,13 @@
 -- ============================================================
--- MIGRASI: Absen Tertunda (Pending) — Auto-Catat saat Disetujui
+-- MIGRASI: Absen Tertunda (Pending) — Auto-Catat saat Didaftarkan
 -- Sistem Absensi Ronda Desa Kawunglarang
 -- ============================================================
 -- Saat warga BELUM terdaftar mencoba absen, absennya (yang sudah
--- lolos validasi jam + GPS) disimpan di sini. Saat admin menyetujui
+-- lolos validasi jam + GPS) disimpan di sini. Saat admin mendaftarkan
 -- warga (terdaftar=true), record pending dipindah ke absen_records
 -- sehingga warga TIDAK perlu absen ulang.
+-- Record pending otomatis dihapus setelah 30 hari (lihat
+-- migration_pending_cleanup.sql) untuk menghemat ukuran database.
 -- ============================================================
 
 DROP TABLE IF EXISTS pending_absen CASCADE;

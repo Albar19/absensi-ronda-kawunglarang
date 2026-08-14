@@ -2,11 +2,11 @@
 -- MIGRASI: Master Daftar Warga (whitelist)
 -- Sistem Absensi Ronda Desa Kawunglarang
 -- ============================================================
--- - terdaftar = false  : nama ketik manual oleh warga (antrean verifikasi admin)
--- - terdaftar = true   : disetujui admin, muncul di dropdown form absen
+-- - terdaftar = false  : nama ketik manual oleh warga (antrean pendaftaran admin)
+-- - terdaftar = true   : terdaftar admin, muncul di dropdown form absen
 -- - aktif = false      : disembunyikan (soft delete / tolak)
 -- Hanya warga terdaftar=true + aktif=true yang bisa absen (dicek di POST /api/absen).
--- Nama belum terdaftar masuk antrean; setelah disetujui, warga absen kembali.
+-- Nama belum terdaftar masuk antrean; setelah didaftarkan, warga absen kembali.
 -- ============================================================
 
 DROP TABLE IF EXISTS warga CASCADE;
@@ -21,7 +21,7 @@ CREATE TABLE warga (
   UNIQUE (nama, dusun)
 );
 
--- Warga yang sudah pernah absen dianggap terdaftar agar antrean verifikasi tidak penuh
+-- Warga yang sudah pernah absen dianggap terdaftar agar antrean pendaftaran tidak penuh
 INSERT INTO warga (nama, dusun, terdaftar)
 SELECT DISTINCT nama_warga, dusun, TRUE
 FROM absen_records

@@ -33,7 +33,8 @@ Sistem absensi ronda malam berbasis web untuk **Desa Kawunglarang**, dikembangka
 | **Dropdown Pilih Nama** | Saat absen masuk, warga pilih **satu dusun** di atas → muncul dropdown nama warga terdaftar di dusun tsb untuk semua baris (termasuk "Tambah Nama"). Ada fallback ketik manual. |
 | **Default Dusun dari Jadwal** | Dusun di form absen **otomatis terisi sesuai jadwal ronda hari ini** (petugas) yang diatur admin — warga tinggal pilih nama. Tetap bisa diganti manual. |
 | **Jadwal Ronda Mingguan** | Admin atur petugas ronda per hari (Senin–Minggu) via dropdown di dashboard |
-| **Absen Tertunda (Pending)** | Warga belum terdaftar yang absen → kehadirannya **disimpan sebagai absen tertunda** (⏳). Saat admin klik "Setujui & Catat", absen itu **langsung tercatat** — warga tidak perlu absen ulang. |
+| **Absen Tertunda (Pending)** | Warga belum terdaftar yang absen → kehadirannya **disimpan sebagai absen tertunda** (⏳). Saat admin klik "Daftarkan & Catat", absen itu **langsung tercatat** — warga tidak perlu absen ulang. |
+| **Auto-Hapus Pending 30 Hari** | Absen tertunda yang sudah **> 30 hari** dihapus otomatis setiap hari (pg_cron) untuk **menghemat ukuran database** — warga yang belum didaftarkan dalam sebulan harus absen ulang. |
 | **Dashboard Admin** | Log kehadiran real-time + leaderboard progress bar per dusun + info aturan warga belum terdaftar + badge absen tertunda |
 | **Panduan Admin** | Tab Panduan di dashboard admin — **masih dalam pengembangan** (placeholder) |
 | **Export Excel** | Export rekap per dusun + detail absensi per bulan ke file `.xlsx` |
@@ -80,14 +81,14 @@ Index: `idx_absen_tanggal_dusun` pada `(tanggal_ronda, dusun)`
 ### Tabel `warga`
 
 Master daftar warga (whitelist). **Hanya warga `terdaftar=true` + `aktif=true` yang bisa absen**
-(dicek server-side di `POST /api/absen`). Nama belum terdaftar → absen ditolak & masuk antrean verifikasi.
+(dicek server-side di `POST /api/absen`). Nama belum terdaftar → absen ditolak & masuk antrean pendaftaran.
 
 | Kolom | Tipe | Keterangan |
 |-------|------|------------|
 | `id` | uuid (PK) | Auto generate |
 | `nama` | text | Nama warga |
 | `dusun` | text | Dusun warga |
-| `terdaftar` | boolean | `false` = antrean verifikasi, `true` = disetujui admin |
+| `terdaftar` | boolean | `false` = antrean pendaftaran, `true` = terdaftar admin |
 | `aktif` | boolean | `false` = soft delete / disembunyikan |
 | `created_at` | timestamptz | Auto timestamp |
 
@@ -96,7 +97,7 @@ Unique: `(nama, dusun)`. Warga yang sudah pernah absen otomatis `terdaftar=true`
 ### Tabel `pending_absen`
 
 Absen sementara untuk warga yang **belum terdaftar** tapi sudah lolos validasi jam + GPS.
-Saat admin menyetujui warga (klik "Setujui & Catat"), record di sini **dipindah ke `absen_records`**
+Saat admin mendaftarkan warga (klik "Daftarkan & Catat"), record di sini **dipindah ke `absen_records`**
 sehingga warga tidak perlu absen ulang. Record pending juga dihapus saat warga berhasil absen langsung.
 
 | Kolom | Tipe | Keterangan |
@@ -145,8 +146,8 @@ Fungsi `rate_limit_check(p_key, p_max, p_window_ms)` dikelola lewat RPC atomik (
 2. Sistem cek jam — jika dalam sesi masuk, tombol aktif
 3. Sistem cek GPS — harus dalam radius **50m** dari Bale Desa
 4. Warga pilih **satu Dusun** (di atas, otomatis terisi sesuai jadwal ronda hari ini bila ada), lalu pilih **Nama** dari dropdown warga terdaftar dusun tsb (fallback: ketik manual)
-5. Nama yang sudah terdaftar & disetujui admin → absen tersimpan dengan `jenis_absen: 'masuk'`
-6. Nama yang **belum terdaftar** → absen **ditolak & tidak terhitung** (tidak tersimpan ke log absensi), tapi kehadirannya **disimpan sebagai absen tertunda** (tabel `pending_absen`) & nama masuk antrean verifikasi admin (Daftar Warga → Menunggu Persetujuan). Setelah admin klik **"Setujui & Catat"**, absen tertunda itu **langsung tercatat** — warga **tidak perlu absen ulang**
+5. Nama yang sudah terdaftar oleh admin → absen tersimpan dengan `jenis_absen: 'masuk'`
+6. Nama yang **belum terdaftar** → absen **ditolak & tidak terhitung** (tidak tersimpan ke log absensi), tapi kehadirannya **disimpan sebagai absen tertunda** (tabel `pending_absen`) & nama masuk antrean pendaftaran admin (Daftar Warga → Belum Terdaftar). Setelah admin klik **"Daftarkan & Catat"**, absen tertunda itu **langsung tercatat** — warga **tidak perlu absen ulang**
 7. Jika ada peserta lain di perangkat yang sama, tekan **"Tambah Nama"**
 
 ### Sesi Pulang (23:00 – 23:59 WIB)
@@ -201,7 +202,8 @@ NEXT_PUBLIC_BASE_URL=https://xxx        # URL produksi untuk QR code (WAJIB di V
 #   4. migration_warga.sql        # tabel warga (master, backfill dari absen_records)
 #   5. migration_rate_limit.sql   # tabel + fungsi rate limiter persisten
 #   6. migration_rls.sql          # Row Level Security (deny anon/authenticated) + daftar bulan
-#   7. migration_pending_absen.sql # tabel absen tertunda (auto-catat saat disetujui)
+#   7. migration_pending_absen.sql # tabel absen tertunda (auto-catat saat didaftarkan)
+#   8. migration_pending_cleanup.sql # auto-hapus pending > 30 hari via pg_cron
 # Jalankan lewat Supabase Dashboard → SQL Editor, satu per satu.
 
 # 5. Jalankan development server
@@ -295,7 +297,8 @@ supabase/
 ├── migration_warga.sql        # Tabel warga (master, backfill)
 ├── migration_rate_limit.sql   # Rate limiter persisten (tabel + fungsi)
 ├── migration_rls.sql          # Row Level Security (deny anon/auth) + daftar bulan
-└── migration_pending_absen.sql # Tabel absen tertunda (auto-catat saat disetujui)
+└── migration_pending_absen.sql # Tabel absen tertunda (auto-catat saat didaftarkan)
+└── migration_pending_cleanup.sql # Auto-hapus pending > 30 hari (pg_cron, hemat DB)
 ```
 
 ---
@@ -382,7 +385,7 @@ export const CONFIG = {
 - **Validasi absen:** Jam sesi & tanggal ronda dihitung **server-side (WIB)**, GPS divalidasi 2x (client + server Haversine 50m).
 - **Endpoint admin:** `/api/absen/semua`, `/api/absen/hari-ini`, `/api/jadwal*` butuh cookie admin (401 tanpa login).
 - **Multi-nama per perangkat:** Karena keterbatasan perangkat, 1 HP bisa dipakai absen banyak warga. Saat sesi masuk ada tombol "Tambah Nama"; saat sesi pulang muncul checklist **semua nama yang absen masuk malam ini** (bebas perangkat, yang pulang lebih awal bisa di-uncheck). Identitas absen berdasarkan **nama + dusun** (bukan device), sehingga dua orang dengan nama sama tapi dusun berbeda tetap dianggap berbeda.
-- **Jam absen:** Server memakai waktu server WIB (UTC+7), bukan waktu client. Pastikan ketujuh tabel dibuat via migrasi di `supabase/` (urutan: `migration_relawan.sql` → `migration_multi_nama.sql` → `migration_jadwal.sql` → `migration_warga.sql` → `migration_rate_limit.sql` → `migration_rls.sql` → `migration_pending_absen.sql`) di Supabase dashboard.
+- **Jam absen:** Server memakai waktu server WIB (UTC+7), bukan waktu client. Pastikan ketujuh tabel dibuat via migrasi di `supabase/` (urutan: `migration_relawan.sql` → `migration_multi_nama.sql` → `migration_jadwal.sql` → `migration_warga.sql` → `migration_rate_limit.sql` → `migration_rls.sql` → `migration_pending_absen.sql` → `migration_pending_cleanup.sql`) di Supabase dashboard.
 
 ### Kontak
 
