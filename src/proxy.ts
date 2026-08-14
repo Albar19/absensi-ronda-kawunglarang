@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-export function proxy(_request: NextRequest) {
+export function proxy() {
   const response = NextResponse.next();
 
   const isProd = process.env.NODE_ENV === 'production';

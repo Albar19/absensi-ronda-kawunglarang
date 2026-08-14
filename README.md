@@ -32,7 +32,8 @@ Sistem absensi ronda malam berbasis web untuk **Desa Kawunglarang**, dikembangka
 | **Checklist Absen Pulang** | Saat sesi pulang, semua nama yang sudah absen masuk **malam ini** (bebas perangkat) tampil dengan centang. Nama yang pulang lebih awal bisa di-uncheck. |
 | **Dropdown Pilih Nama** | Saat absen masuk, warga pilih **satu dusun** di atas → muncul dropdown nama warga terdaftar di dusun tsb untuk semua baris (termasuk "Tambah Nama"). Ada fallback ketik manual. |
 | **Jadwal Ronda Mingguan** | Admin atur petugas ronda per hari (Senin–Minggu) via dropdown di dashboard |
-| **Dashboard Admin** | Log kehadiran real-time + leaderboard progress bar per dusun |
+| **Dashboard Admin** | Log kehadiran real-time + leaderboard progress bar per dusun + info aturan warga belum terdaftar |
+| **Panduan Admin** | Tab Panduan di dashboard admin — **masih dalam pengembangan** (placeholder) |
 | **Export Excel** | Export rekap per dusun + detail absensi per bulan ke file `.xlsx` |
 | **QR Code** | Download QR Code (biru #1e3a8a) untuk ditempel di Bale Desa |
 
@@ -49,7 +50,7 @@ Perhitungan kehadiran: hanya **absen pulang** yang dihitung sebagai hadir lengka
 | **Tailwind CSS** | Styling utility-first |
 | **Supabase** | Database PostgreSQL + API |
 | **Lucide React** | Icon library |
-| **SheetJS (xlsx)** | Export Excel |
+| **ExcelJS** | Export Excel dengan styling |
 | **Vercel** | Hosting & deploy |
 
 ---
@@ -122,7 +123,7 @@ Fungsi `rate_limit_check(p_key, p_max, p_window_ms)` dikelola lewat RPC atomik (
 3. Sistem cek GPS — harus dalam radius **50m** dari Bale Desa
 4. Warga pilih **satu Dusun** (di atas), lalu pilih **Nama** dari dropdown warga terdaftar dusun tsb (fallback: ketik manual)
 5. Nama yang sudah terdaftar & disetujui admin → absen tersimpan dengan `jenis_absen: 'masuk'`
-6. Nama yang **belum terdaftar** → absen ditolak, nama masuk antrean verifikasi admin (Daftar Warga → Menunggu Persetujuan). Setelah disetujui, warga absen kembali
+6. Nama yang **belum terdaftar** → absen **ditolak & tidak terhitung** (tidak tersimpan ke log absensi), nama otomatis masuk antrean verifikasi admin (Daftar Warga → Menunggu Persetujuan). Setelah disetujui, warga harus **absen ulang** agar tercatat
 7. Jika ada peserta lain di perangkat yang sama, tekan **"Tambah Nama"**
 
 ### Sesi Pulang (23:00 – 23:59 WIB)
@@ -167,7 +168,7 @@ SUPABASE_SERVICE_ROLE_KEY=xxx          # service_role key (server-only, JANGAN b
 JWT_SECRET=xxx                          # secret untuk token admin (sembarang string acak)
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD_HASH=xxx                 # bcrypt hash password admin (lihat cara buat di bawah)
-NEXT_PUBLIC_BASE_URL=https://xxx        # URL produksi untuk QR code (opsional, fallback ke domain saat dibuka)
+NEXT_PUBLIC_BASE_URL=https://xxx        # URL produksi untuk QR code (WAJIB di Vercel agar QR mengarah domain produksi, bukan preview)
 
 # 4. Setup database
 # Jalankan SQL migration di folder supabase/ SECARA BERURUTAN (urutan penting!):
@@ -176,6 +177,7 @@ NEXT_PUBLIC_BASE_URL=https://xxx        # URL produksi untuk QR code (opsional, 
 #   3. migration_jadwal.sql       # tabel jadwal_ronda + seed 7 hari
 #   4. migration_warga.sql        # tabel warga (master, backfill dari absen_records)
 #   5. migration_rate_limit.sql   # tabel + fungsi rate limiter persisten
+#   6. migration_rls.sql          # Row Level Security (deny anon/authenticated) + daftar bulan
 # Jalankan lewat Supabase Dashboard → SQL Editor, satu per satu.
 
 # 5. Jalankan development server
@@ -211,7 +213,7 @@ Set environment variables di dashboard Vercel:
 - `JWT_SECRET`
 - `ADMIN_USERNAME`
 - `ADMIN_PASSWORD_HASH`
-- `NEXT_PUBLIC_BASE_URL` (opsional, untuk QR code)
+- `NEXT_PUBLIC_BASE_URL` (WAJIB — domain produksi, agar QR code mengarah ke domain yang benar)
 
 ### Deploy Manual
 ```bash
@@ -231,35 +233,44 @@ src/
 │   ├── admin/
 │   │   ├── page.tsx           # Login admin
 │   │   └── dashboard/
-│   │       └── page.tsx       # Dashboard admin (log + jadwal + leaderboard)
+│   │       └── page.tsx       # Dashboard admin (log + jadwal + warga + panduan)
 │   ├── tentang/
 │   │   └── page.tsx           # Halaman tentang aplikasi
 │   ├── kontak/
 │   │   └── page.tsx           # Halaman kontak
 │   └── api/
-│       ├── absen/             # POST absen + GET (hari-ini, semua, cek-masuk, daftar-nama, reset-demo)
-│       ├── auth/              # Login/logout admin (cookie JWT)
-│       ├── jadwal/            # GET/PUT jadwal ronda + hari-ini + download
-│       └── qr/                # GET QR Code (PNG)
+│       ├── absen/             # POST absen + GET (hari-ini, semua, cek-masuk, daftar-nama, bulan)
+│       ├── auth/              # Login/logout/me admin (cookie JWT)
+│       ├── jadwal/            # GET/PUT jadwal ronda + download Excel
+│       ├── warga/             # CRUD master warga (admin-only)
+│       └── qr/                # GET QR Code (PNG, admin-only)
 ├── components/
 │   ├── admin/
 │   │   └── ExportButton.tsx   # Tombol export Excel dengan modal bulan
-│   └── citizen/
-│       ├── HeaderBanner.tsx   # Header dengan jam real-time
-│       ├── StatusCards.tsx    # Status jam + lokasi (masuk/pulang/tutup)
-│       ├── SuccessScreen.tsx  # Tampilan sukses absen
-│       └── RejectedScreen.tsx # Tampilan ditolak dengan alasan
+│   ├── citizen/
+│   │   ├── HeaderBanner.tsx   # Header dengan jam real-time
+│   │   ├── StatusCards.tsx    # Status jam + lokasi (masuk/pulang/tutup)
+│   │   ├── SuccessScreen.tsx  # Tampilan sukses absen
+│   │   └── RejectedScreen.tsx # Tampilan ditolak dengan alasan
+│   └── ui/
+│       ├── Toast.tsx          # Notifikasi toast (provider + hook)
+│       └── ConfirmModal.tsx   # Modal konfirmasi aksi destruktif
 └── lib/
     ├── config.ts              # Konfigurasi (jam, radius, dusun, petugas, hari)
     ├── data.ts                # Helper functions (cek jam, GPS, localStorage)
-    ├── supabase.ts            # Supabase client
+    ├── kehadiran.ts           # Hitung kehadiran per orang unik (masuk+pulang)
+    ├── auth.ts                # JWT sign/verify admin (jose)
+    ├── api-auth.ts            # Cek cookie admin untuk route handler
+    ├── rate-limit.ts          # Rate limiter persisten (Supabase RPC)
+    ├── supabase.ts            # Supabase client (service role, server-only)
     └── types.ts               # Type definitions
 supabase/
 ├── migration_relawan.sql      # Tabel absen_records + index
 ├── migration_multi_nama.sql   # Index identitas nama+dusun
 ├── migration_jadwal.sql       # Tabel jadwal_ronda + seed 7 hari
 ├── migration_warga.sql        # Tabel warga (master, backfill)
-└── migration_rate_limit.sql   # Rate limiter persisten (tabel + fungsi)
+├── migration_rate_limit.sql   # Rate limiter persisten (tabel + fungsi)
+└── migration_rls.sql          # Row Level Security (deny anon/auth) + daftar bulan
 ```
 
 ---
@@ -346,7 +357,7 @@ export const CONFIG = {
 - **Validasi absen:** Jam sesi & tanggal ronda dihitung **server-side (WIB)**, GPS divalidasi 2x (client + server Haversine 50m).
 - **Endpoint admin:** `/api/absen/semua`, `/api/absen/hari-ini`, `/api/jadwal*` butuh cookie admin (401 tanpa login).
 - **Multi-nama per perangkat:** Karena keterbatasan perangkat, 1 HP bisa dipakai absen banyak warga. Saat sesi masuk ada tombol "Tambah Nama"; saat sesi pulang muncul checklist **semua nama yang absen masuk malam ini** (bebas perangkat, yang pulang lebih awal bisa di-uncheck). Identitas absen berdasarkan **nama + dusun** (bukan device), sehingga dua orang dengan nama sama tapi dusun berbeda tetap dianggap berbeda.
-- **Jam absen:** Server memakai waktu server WIB (UTC+7), bukan waktu client. Pastikan kelima tabel dibuat via migrasi di `supabase/` (urutan: `migration_relawan.sql` → `migration_multi_nama.sql` → `migration_jadwal.sql` → `migration_warga.sql` → `migration_rate_limit.sql`) di Supabase dashboard.
+- **Jam absen:** Server memakai waktu server WIB (UTC+7), bukan waktu client. Pastikan keenam tabel dibuat via migrasi di `supabase/` (urutan: `migration_relawan.sql` → `migration_multi_nama.sql` → `migration_jadwal.sql` → `migration_warga.sql` → `migration_rate_limit.sql` → `migration_rls.sql`) di Supabase dashboard.
 
 ### Kontak
 
