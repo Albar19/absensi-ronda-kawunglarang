@@ -77,9 +77,30 @@ export default function ExportButton() {
 
     const totalMasuk = kehadiran.totalMasuk;
 
-    // ── Statistik per tanggal (untuk sheet harian) ──
-    const byDate = kehadiran.perTanggal;
-    const datesSorted = Array.from(byDate.keys()).sort((a, b) => b.localeCompare(a));
+    // ── Detail per warga (nama+dusun) per tanggal: HADIR = masuk + pulang malam sama ──
+    const perWarga = new Map<string, { nama: string; dusun: string; perTanggal: Map<string, { masuk: boolean; pulang: boolean }> }>();
+    for (const r of filteredAbsen) {
+      const key = `${r.nama}|${r.dusun}`;
+      let w = perWarga.get(key);
+      if (!w) {
+        w = { nama: r.nama, dusun: r.dusun, perTanggal: new Map() };
+        perWarga.set(key, w);
+      }
+      let d = w.perTanggal.get(r.tanggal);
+      if (!d) {
+        d = { masuk: false, pulang: false };
+        w.perTanggal.set(r.tanggal, d);
+      }
+      if (r.jenisAbsen === 'masuk') d.masuk = true;
+      else if (r.jenisAbsen === 'pulang') d.pulang = true;
+    }
+    // Urut: paling banyak hadir di atas, lalu abjad nama
+    const wargaSorted = Array.from(perWarga.values())
+      .map(w => ({
+        ...w,
+        hadir: Array.from(w.perTanggal.values()).filter(d => d.masuk && d.pulang).length,
+      }))
+      .sort((a, b) => b.hadir - a.hadir || a.nama.localeCompare(b.nama) || a.dusun.localeCompare(b.dusun));
 
     // ═══════════════════════════════════════════════
     // BUAT WORKBOOK
@@ -184,72 +205,74 @@ export default function ExportButton() {
     ketRekap.font = { italic: true, size: 10, color: { argb: '999999' } };
 
     // ══════════════════════════════════════════════
-    // Sheet 2: REKAP PER TANGGAL
+    // Sheet 2: REKAP PER WARGA (detail per tanggal)
     // ══════════════════════════════════════════════
-    const wsHarian = wb.addWorksheet('Rekap per Tanggal');
+    const wsWarga = wb.addWorksheet('Rekap per Warga');
 
-    wsHarian.mergeCells('A1:D1');
-    const judulHarian = wsHarian.getCell('A1');
-    judulHarian.value = 'REKAP KEHADIRAN PER TANGGAL';
-    judulHarian.font = { bold: true, size: 14, color: { argb: WARNA_NAVY } };
-    judulHarian.alignment = { horizontal: 'center', vertical: 'middle' };
-    wsHarian.getRow(1).height = 32;
+    wsWarga.mergeCells('A1:D1');
+    const judulWarga = wsWarga.getCell('A1');
+    judulWarga.value = 'REKAP KEHADIRAN RONDA PER WARGA';
+    judulWarga.font = { bold: true, size: 14, color: { argb: WARNA_NAVY } };
+    judulWarga.alignment = { horizontal: 'center', vertical: 'middle' };
+    wsWarga.getRow(1).height = 32;
 
-    wsHarian.mergeCells('A2:D2');
-    const periodeHarian = wsHarian.getCell('A2');
-    periodeHarian.value = `Periode: ${labelPeriode}`;
-    periodeHarian.font = { italic: true, size: 11, color: { argb: '666666' } };
-    periodeHarian.alignment = { horizontal: 'center', vertical: 'middle' };
-    wsHarian.getRow(2).height = 20;
+    wsWarga.mergeCells('A2:D2');
+    const periodeWarga = wsWarga.getCell('A2');
+    periodeWarga.value = `Periode: ${labelPeriode}`;
+    periodeWarga.font = { italic: true, size: 11, color: { argb: '666666' } };
+    periodeWarga.alignment = { horizontal: 'center', vertical: 'middle' };
+    wsWarga.getRow(2).height = 20;
 
-    const headerHarian = wsHarian.getRow(4);
-    ['Tanggal', 'Dusun', 'Kehadiran', '% Kehadiran'].forEach((h, i) => {
-      headerHarian.getCell(i + 1).value = h;
-      styleHeader(headerHarian.getCell(i + 1));
+    const headerWarga = wsWarga.getRow(4);
+    ['Nama', 'Dusun', 'Tanggal', 'Status'].forEach((h, i) => {
+      headerWarga.getCell(i + 1).value = h;
+      styleHeader(headerWarga.getCell(i + 1));
     });
-    headerHarian.height = 24;
+    headerWarga.height = 24;
 
     let rowIdx = 5;
-    for (const t of datesSorted) {
-      const dusunMap = byDate.get(t)!;
-      // Dalam satu tanggal, dusun terbanyak di atas
-      const dusunEntries = Array.from(dusunMap.entries())
-        .filter(([, s]) => s.masuk > 0 || s.pulang > 0)
-        .sort(([da, sa], [db, sb]) => sb.lengkap - sa.lengkap || sb.masuk - sa.masuk || da.localeCompare(db));
-      for (const [d, s] of dusunEntries) {
-        const row = wsHarian.getRow(rowIdx);
-        row.getCell(1).value = formatTanggalIndo(t);
-        row.getCell(2).value = d;
-        row.getCell(3).value = s.lengkap;
-        row.getCell(4).value = s.masuk > 0 ? s.lengkap / s.masuk : 0;
+    for (const w of wargaSorted) {
+      const dates = Array.from(w.perTanggal.keys()).sort((a, b) => b.localeCompare(a));
+      let hadir = 0;
+
+      for (const t of dates) {
+        const d = w.perTanggal.get(t)!;
+        const isHadir = d.masuk && d.pulang;
+        if (isHadir) hadir++;
+
+        const row = wsWarga.getRow(rowIdx);
+        row.getCell(1).value = w.nama;
+        row.getCell(2).value = w.dusun;
+        row.getCell(3).value = formatTanggalIndo(t);
+        row.getCell(4).value = isHadir ? 'HADIR' : 'TIDAK';
         styleData(row.getCell(1), 'left');
         styleData(row.getCell(2), 'left');
-        styleData(row.getCell(3), 'center');
+        styleData(row.getCell(3), 'left');
         styleData(row.getCell(4), 'center');
-        row.getCell(3).numFmt = '#,##0';
-        row.getCell(4).numFmt = '0%';
+        row.getCell(4).font = { bold: true, size: 11, color: { argb: isHadir ? '15803D' : 'DC2626' } };
         row.height = 20;
         rowIdx++;
       }
 
-      // Total per tanggal
-      let sumMasuk = 0, sumKehadiran = 0;
-      dusunMap.forEach(s => { sumMasuk += s.masuk; sumKehadiran += s.lengkap; });
-      const tRow = wsHarian.getRow(rowIdx);
-      tRow.getCell(1).value = `TOTAL ${formatTanggalIndo(t)}`;
-      tRow.getCell(3).value = sumKehadiran;
-      tRow.getCell(4).value = sumMasuk > 0 ? sumKehadiran / sumMasuk : 0;
-      [1, 2, 3, 4].forEach(col => styleTotal(tRow.getCell(col), col === 1 || col === 2 ? 'left' : 'center'));
-      tRow.getCell(3).numFmt = '#,##0';
-      tRow.getCell(4).numFmt = '0%';
-      tRow.height = 20;
+      // Subtotal per warga
+      const sRow = wsWarga.getRow(rowIdx);
+      sRow.getCell(1).value = `TOTAL ${w.nama}`;
+      sRow.getCell(4).value = `${hadir} dari ${dates.length} malam`;
+      [1, 2, 3, 4].forEach(col => styleTotal(sRow.getCell(col), col === 1 ? 'left' : col === 4 ? 'center' : 'left'));
+      sRow.height = 20;
       rowIdx++;
     }
 
-    wsHarian.getColumn(1).width = 32;
-    wsHarian.getColumn(2).width = 28;
-    wsHarian.getColumn(3).width = 12;
-    wsHarian.getColumn(4).width = 12;
+    wsWarga.getColumn(1).width = 26;
+    wsWarga.getColumn(2).width = 20;
+    wsWarga.getColumn(3).width = 16;
+    wsWarga.getColumn(4).width = 20;
+
+    const barisKetWarga = rowIdx + 1;
+    wsWarga.mergeCells(`A${barisKetWarga}:D${barisKetWarga}`);
+    const ketWarga = wsWarga.getCell(`A${barisKetWarga}`);
+    ketWarga.value = '* HADIR = warga yang absen MASUK + PULANG di malam yang sama.';
+    ketWarga.font = { italic: true, size: 10, color: { argb: '999999' } };
 
     // ── Generate & download ──
     const buffer = await wb.xlsx.writeBuffer();

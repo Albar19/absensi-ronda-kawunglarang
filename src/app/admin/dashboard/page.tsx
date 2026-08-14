@@ -38,9 +38,7 @@ function DashboardInner() {
   const [authChecked, setAuthChecked] = useState(false);
 
   // ── Log absen ──
-  const [absenHariIni, setAbsenHariIni] = useState<AbsenRecord[]>([]);
   const [lastRefresh, setLastRefresh] = useState('');
-  const [loading, setLoading] = useState(true);
 
   // ── Jadwal ──
   const [jadwal, setJadwal] = useState<JadwalRonda[]>([]);
@@ -50,7 +48,7 @@ function DashboardInner() {
 
   // ── Bulan filter ──
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
-  const [periodFilter, setPeriodFilter] = useState<'today' | string>(getTanggalHariIni().slice(0, 7));
+  const [periodFilter, setPeriodFilter] = useState<string>(getTanggalHariIni().slice(0, 7));
   const [monthlyData, setMonthlyData] = useState<AbsenRecord[]>([]);
   const [monthlyLoading, setMonthlyLoading] = useState(false);
 
@@ -80,53 +78,35 @@ function DashboardInner() {
     } catch { /* silent */ }
   }
 
-  const refreshData = useCallback(async () => {
+  const loadPeriode = useCallback(async (value: string) => {
+    setMonthlyLoading(true);
     try {
-      const res = await fetch('/api/absen/hari-ini');
+      const res = await fetch(value
+        ? `/api/absen/semua?bulan=${encodeURIComponent(value)}`
+        : '/api/absen/semua');
       if (res.status === 401) {
         router.replace('/admin');
         return;
       }
       if (res.ok) {
         const data: AbsenRecord[] = await res.json();
-        setAbsenHariIni(data);
+        setMonthlyData(data);
       }
-    } catch {
-      // silent
-    }
-    setLoading(false);
+    } catch { /* silent */ }
+    setMonthlyLoading(false);
     const now = new Date();
     setLastRefresh(
       `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
     );
   }, [router]);
 
-  const loadPeriode = useCallback(async (value: string) => {
-    if (value === 'today') {
-      await refreshData();
-      return;
-    }
-    setMonthlyLoading(true);
-    try {
-      const res = await fetch(`/api/absen/semua?bulan=${encodeURIComponent(value)}`);
-      if (res.ok) {
-        const data: AbsenRecord[] = await res.json();
-        setMonthlyData(data);
-      }
-    } catch { /* silent */ }
-    setMonthlyLoading(false);
-  }, [refreshData]);
-
   async function handlePeriodChange(value: string) {
     setPeriodFilter(value);
-    if (value === 'today') {
-      setMonthlyData([]);
-    }
     await loadPeriode(value);
   }
 
-  // ── Data yang ditampilkan (hari ini atau bulan terfilter) ──
-  const displayData = periodFilter === 'today' ? absenHariIni : monthlyData;
+  // ── Data yang ditampilkan (bulan terfilter atau semua bulan) ──
+  const displayData = monthlyData;
   // Kehadiran dihitung per ORANG unik (nama+dusun+tanggal); lengkap = masuk + pulang
   const kehadiran = useMemo(() => hitungKehadiran(displayData), [displayData]);
 
@@ -174,9 +154,7 @@ function DashboardInner() {
       await loadAvailableMonths();
       await loadPeriode(getTanggalHariIni().slice(0, 7));
     })();
-    const interval = setInterval(refreshData, 30000);
-    return () => clearInterval(interval);
-  }, [refreshData, loadPeriode, authChecked]);
+  }, [loadPeriode, authChecked]);
 
   useEffect(() => {
     if (!authChecked) return;
@@ -350,7 +328,7 @@ function DashboardInner() {
     setJadwalSaving(false);
   }
 
-  // ── Dusun leaderboard (adaptif: hari ini atau bulan terfilter) ──
+  // ── Dusun leaderboard (adaptif: bulan terfilter atau semua bulan) ──
   const dusunLeaderboard = useMemo(() => {
     const dusunOrder = CONFIG.dusunList;
     return dusunOrder
@@ -359,8 +337,11 @@ function DashboardInner() {
   }, [kehadiran]);
 
   const totalHadir = kehadiran.totalLengkap;
-  const tanggalLabel = formatTanggalIndo(getTanggalHariIni());
   const maxCount = Math.max(...dusunLeaderboard.map(d => d.count), 1);
+
+  const periodeLabel = periodFilter
+    ? `${BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} ${periodFilter.split('-')[0]}`
+    : 'Semua Bulan';
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -463,19 +444,17 @@ function DashboardInner() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h2 className="text-lg font-black text-slate-900 truncate">
-                    {periodFilter === 'today'
-                      ? tanggalLabel
-                      : `${BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} ${periodFilter.split('-')[0]}`}
+                    {periodeLabel}
                   </h2>
                   {/* Dropdown filter bulan */}
                   <div className="relative">
                     <select
-                      value={periodFilter === 'today' ? 'today' : periodFilter}
+                      value={periodFilter}
                       onChange={e => handlePeriodChange(e.target.value)}
                       className="appearance-none bg-white border-2 border-slate-300 rounded-xl px-4 py-2 pr-10 text-sm font-bold text-slate-700 focus:border-navy focus:outline-none transition-colors cursor-pointer"
                       style={{ minHeight: '40px' }}
                     >
-                      <option value="today">Hari Ini</option>
+                      <option value="">Semua Bulan</option>
                       {availableMonths.map(m => {
                         const [thn, bln] = m.split('-');
                         return <option key={m} value={m}>{BULAN_INDONESIA[parseInt(bln)-1]} {thn}</option>;
@@ -486,7 +465,7 @@ function DashboardInner() {
                 </div>
                 <p className="text-xs text-slate-500 font-medium mt-1">
                   Total absen: <strong>{displayData.length}</strong> · Hadir lengkap: <strong className="text-green-700">{totalHadir}</strong> orang
-                  {periodFilter === 'today' && lastRefresh && <span className="ml-2">· Data: {lastRefresh}</span>}
+                  {lastRefresh && <span className="ml-2">· Data: {lastRefresh}</span>}
                 </p>
               </div>
               <button onClick={() => void loadPeriode(periodFilter)}
@@ -501,15 +480,15 @@ function DashboardInner() {
             <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
-                  Kehadiran per Dusun — {periodFilter === 'today' ? 'Malam Ini' : `${BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} ${periodFilter.split('-')[0]}`}
+                  Kehadiran per Dusun — {periodeLabel}
                 </h3>
               </div>
 
-              {(periodFilter === 'today' && loading) || monthlyLoading ? (
+              {monthlyLoading ? (
                 <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">Memuat data...</div>
               ) : dusunLeaderboard.length === 0 || totalHadir === 0 ? (
                 <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">
-                  {periodFilter === 'today' ? 'Belum ada data absen malam ini.' : 'Tidak ada data absen untuk periode ini.'}
+                  Tidak ada data absen untuk periode ini.
                 </div>
               ) : (
                 <div className="px-5 py-4 space-y-4">
@@ -549,16 +528,14 @@ function DashboardInner() {
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
                   Kehadiran ({displayData.length} data)
                 </h3>
-                {periodFilter !== 'today' && (
-                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                    {BULAN_INDONESIA[parseInt(periodFilter.split('-')[1])-1]} {periodFilter.split('-')[0]}
-                  </span>
-                )}
+                <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                  {periodeLabel}
+                </span>
               </div>
 
               {displayData.length === 0 ? (
                 <div className="px-5 py-8 text-center text-slate-400 text-sm font-semibold">
-                  {periodFilter === 'today' ? (loading ? 'Memuat data...' : 'Belum ada absen malam ini.') : 'Tidak ada data untuk periode ini.'}
+                  {monthlyLoading ? 'Memuat data...' : 'Tidak ada data untuk periode ini.'}
                 </div>
               ) : (
                 <>
@@ -572,9 +549,7 @@ function DashboardInner() {
                             {r.dusun}
                             <span className="ml-2 text-slate-400">· {r.jamAbsen} WIB · ±{r.jarakMeter}m</span>
                           </p>
-                          {periodFilter !== 'today' && (
-                            <p className="text-[10px] text-slate-400 font-medium">{formatTanggalIndo(r.tanggal)}</p>
-                          )}
+                          <p className="text-[10px] text-slate-400 font-medium">{formatTanggalIndo(r.tanggal)}</p>
                           <span className={`inline-block mt-1 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
                             r.jenisAbsen === 'masuk' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
                           }`}>{r.jenisAbsen === 'masuk' ? 'MASUK' : 'PULANG'}</span>
@@ -587,7 +562,7 @@ function DashboardInner() {
                     <table className="w-full border-collapse text-sm">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
-                          {['No', 'Nama', 'Dusun', ...(periodFilter !== 'today' ? ['Tanggal'] : []), 'Jam Absen', 'Jenis', 'Jarak (m)'].map(h => (
+                          {['No', 'Nama', 'Dusun', 'Tanggal', 'Jam Absen', 'Jenis', 'Jarak (m)'].map(h => (
                             <th key={h} className="text-left px-4 py-3 font-black text-slate-500 text-xs uppercase tracking-wider whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
@@ -598,9 +573,7 @@ function DashboardInner() {
                             <td className="px-4 py-3 text-slate-400 font-semibold tabular-nums">{i + 1}</td>
                             <td className="px-4 py-3 font-bold text-slate-900">{r.nama}</td>
                             <td className="px-4 py-3 text-slate-600 font-semibold whitespace-nowrap">{r.dusun}</td>
-                            {periodFilter !== 'today' && (
-                              <td className="px-4 py-3 text-slate-500 font-semibold whitespace-nowrap text-xs">{formatTanggalIndo(r.tanggal)}</td>
-                            )}
+                            <td className="px-4 py-3 text-slate-500 font-semibold whitespace-nowrap text-xs">{formatTanggalIndo(r.tanggal)}</td>
                             <td className="px-4 py-3 tabular-nums font-semibold text-slate-700 whitespace-nowrap">{r.jamAbsen}</td>
                             <td className="px-4 py-3">
                               <span className={`inline-block text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
