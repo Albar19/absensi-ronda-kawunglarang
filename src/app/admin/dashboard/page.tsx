@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Users, Calendar, Save, QrCode, Loader, FileDown, Search, ChevronDown, Plus, Trash2, UserCheck, UserX, Pencil, ClipboardList } from 'lucide-react';
+import { LogOut, RefreshCw, Users, Calendar, Save, QrCode, Loader, FileDown, Search, ChevronDown, Plus, Trash2, UserCheck, UserX, Pencil, ClipboardList, BookOpen, Info } from 'lucide-react';
 import { AbsenRecord, JadwalRonda, Warga } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni, BULAN_INDONESIA } from '@/lib/data';
@@ -11,7 +11,7 @@ import ExportButton from '@/components/admin/ExportButton';
 import { ToastProvider, useToast } from '@/components/ui/Toast';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 
-type Tab = 'log' | 'jadwal' | 'warga';
+type Tab = 'log' | 'jadwal' | 'warga' | 'panduan';
 
 const HARI_LABEL: Record<string, string> = {
   senin: 'Senin',
@@ -424,6 +424,28 @@ function DashboardInner() {
             <Users size={16} />
             Daftar Warga
           </button>
+          <button
+            type="button"
+            onClick={() => setTab('panduan')}
+    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+      tab === 'panduan' ? 'bg-white text-slate-900 shadow-card' : 'text-slate-500 hover:text-slate-700'
+    }`}
+            style={{ minHeight: '42px' }}
+          >
+            <BookOpen size={16} />
+            Panduan
+          </button>
+        </div>
+
+        {/* ─── INFO: aturan warga belum terdaftar ─── */}
+        <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3.5">
+          <Info size={20} className="text-blue-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
+          <div className="text-sm font-semibold text-blue-800 leading-relaxed">
+            <p className="font-black text-blue-900 mb-0.5">Info Penting — Warga Belum Terdaftar</p>
+            Nama yang <strong>belum terdaftar</strong> di daftar warga → absennya <strong>ditolak &amp; tidak terhitung</strong>.
+            Nama otomatis masuk antrean <strong>&quot;Menunggu Persetujuan&quot;</strong> di tab Daftar Warga.
+            Setelah disetujui, warga harus <strong>absen ulang</strong> agar tercatat.
+          </div>
         </div>
 
         {/* ════════════════════════════════════════════════ */}
@@ -950,6 +972,37 @@ function DashboardInner() {
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        )}
+
+        {/* ════════════════════════════════════════════════ */}
+        {/* TAB: PANDUAN (masih dalam pengembangan)         */}
+        {/* ════════════════════════════════════════════════ */}
+        {tab === 'panduan' && (
+          <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <BookOpen size={20} className="text-navy" strokeWidth={2} />
+                <h3 className="text-sm font-black text-slate-700 uppercase tracking-wide">
+                  Panduan
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 font-medium">
+                Panduan penggunaan sistem absensi untuk admin &amp; warga.
+              </p>
+            </div>
+
+            <div className="px-5 py-14 flex flex-col items-center text-center">
+              <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wider mb-5">
+                <Loader size={14} className="animate-spin" strokeWidth={2.5} />
+                Masih dalam pengembangan
+              </span>
+              <BookOpen size={40} className="text-slate-300 mb-3" strokeWidth={1.5} />
+              <p className="text-base font-black text-slate-700">Fitur Panduan sedang dikembangkan</p>
+              <p className="text-sm text-slate-500 font-medium mt-1 max-w-sm leading-relaxed">
+                Panduan lengkap akan ditambahkan pada pembaruan berikutnya.
+              </p>
             </div>
           </div>
         )}
