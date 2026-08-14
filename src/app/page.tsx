@@ -487,14 +487,13 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Tips izin GPS */}
+            {/* Tips izin lokasi */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5 flex items-start gap-3">
               <MapPin size={22} className="text-amber-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
               <div className="text-sm font-semibold text-amber-800 leading-relaxed">
                 <p className="font-black text-amber-900 mb-0.5">Tips Izin Lokasi</p>
-                Saat HP meminta izin lokasi, pilih <strong>IZINKAN</strong>, lalu pilih{' '}
-                <strong>LOKASI AKURAT / PRECISE</strong> — jangan pilih &quot;Perkiraan / Approximate&quot;
-                agar absen tidak ditolak karena jarak.
+                Saat HP meminta izin lokasi, pilih <strong>IZINKAN / SETUJUI</strong> dan pilih{' '}
+                <strong>lokasi akurat</strong> (jangan pilih &quot;perkiraan&quot;) agar absen tidak ditolak karena jarak.
               </div>
             </div>
 
@@ -731,15 +730,23 @@ export default function HomePage() {
                           </select>
                         )}
                         {dusunForm && (
-                          <button
-                            type="button"
-                            onClick={() => setRowManual(idx, !row.manual)}
-                            className="mt-2 w-full flex items-center justify-center gap-1.5 border-2 border-slate-300 bg-white hover:bg-slate-50 text-navy rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
-                            style={{ minHeight: '44px' }}
-                          >
-                            {row.manual ? <ArrowLeft size={16} strokeWidth={2.5} /> : <PenLine size={16} strokeWidth={2.5} />}
-                            {row.manual ? 'Pilih dari daftar' : 'Ketik nama manual…'}
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setRowManual(idx, !row.manual)}
+                              className="mt-2 w-full flex items-center justify-center gap-1.5 border-2 border-slate-300 bg-white hover:bg-slate-50 text-navy rounded-xl text-sm font-bold transition-all active:scale-[0.98]"
+                              style={{ minHeight: '44px' }}
+                            >
+                              {row.manual ? <ArrowLeft size={16} strokeWidth={2.5} /> : <PenLine size={16} strokeWidth={2.5} />}
+                              {row.manual ? 'Pilih dari daftar' : 'Ketik nama manual…'}
+                            </button>
+                            {row.manual && (
+                              <p className="mt-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                Pilih nama dari daftar kalau ada — ketik manual hanya jika nama tidak terdaftar
+                                (kehadiran baru tercatat setelah admin mendaftarkan).
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

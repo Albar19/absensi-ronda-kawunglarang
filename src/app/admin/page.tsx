@@ -41,7 +41,10 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-sm">
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden">
+
+          {/* Gold top stripe */}
+          <div className="h-1.5 bg-gold" />
 
           {/* Header */}
           <div className="bg-navy px-6 py-7 text-center">

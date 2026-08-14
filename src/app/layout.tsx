@@ -23,14 +23,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <body className="font-sans antialiased bg-slate-50 min-h-screen flex flex-col">
+      <body className="font-sans antialiased bg-slate-100 min-h-screen flex flex-col">
         <main className="flex-1">{children}</main>
 
         <footer className="bg-navy text-white">
           {/* Gold top stripe */}
-          <div className="h-1 bg-gold" />
+          <div className="h-1.5 bg-gold" />
 
-          <div className="max-w-4xl mx-auto px-4 py-5">
+          <div className="max-w-6xl mx-auto px-4 py-5">
             <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-semibold">
               <Link
                 href="/tentang"

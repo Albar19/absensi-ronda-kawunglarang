@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     if (!nama || !dusun || !jenisAbsen) {
       return NextResponse.json(
-        { error: 'Data absen tidak lengkap' },
+        { error: 'Lengkapi nama, dusun, dan jenis absen.' },
         { status: 400 }
       );
     }
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       (jenisAbsen !== 'masuk' && jenisAbsen !== 'pulang')
     ) {
       return NextResponse.json(
-        { error: 'Data tidak valid' },
+        { error: 'Data yang dikirim tidak valid.' },
         { status: 400 }
       );
     }
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     // Validasi dusun harus dari daftar resmi
     if (!CONFIG.dusunList.includes(dusunTrimmed as typeof CONFIG.dusunList[number])) {
       return NextResponse.json(
-        { error: 'Dusun tidak valid' },
+        { error: 'Dusun tidak ada di daftar.' },
         { status: 400 }
       );
     }
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
       lngNum < -180 || lngNum > 180
     ) {
       return NextResponse.json(
-        { error: 'Data lokasi GPS tidak valid. Aktifkan GPS lalu coba lagi.' },
+        { error: 'Data lokasi tidak valid. Aktifkan lokasi (GPS) lalu coba lagi.' },
         { status: 400 }
       );
     }
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     if (jarakFinal > CONFIG.radiusMeter) {
       return NextResponse.json(
         {
-          error: `Lokasi Anda terlalu jauh dari Bale Desa (${jarakFinal}m, maks ${CONFIG.radiusMeter}m)`,
+          error: `Lokasi Anda terlalu jauh dari Bale Desa (${jarakFinal}m, maks ${CONFIG.radiusMeter}m).`,
           jarakServer: jarakFinal,
           jarakClient: Number(body.jarakMeter) || 0,
         },
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             kode: 'BELUM_TERDAFTAR',
-            error: 'Nama belum terdaftar. Kehadiran Anda belum tercatat — permintaan Anda masuk antrean pendaftaran. Setelah didaftarkan admin, kehadiran Anda langsung tercatat (tidak perlu absen ulang).',
+            error: 'Nama Anda belum terdaftar, jadi kehadiran belum dihitung. Permintaan sudah dikirim ke admin — setelah didaftarkan, kehadiran langsung tercatat (tidak perlu absen ulang).',
           },
           { status: 403 }
         );

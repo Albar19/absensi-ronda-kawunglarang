@@ -354,6 +354,8 @@ function DashboardInner() {
         <>
       {/* ─── NAVBAR ─── */}
       <nav className="bg-navy text-white sticky top-0 z-50 shadow-card">
+        {/* Gold top stripe */}
+        <div className="h-1.5 bg-gold" />
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-xs font-semibold text-blue-200 uppercase tracking-widest">Dashboard Admin</p>
@@ -423,14 +425,11 @@ function DashboardInner() {
         {/* ─── INFO: aturan warga belum terdaftar ─── */}
         <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3.5">
           <Info size={20} className="text-blue-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
-          <div className="text-sm font-semibold text-blue-800 leading-relaxed">
+          <div className="text-sm font-semibold text-blue-800 leading-relaxed space-y-1.5">
             <p className="font-black text-blue-900 mb-0.5">Info Penting — Warga Belum Terdaftar</p>
-            Warga yang <strong>belum terdaftar</strong> → <strong>data kehadirannya tidak akan tercatat/dihitung</strong>.
-            Ini untuk <strong>mencegah orang iseng</strong> mengisi nama sembarangan. Nama tetap masuk antrean pendaftaran;
-            setelah Anda klik <strong>&quot;Daftarkan &amp; Catat&quot;</strong>, barulah kehadirannya <strong>langsung tercatat</strong> —
-            warga <strong>tidak perlu absen ulang</strong>.
-            Absen tertunda <strong>otomatis dihapus setelah 30 hari</strong> untuk menjaga ukuran database —
-            warga yang belum didaftarkan dalam sebulan harus absen ulang.
+            <p>• Kehadiran warga <strong>belum terdaftar</strong> tidak dihitung — mencegah orang iseng mengisi nama sembarangan.</p>
+            <p>• Klik <strong>&quot;Daftarkan &amp; Catat&quot;</strong> untuk mendaftarkan sekaligus mencatat absen tertundanya (⏳) — warga tidak perlu absen ulang.</p>
+            <p>• Absen tertunda <strong>otomatis dihapus setelah 30 hari</strong> untuk menjaga ukuran database.</p>
           </div>
         </div>
 
@@ -602,7 +601,7 @@ function DashboardInner() {
               <a
                 href="/api/qr"
                 download
-                className="inline-flex items-center gap-2 bg-white text-navy border-2 border-navy px-5 py-3 rounded-lg font-bold text-sm hover:bg-navy hover:text-white active:scale-[0.98] transition-all"
+                className="inline-flex items-center gap-2 bg-white text-navy border-2 border-navy px-5 py-3 rounded-xl font-bold text-sm hover:bg-navy hover:text-white active:scale-[0.98] transition-all"
                 style={{ minHeight: '44px' }}
               >
                 <QrCode size={18} strokeWidth={2} />
@@ -717,7 +716,7 @@ function DashboardInner() {
                 <p className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mt-3">
                   <b>Daftarkan &amp; Catat</b> = mendaftarkan warga <em>sekaligus</em> memindahkan absen
                   tertundanya (⏳) ke catatan kehadiran — warga tidak perlu absen ulang.
-                  Klik ikon <b>tong sampah</b> untuk menghapus nama yang iseng.
+                  Ikon <b>tong sampah</b> untuk menghapus nama yang iseng.
                 </p>
               </div>
 
