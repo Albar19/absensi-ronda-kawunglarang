@@ -54,6 +54,8 @@ export default function HomePage() {
   // Form state — satu dusun di atas + multi nama (sesi masuk)
   const [rows, setRows] = useState<OrangRow[]>([{ nama: '' }]);
   const [dusunForm, setDusunForm] = useState('');
+  // Default dusun dari jadwal ronda hari ini (petugas) — menang atas localStorage
+  const [defaultDusun, setDefaultDusun] = useState('');
   // Cache nama warga terdaftar per dusun (untuk dropdown pilih nama)
   const [namaByDusun, setNamaByDusun] = useState<Record<string, string[]>>({});
   const [loadingNama, setLoadingNama] = useState(false);
@@ -84,12 +86,25 @@ export default function HomePage() {
   // Load daftar nama untuk autocomplete + data warga tersimpan
   useEffect(() => {
     const init = async () => {
+      // Default dusun dari jadwal ronda hari ini (petugas) — warga tinggal pilih nama
+      let jadwalDusun = '';
+      try {
+        const res = await fetch('/api/jadwal/hari-ini');
+        if (res.ok) {
+          const data = await res.json();
+          if (CONFIG.dusunList.includes(data.petugas)) jadwalDusun = data.petugas;
+        }
+      } catch { /* silent */ }
+      setDefaultDusun(jadwalDusun);
+
       // Isi dusun + baris pertama dari localStorage jika ada
       const saved = muatDataWarga();
-      if (saved) {
-        setDusunForm(saved.dusun);
-        setRows([{ nama: saved.nama, manual: true }]);
-        void loadNamaDusun(saved.dusun);
+      const dusun = jadwalDusun || saved?.dusun || '';
+      if (dusun) {
+        setDusunForm(dusun);
+        // Jadwal menang: mulai dari dropdown nama kosong. Tanpa jadwal: pakai nama tersimpan.
+        setRows(jadwalDusun || !saved ? [{ nama: '' }] : [{ nama: saved.nama, manual: true }]);
+        void loadNamaDusun(dusun);
       }
     };
     init();
@@ -168,11 +183,12 @@ export default function HomePage() {
         return;
       }
     } else {
-      // Sesi masuk: mulai dengan 1 baris kosong (dusun terpisah di atas)
+      // Sesi masuk: default dusun = jadwal hari ini (petugas), fallback localStorage
       const saved = muatDataWarga();
-      setDusunForm(saved?.dusun ?? '');
-      setRows(saved ? [{ nama: saved.nama, manual: true }] : [{ nama: '' }]);
-      if (saved?.dusun) void loadNamaDusun(saved.dusun);
+      const dusun = defaultDusun || saved?.dusun || '';
+      setDusunForm(dusun);
+      setRows(dusun && !defaultDusun && saved ? [{ nama: saved.nama, manual: true }] : [{ nama: '' }]);
+      if (dusun) void loadNamaDusun(dusun);
     }
 
     if (!navigator.geolocation) {
@@ -213,7 +229,7 @@ export default function HomePage() {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
-  }, [loadNamaDusun]);
+  }, [loadNamaDusun, defaultDusun]);
 
   // ── Sesi MASUK: submit semua baris nama (satu dusun di atas) ──
   const handleSubmitMasuk = useCallback(async () => {
@@ -639,6 +655,12 @@ export default function HomePage() {
                   <label className="block text-sm font-bold text-slate-700 mb-1.5">
                     Pilih Dusun
                   </label>
+                  {defaultDusun && (
+                    <p className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-2">
+                      Dusun diisi otomatis sesuai jadwal ronda hari ini:{' '}
+                      <strong>{defaultDusun}</strong> — bisa diganti.
+                    </p>
+                  )}
                   <select
                     value={dusunForm}
                     onChange={e => pilihDusun(e.target.value)}

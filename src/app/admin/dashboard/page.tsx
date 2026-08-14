@@ -246,7 +246,9 @@ function DashboardInner() {
       body: JSON.stringify({ id: w.id, terdaftar: true, aktif: true }),
     });
     if (res.ok) {
-      push('success', `"${w.nama}" diterima sebagai warga terdaftar.`);
+      push('success', w.pendingCount
+        ? `"${w.nama}" diterima — ${w.pendingCount} absen tertunda langsung tercatat.`
+        : `"${w.nama}" diterima sebagai warga terdaftar.`);
       await loadWarga();
     } else {
       const err = await res.json();
@@ -442,9 +444,10 @@ function DashboardInner() {
           <Info size={20} className="text-blue-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
           <div className="text-sm font-semibold text-blue-800 leading-relaxed">
             <p className="font-black text-blue-900 mb-0.5">Info Penting — Warga Belum Terdaftar</p>
-            Nama yang <strong>belum terdaftar</strong> di daftar warga → absennya <strong>ditolak &amp; tidak terhitung</strong>.
-            Nama otomatis masuk antrean <strong>&quot;Menunggu Persetujuan&quot;</strong> di tab Daftar Warga.
-            Setelah disetujui, warga harus <strong>absen ulang</strong> agar tercatat.
+            Nama yang <strong>belum terdaftar</strong> di daftar warga → absennya <strong>ditolak &amp; tidak terhitung</strong>,
+            tapi kehadirannya <strong>disimpan sebagai absen tertunda</strong> (⏳) di tab Daftar Warga.
+            Saat Anda klik <strong>&quot;Setujui &amp; Catat&quot;</strong>, absen tertunda itu <strong>langsung tercatat</strong> —
+            warga <strong>tidak perlu absen ulang</strong>.
           </div>
         </div>
 
@@ -733,12 +736,13 @@ function DashboardInner() {
                 </div>
                 <p className="text-xs text-slate-500 mt-1 font-medium">
                   Hanya warga <b>terdaftar</b> yang bisa absen. Nama yang diketik manual oleh warga
-                  belum disetujui → absennya ditolak & masuk antrean ini. Setujui agar warga bisa
-                  absen dan namanya muncul di dropdown form absen.
+                  belum disetujui → absennya ditolak, tapi kehadirannya <b>disimpan sebagai absen tertunda</b>.
+                  Klik <b>Setujui &amp; Catat</b> untuk langsung mencatatkannya.
                 </p>
                 <p className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mt-3">
-                  Klik <b>Terima</b> untuk menyetujui nama baru. Klik ikon <b>tong sampah</b> untuk
-                  menghapus nama yang iseng.
+                  <b>Setujui &amp; Catat</b> = menerima warga <em>sekaligus</em> memindahkan absen
+                  tertundanya (⏳) ke catatan kehadiran — warga tidak perlu absen ulang.
+                  Klik ikon <b>tong sampah</b> untuk menghapus nama yang iseng.
                 </p>
               </div>
 
@@ -913,6 +917,11 @@ function DashboardInner() {
                                     Nonaktif
                                   </span>
                                 )}
+                                {(w.pendingCount ?? 0) > 0 && (
+                                  <span className="text-[10px] font-black tracking-wider text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                                    ⏳ {w.pendingCount} absen tertunda
+                                  </span>
+                                )}
                               </div>
                               <p className="text-xs text-slate-500 font-semibold mt-0.5">{w.dusun}</p>
                             </div>
@@ -921,12 +930,12 @@ function DashboardInner() {
                                 <button
                                   type="button"
                                   onClick={() => void handleTerimaWarga(w)}
-                                  title="Terima sebagai warga terdaftar"
+                                  title="Setujui & catat absen tertunda"
                                   className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-black hover:bg-green-700 active:scale-95 transition-all"
                                   style={{ minHeight: '40px' }}
                                 >
                                   <UserCheck size={15} />
-                                  <span className="hidden sm:inline">Terima</span>
+                                  <span className="hidden sm:inline">Setujui &amp; Catat</span>
                                 </button>
                               )}
                               {w.terdaftar && (

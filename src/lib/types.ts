@@ -28,6 +28,7 @@ export interface Warga {
   terdaftar: boolean; // true = disetujui admin, muncul di autocomplete
   aktif: boolean;     // false = soft delete / disembunyikan
   created_at: string;
+  pendingCount?: number; // jumlah absen tertunda (fitur auto-catat saat disetujui)
 }
 
 export type FlowState =

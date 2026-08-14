@@ -144,10 +144,39 @@ export async function POST(request: Request) {
             { onConflict: 'nama,dusun', ignoreDuplicates: true }
           );
 
+        // Simpan absen (sudah lolos validasi jam + GPS) sebagai PENDING.
+        // Saat admin menyetujui warga, record ini otomatis dipindah ke
+        // absen_records sehingga warga tidak perlu absen ulang.
+        // Dedup per nama+dusun+tanggal+jenis agar tidak menumpuk.
+        const { data: pendingAda } = await supabase
+          .from('pending_absen')
+          .select('id')
+          .eq('nama_warga', namaTrimmed)
+          .eq('dusun', dusunTrimmed)
+          .eq('tanggal_ronda', tanggalRonda)
+          .eq('jenis_absen', jenisAbsen)
+          .maybeSingle();
+
+        if (!pendingAda) {
+          const { error: pendingErr } = await supabase.from('pending_absen').insert({
+            nama_warga: namaTrimmed,
+            dusun: dusunTrimmed,
+            tanggal_ronda: tanggalRonda,
+            jam_absen: jamAbsenServer,
+            jenis_absen: jenisAbsen,
+            latitude: latNum,
+            longitude: lngNum,
+            jarak_meter: jarakFinal,
+          });
+          if (pendingErr) {
+            console.error('[absen] gagal simpan pending_absen:', pendingErr.message);
+          }
+        }
+
         return NextResponse.json(
           {
             kode: 'BELUM_TERDAFTAR',
-            error: 'Nama belum terdaftar. Permintaan Anda sudah dikirim ke antrean verifikasi — minta admin menyetujui di dashboard, lalu absen kembali.',
+            error: 'Nama belum terdaftar. Permintaan Anda sudah dikirim ke antrean verifikasi — setelah disetujui admin, kehadiran Anda langsung tercatat (tidak perlu absen ulang).',
           },
           { status: 403 }
         );
@@ -205,6 +234,15 @@ export async function POST(request: Request) {
         );
       }
 
+      // Warga sudah terdaftar → bersihkan pending lama (jika ada) agar tidak dobel
+      await supabase
+        .from('pending_absen')
+        .delete()
+        .eq('nama_warga', namaTrimmed)
+        .eq('dusun', dusunTrimmed)
+        .eq('tanggal_ronda', tanggalRonda)
+        .eq('jenis_absen', jenisAbsen);
+
       return NextResponse.json({ success: true, updated: true });
     }
 
@@ -229,6 +267,15 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Warga sudah terdaftar → bersihkan pending lama (jika ada) agar tidak dobel
+    await supabase
+      .from('pending_absen')
+      .delete()
+      .eq('nama_warga', namaTrimmed)
+      .eq('dusun', dusunTrimmed)
+      .eq('tanggal_ronda', tanggalRonda)
+      .eq('jenis_absen', jenisAbsen);
 
     // Auto-register nama ke master warga (nama terdaftar = no-op).
     await supabase

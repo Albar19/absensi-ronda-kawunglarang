@@ -43,7 +43,25 @@ export async function GET(request: Request) {
 
   const warga = data ?? [];
 
-  return NextResponse.json(warga);
+  // Hitung jumlah absen tertunda per warga (nama+dusun) untuk badge dashboard.
+  // Best-effort: bila tabel pending_absen belum ada, semua dianggap 0.
+  const pendingCounts = new Map<string, number>();
+  const { data: pendingRows } = await supabase
+    .from('pending_absen')
+    .select('nama_warga, dusun');
+  if (pendingRows) {
+    for (const p of pendingRows) {
+      const key = `${String(p.nama_warga).trim().toLowerCase()}|${String(p.dusun).trim().toLowerCase()}`;
+      pendingCounts.set(key, (pendingCounts.get(key) ?? 0) + 1);
+    }
+  }
+
+  const result = warga.map(w => ({
+    ...w,
+    pendingCount: pendingCounts.get(`${w.nama.toLowerCase()}|${w.dusun.toLowerCase()}`) ?? 0,
+  }));
+
+  return NextResponse.json(result);
 }
 
 // POST /api/warga — tambah manual (langsung terdaftar=true, admin-only)
@@ -122,6 +140,17 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Tidak ada data yang diubah' }, { status: 400 });
     }
 
+    // Ambil status lama untuk mendeteksi momen approval (terdaftar false → true)
+    const { data: oldWarga } = await supabase
+      .from('warga')
+      .select('nama, dusun, terdaftar')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!oldWarga) {
+      return NextResponse.json({ error: 'Warga tidak ditemukan' }, { status: 404 });
+    }
+
     const { data, error } = await supabase
       .from('warga')
       .update(updateData)
@@ -139,10 +168,62 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Gagal mengupdate warga' }, { status: 500 });
     }
 
+    // ── Approval: pindahkan absen tertunda ke absen_records ──
+    // Warga TIDAK perlu absen ulang — kehadirannya otomatis tercatat.
+    if (body.terdaftar === true && !oldWarga.terdaftar) {
+      const finalNama = (updateData.nama as string) ?? oldWarga.nama;
+      const finalDusun = (updateData.dusun as string) ?? oldWarga.dusun;
+      await commitPendingAbsen(finalNama, finalDusun);
+    }
+
     return NextResponse.json(data);
   } catch {
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
   }
+}
+
+// Pindahkan semua absen tertunda milik warga ke absen_records (dedup per
+// nama+dusun+tanggal+jenis), lalu hapus baris pending-nya.
+// Best-effort: kegagalan satu baris tidak menggagalkan yang lain.
+async function commitPendingAbsen(nama: string, dusun: string) {
+  const { data: pending } = await supabase
+    .from('pending_absen')
+    .select('id, nama_warga, dusun, tanggal_ronda, jam_absen, jenis_absen, latitude, longitude, jarak_meter')
+    .eq('nama_warga', nama)
+    .eq('dusun', dusun);
+
+  if (!pending || pending.length === 0) return;
+
+  for (const p of pending) {
+    const { data: existing } = await supabase
+      .from('absen_records')
+      .select('id')
+      .eq('nama_warga', p.nama_warga)
+      .eq('dusun', p.dusun)
+      .eq('tanggal_ronda', p.tanggal_ronda)
+      .eq('jenis_absen', p.jenis_absen)
+      .maybeSingle();
+
+    if (existing) continue;
+
+    const { error: insErr } = await supabase.from('absen_records').insert({
+      nama_warga: p.nama_warga,
+      dusun: p.dusun,
+      tanggal: p.tanggal_ronda,
+      tanggal_ronda: p.tanggal_ronda,
+      jam_absen: p.jam_absen,
+      jenis_absen: p.jenis_absen,
+      latitude: p.latitude,
+      longitude: p.longitude,
+      jarak_meter: p.jarak_meter,
+    });
+
+    if (insErr) {
+      console.error(`[warga] gagal commit pending untuk ${nama}:`, insErr.message);
+    }
+  }
+
+  await supabase.from('pending_absen').delete().eq('nama_warga', nama).eq('dusun', dusun);
 }
 
 // DELETE /api/warga?id=...&hapus_absen=1 — hapus permanen (admin-only)
@@ -187,6 +268,13 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: 'Gagal menghapus data absen' }, { status: 500 });
       }
     }
+
+    // Hapus juga absen tertunda milik warga (agar tidak tercatat setelah dihapus)
+    await supabase
+      .from('pending_absen')
+      .delete()
+      .eq('nama_warga', warga.nama)
+      .eq('dusun', warga.dusun);
 
     const { error } = await supabase.from('warga').delete().eq('id', id);
 
