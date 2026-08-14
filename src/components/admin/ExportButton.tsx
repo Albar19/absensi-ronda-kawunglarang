@@ -293,7 +293,7 @@ export default function ExportButton() {
       <button
         type="button"
         onClick={openModal}
-        className="inline-flex items-center gap-2 bg-green-700 text-white px-5 py-3 rounded-lg font-bold text-sm border-2 border-green-700 hover:bg-green-800 active:scale-[0.98] transition-all"
+        className="inline-flex items-center gap-2 bg-green-700 text-white px-5 py-3 rounded-xl font-bold text-sm border-2 border-green-700 hover:bg-green-800 active:scale-[0.98] transition-all"
         style={{ minHeight: '44px' }}
       >
         <Download size={18} strokeWidth={2} />

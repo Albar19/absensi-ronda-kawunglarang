@@ -518,7 +518,7 @@ export default function HomePage() {
 
         {/* ─── CHECKING ─── */}
         {flowState === 'checking' && (
-          <div className="py-2 animate-fade-up">
+          <div className="px-4 sm:px-6 py-2 animate-fade-up">
             <StatusCards statusJam={statusJam} statusJarak={statusJarak} jarakMeter={jarakMeter} akurasiMeter={akurasi} />
             <div className="px-4 py-5 flex items-center justify-center gap-2 text-slate-400 text-sm font-semibold">
               <Loader size={18} className="animate-spin" />

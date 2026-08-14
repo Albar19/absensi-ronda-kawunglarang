@@ -344,7 +344,7 @@ function DashboardInner() {
     : 'Semua Bulan';
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-slate-100">
       {!authChecked ? (
         <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-slate-500">
           <Loader size={32} className="animate-spin" />

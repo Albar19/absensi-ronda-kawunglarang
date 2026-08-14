@@ -58,3 +58,4 @@ $$;
 REVOKE ALL ON FUNCTION public.daftar_bulan_absen() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.daftar_bulan_absen() FROM anon;
 REVOKE ALL ON FUNCTION public.daftar_bulan_absen() FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.daftar_bulan_absen() TO service_role;

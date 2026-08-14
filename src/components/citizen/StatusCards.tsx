@@ -41,7 +41,7 @@ export default function StatusCards({ statusJam, statusJarak, jarakMeter, akuras
   const sesiLabel = statusJam === 'pulang' ? 'PULANG' : 'MASUK';
 
   return (
-    <div className="px-4 sm:px-5 pt-4 pb-2 space-y-3">
+    <div className="pt-4 pb-2 space-y-3">
       {/* ── Waktu Absen ── */}
       <div className={`flex items-center gap-4 rounded-xl border-2 px-4 py-3.5 transition-colors shadow-card ${cardStyle(jamState)}`}>
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${dotStyle(jamState)}`}>
