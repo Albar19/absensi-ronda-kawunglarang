@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, RefreshCw, Users, Calendar, Save, QrCode, Loader, FileDown, Search, ChevronDown, Plus, Trash2, UserCheck, UserX, Pencil, ClipboardList, BookOpen, Info } from 'lucide-react';
+import { LogOut, RefreshCw, Users, Calendar, Save, QrCode, Loader, FileDown, Search, ChevronDown, Plus, Trash2, UserCheck, UserX, Pencil, ClipboardList, BookOpen, Info, Moon, Sunrise } from 'lucide-react';
 import { AbsenRecord, JadwalRonda, Warga } from '@/lib/types';
 import { CONFIG } from '@/lib/config';
 import { formatTanggalIndo, getTanggalHariIni, BULAN_INDONESIA } from '@/lib/data';
@@ -960,7 +960,7 @@ function DashboardInner() {
         )}
 
         {/* ════════════════════════════════════════════════ */}
-        {/* TAB: PANDUAN (masih dalam pengembangan)         */}
+        {/* TAB: PANDUAN                                     */}
         {/* ════════════════════════════════════════════════ */}
         {tab === 'panduan' && (
           <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
@@ -976,16 +976,128 @@ function DashboardInner() {
               </p>
             </div>
 
-            <div className="px-5 py-14 flex flex-col items-center text-center">
-              <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wider mb-5">
-                <Loader size={14} className="animate-spin" strokeWidth={2.5} />
-                Masih dalam pengembangan
-              </span>
-              <BookOpen size={40} className="text-slate-300 mb-3" strokeWidth={1.5} />
-              <p className="text-base font-black text-slate-700">Fitur Panduan sedang dikembangkan</p>
-              <p className="text-sm text-slate-500 font-medium mt-1 max-w-sm leading-relaxed">
-                Panduan lengkap akan ditambahkan pada pembaruan berikutnya.
-              </p>
+            <div className="px-5 py-5 space-y-6">
+
+              {/* ── Ringkasan singkat ── */}
+              <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3.5">
+                <Info size={20} className="text-blue-700 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                <div className="text-sm font-semibold text-blue-800 leading-relaxed">
+                  <p className="font-black text-blue-900 mb-0.5">Intinya Begini</p>
+                  <p>• Absen <strong>Masuk</strong> pukul <strong>20:00–22:00 WIB</strong> · Absen <strong>Pulang</strong> pukul <strong>23:00–23:59 WIB</strong></p>
+                  <p>• HP harus berada dalam radius <strong>50 m dari Bale Desa</strong> dan <strong>izin lokasi (GPS) aktif</strong> — di luar itu absen ditolak.</p>
+                </div>
+              </div>
+
+              {/* ── Untuk Warga: Absen Masuk ── */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Moon size={18} className="text-navy" strokeWidth={2.2} />
+                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-wide">Absen Masuk (untuk warga)</h4>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 space-y-3">
+                  {[
+                    'Buka halaman absen (scan QR Code di Bale Desa)',
+                    'Saat HP meminta izin lokasi, pilih "IZINKAN / SETUJUI"',
+                    'Pilih Dusun, lalu pilih Nama dari daftar (atau ketik manual)',
+                    'Tekan tombol besar "SAYA HADIR RONDA"',
+                    'Ada peserta lain di HP yang sama? Tekan "+ Tambah Nama"',
+                  ].map((s, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="w-7 h-7 rounded-full bg-navy text-white text-sm font-black flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                      <p className="text-sm font-semibold text-slate-700 leading-snug pt-0.5">{s}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* ── Untuk Warga: Absen Pulang ── */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Sunrise size={18} className="text-navy" strokeWidth={2.2} />
+                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-wide">Absen Pulang (untuk warga)</h4>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 space-y-3">
+                  {[
+                    'Buka halaman yang sama',
+                    'Nama yang sudah absen masuk malam ini muncul otomatis (tercentang)',
+                    'Hilangkan centang pada nama yang pulang lebih awal',
+                    'Tekan tombol besar "SAYA PULANG RONDA"',
+                  ].map((s, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="w-7 h-7 rounded-full bg-navy text-white text-sm font-black flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                      <p className="text-sm font-semibold text-slate-700 leading-snug pt-0.5">{s}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* ── Nama belum terdaftar ── */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Info size={18} className="text-amber-700" strokeWidth={2.2} />
+                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-wide">Nama Belum Terdaftar?</h4>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3.5 text-sm font-semibold text-amber-800 leading-relaxed space-y-1.5">
+                  <p>• Warga bisa <strong>ketik nama manual</strong> — kehadirannya disimpan sebagai <strong>absen tertunda (⏳)</strong>.</p>
+                  <p>• Setelah admin klik <strong>&quot;Daftarkan &amp; Catat&quot;</strong>, kehadirannya <strong>langsung tercatat — tidak perlu absen ulang</strong>.</p>
+                  <p>• Absen tertunda <strong>otomatis dihapus setelah 30 hari</strong> jika belum didaftarkan.</p>
+                </div>
+              </section>
+
+              {/* ── Panduan Admin ── */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users size={18} className="text-navy" strokeWidth={2.2} />
+                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-wide">Panduan Admin</h4>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3">
+                    <ClipboardList size={18} className="text-navy flex-shrink-0 mt-0.5" strokeWidth={2.2} />
+                    <div>
+                      <p className="text-sm font-black text-slate-800">Tab Kehadiran</p>
+                      <p className="text-xs text-slate-600 font-medium mt-1 leading-relaxed">Lihat log absen real-time, pilih bulan, download rekap Excel, dan download QR Code untuk ditempel di Bale Desa.</p>
+                    </div>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3">
+                    <Calendar size={18} className="text-navy flex-shrink-0 mt-0.5" strokeWidth={2.2} />
+                    <div>
+                      <p className="text-sm font-black text-slate-800">Tab Jadwal Ronda</p>
+                      <p className="text-xs text-slate-600 font-medium mt-1 leading-relaxed">Atur petugas ronda tiap hari (Senin–Minggu), simpan, lalu download jadwal untuk ditempel.</p>
+                    </div>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-3 sm:col-span-2">
+                    <UserCheck size={18} className="text-navy flex-shrink-0 mt-0.5" strokeWidth={2.2} />
+                    <div>
+                      <p className="text-sm font-black text-slate-800">Tab Daftar Warga</p>
+                      <p className="text-xs text-slate-600 font-medium mt-1 leading-relaxed">
+                        Tambah warga manual, cari nama, klik <strong>&quot;Daftarkan &amp; Catat&quot;</strong> untuk warga belum terdaftar (absen tertunda langsung tercatat), edit data, nonaktifkan, atau hapus nama iseng.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* ── Tips penting ── */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen size={18} className="text-navy" strokeWidth={2.2} />
+                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-wide">Tips Penting</h4>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 space-y-2.5">
+                  {[
+                    'Satu HP bisa dipakai absen banyak warga (fitur "Tambah Nama")',
+                    'Hadir lengkap = absen masuk DAN pulang di malam yang sama',
+                    'Kehadiran warga belum terdaftar tidak dihitung — mencegah orang iseng',
+                    'Pastikan GPS aktif dan berada di area Bale Desa sebelum absen',
+                  ].map((s, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="w-6 h-6 rounded-full bg-green-600 text-white text-xs font-black flex items-center justify-center flex-shrink-0">✓</span>
+                      <p className="text-sm font-semibold text-slate-700 leading-snug pt-0.5">{s}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
             </div>
           </div>
         )}
