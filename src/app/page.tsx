@@ -14,10 +14,10 @@ import {
   simpanDataWarga,
   type JamStatus,
 } from '@/lib/data';
-import HeaderBanner  from '@/components/citizen/HeaderBanner';
-import StatusCards   from '@/components/citizen/StatusCards';
+import HeaderBanner from '@/components/citizen/HeaderBanner';
+import StatusCards from '@/components/citizen/StatusCards';
 import RejectedScreen from '@/components/citizen/RejectedScreen';
-import SuccessScreen  from '@/components/citizen/SuccessScreen';
+import SuccessScreen from '@/components/citizen/SuccessScreen';
 
 interface OrangRow {
   nama: string;
@@ -39,17 +39,17 @@ function keyOrang({ nama, dusun }: { nama: string; dusun: string }) {
 }
 
 export default function HomePage() {
-  const [flowState,      setFlowState]      = useState<FlowState>('idle');
-  const [isSubmitting,   setIsSubmitting]   = useState(false);
-  const [statusJam,      setStatusJam]      = useState<JamStatusDisplay>(null);
-  const [statusJarak,    setStatusJarak]    = useState<'dekat'|'jauh'|'loading'|'error'|null>(null);
-  const [jarakMeter,     setJarakMeter]     = useState<number|null>(null);
-  const [akurasi,        setAkurasi]        = useState<number|null>(null);
-  const [koordinat,      setKoordinat]      = useState<{lat:number;lng:number}|null>(null);
-  const [pesanError,     setPesanError]     = useState('');
-  const [jenisAbsen,     setJenisAbsen]     = useState<JenisAbsen>('masuk');
+  const [flowState, setFlowState] = useState<FlowState>('idle');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusJam, setStatusJam] = useState<JamStatusDisplay>(null);
+  const [statusJarak, setStatusJarak] = useState<'dekat' | 'jauh' | 'loading' | 'error' | null>(null);
+  const [jarakMeter, setJarakMeter] = useState<number | null>(null);
+  const [akurasi, setAkurasi] = useState<number | null>(null);
+  const [koordinat, setKoordinat] = useState<{ lat: number; lng: number } | null>(null);
+  const [pesanError, setPesanError] = useState('');
+  const [jenisAbsen, setJenisAbsen] = useState<JenisAbsen>('masuk');
   // Sesi saat ini (dari jam perangkat) — diperbarui berkala & saat tab kembali aktif
-  const [jamStatus,      setJamStatus]      = useState<JamStatus>(cekJamStatus());
+  const [jamStatus, setJamStatus] = useState<JamStatus>(cekJamStatus());
 
   // Form state — satu dusun di atas + multi nama (sesi masuk)
   const [rows, setRows] = useState<OrangRow[]>([{ nama: '' }]);
@@ -246,9 +246,10 @@ export default function HomePage() {
 
     setIsSubmitting(true);
     const now = new Date();
-    const jamAbsen = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const jamAbsen = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     const tanggal = getTanggalHariIni();
     const submitted: AbsenRecord[] = [];
+    const errors: string[] = [];
 
     for (const row of validRows) {
       const record: AbsenRecord = {
@@ -271,25 +272,30 @@ export default function HomePage() {
         });
         if (!res.ok) {
           const err = await res.json();
-          setPesanError(err.error || `Gagal menyimpan absen atas nama ${row.nama}`);
-          setIsSubmitting(false);
-          setFlowState('rejected');
-          return;
+          errors.push(`${row.nama}: ${err.error || 'Gagal menyimpan absen'}`);
+        } else {
+          submitted.push(record);
+          // Simpan nama terakhir ke localStorage untuk autofill berikutnya
+          simpanDataWarga(row.nama, row.dusun);
         }
-        submitted.push(record);
-        // Simpan nama terakhir ke localStorage untuk autofill berikutnya
-        simpanDataWarga(row.nama, row.dusun);
       } catch {
-        setPesanError('Gagal terhubung ke server');
-        setIsSubmitting(false);
-        setFlowState('rejected');
-        return;
+        errors.push(`${row.nama}: Gagal terhubung ke server`);
       }
     }
 
-    setSuccessRecords(submitted);
     setIsSubmitting(false);
-    setFlowState('success');
+
+    if (submitted.length > 0) {
+      if (errors.length > 0) {
+        // Beri tahu ada yang belum terdaftar / tertunda
+        alert("Beberapa absen tertunda (masuk antrean admin):\n\n" + errors.join("\n"));
+      }
+      setSuccessRecords(submitted);
+      setFlowState('success');
+    } else {
+      setPesanError(errors.join('\n\n'));
+      setFlowState('rejected');
+    }
   }, [rows, dusunForm, koordinat, jarakMeter]);
 
   // ── Sesi PULANG: submit semua nama yang dicentang ──
@@ -303,9 +309,10 @@ export default function HomePage() {
 
     setIsSubmitting(true);
     const now = new Date();
-    const jamAbsen = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const jamAbsen = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     const tanggal = getTanggalHariIni();
     const submitted: AbsenRecord[] = [];
+    const errors: string[] = [];
 
     for (const p of selected) {
       const record: AbsenRecord = {
@@ -328,23 +335,27 @@ export default function HomePage() {
         });
         if (!res.ok) {
           const err = await res.json();
-          setPesanError(err.error || `Gagal menyimpan absen pulang atas nama ${p.nama}`);
-          setIsSubmitting(false);
-          setFlowState('rejected');
-          return;
+          errors.push(`${p.nama}: ${err.error || 'Gagal menyimpan absen pulang'}`);
+        } else {
+          submitted.push(record);
         }
-        submitted.push(record);
       } catch {
-        setPesanError('Gagal terhubung ke server');
-        setIsSubmitting(false);
-        setFlowState('rejected');
-        return;
+        errors.push(`${p.nama}: Gagal terhubung ke server`);
       }
     }
 
-    setSuccessRecords(submitted);
     setIsSubmitting(false);
-    setFlowState('success');
+
+    if (submitted.length > 0) {
+      if (errors.length > 0) {
+        alert("Beberapa absen pulang gagal diproses:\n\n" + errors.join("\n"));
+      }
+      setSuccessRecords(submitted);
+      setFlowState('success');
+    } else {
+      setPesanError(errors.join('\n\n'));
+      setFlowState('rejected');
+    }
   }, [pulangPeople, checkedNames, koordinat, jarakMeter]);
 
   const handleReset = useCallback(() => {
@@ -405,9 +416,9 @@ export default function HomePage() {
   const langkah = jenisAbsen === 'pulang'
     ? { steps: ['Centang Nama', 'Tekan Tombol Pulang'], current: checkedNames.size > 0 ? 1 : 0 }
     : {
-        steps: ['Pilih Dusun', 'Pilih Nama', 'Tekan Tombol Hadir'],
-        current: !dusunForm ? 0 : (rows.some(r => r.nama.trim()) ? 2 : 1),
-      };
+      steps: ['Pilih Dusun', 'Pilih Nama', 'Tekan Tombol Hadir'],
+      current: !dusunForm ? 0 : (rows.some(r => r.nama.trim()) ? 2 : 1),
+    };
 
   // ── Adaptive session ──
   const sesiAktif = jamStatus === 'masuk' || jamStatus === 'pulang' ? jamStatus : null;
@@ -555,9 +566,8 @@ export default function HomePage() {
                 {langkah.steps.map((_, i) => (
                   <span
                     key={i}
-                    className={`inline-block h-2.5 w-2.5 rounded-full transition-all duration-300 ${
-                      i < langkah.current ? 'bg-green-600' : i === langkah.current ? 'bg-navy scale-110' : 'bg-slate-300'
-                    }`}
+                    className={`inline-block h-2.5 w-2.5 rounded-full transition-all duration-300 ${i < langkah.current ? 'bg-green-600' : i === langkah.current ? 'bg-navy scale-110' : 'bg-slate-300'
+                      }`}
                   />
                 ))}
               </div>
